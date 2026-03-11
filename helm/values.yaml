@@ -230,7 +230,7 @@ chat:
 
 # Hashcash proof-of-work captcha (uses existing Redis)
 captcha:
-  enabled: false                # Enable PoW captcha on auth endpoints
+  enabled: true                 # Enable PoW captcha on auth endpoints
 
 # Kafka (KRaft mode, for chat messaging)
 kafka:
