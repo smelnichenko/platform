@@ -139,28 +139,30 @@ spec:
             - name: MINIO_BUCKET
               value: {{ .Values.minio.bucket | default "email-attachments" | quote }}
             {{- end }}
-            {{- if eq (.Values.kafka.enabled | toString) "true" }}
-            - name: CHAT_ENABLED
-              value: "true"
             {{- if eq (.Values.chat.e2eEnabled | toString) "true" }}
             - name: CHAT_E2E_ENABLED
               value: "true"
             {{- end }}
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "{{ include "monitor.kafka.serviceName" . }}:9092"
-            {{- end }}
-            {{- if eq (.Values.scylla.enabled | toString) "true" }}
             - name: SCYLLA_CONTACT_POINTS
               value: {{ include "monitor.scylla.serviceName" . }}
             - name: SCYLLA_PORT
               value: "9042"
             - name: SCYLLA_DATACENTER
               value: "datacenter1"
-            {{- end }}
             {{- if eq (.Values.captcha.enabled | toString) "true" }}
             - name: CAPTCHA_ENABLED
               value: "true"
             {{- end }}
+            - name: REGISTRATION_APPROVAL_MODE
+              value: {{ .Values.auth.registrationApproval.mode | default "ai" | quote }}
+            {{- if .Values.auth.registrationApproval.criteria }}
+            - name: REGISTRATION_APPROVAL_CRITERIA
+              value: {{ .Values.auth.registrationApproval.criteria | quote }}
+            {{- end }}
+            - name: REGISTRATION_APPROVAL_DEFAULT_GROUP
+              value: {{ .Values.auth.registrationApproval.defaultGroup | default "Users" | quote }}
           resources:
             {{- toYaml .Values.app.resources | nindent 12 }}
           livenessProbe:

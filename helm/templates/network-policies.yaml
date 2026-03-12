@@ -112,7 +112,6 @@ spec:
           port: 9200
     {{- end }}
     # App → Kafka
-    {{- if eq (.Values.kafka.enabled | toString) "true" }}
     - to:
         - podSelector:
             matchLabels:
@@ -120,9 +119,7 @@ spec:
       ports:
         - protocol: TCP
           port: 9092
-    {{- end }}
     # App → ScyllaDB
-    {{- if eq (.Values.scylla.enabled | toString) "true" }}
     - to:
         - podSelector:
             matchLabels:
@@ -130,7 +127,6 @@ spec:
       ports:
         - protocol: TCP
           port: 9042
-    {{- end }}
     # App → external HTTPS (SMTP, AI API, URL monitoring, webhooks)
     - to:
         - ipBlock:
@@ -528,7 +524,6 @@ spec:
         - protocol: TCP
           port: 9200
 {{- end }}
-{{- if eq (.Values.kafka.enabled | toString) "true" }}
 ---
 # Kafka network policy
 apiVersion: networking.k8s.io/v1
@@ -575,8 +570,6 @@ spec:
           port: 9092
         - protocol: TCP
           port: 9093
-{{- end }}
-{{- if eq (.Values.scylla.enabled | toString) "true" }}
 ---
 # ScyllaDB network policy
 apiVersion: networking.k8s.io/v1
@@ -610,8 +603,6 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-{{- end }}
-{{- if eq (.Values.kafka.enabled | toString) "true" }}
 ---
 # Kafka topics job network policy
 apiVersion: networking.k8s.io/v1
@@ -642,8 +633,6 @@ spec:
       ports:
         - protocol: TCP
           port: 9092
-{{- end }}
-{{- if eq (.Values.scylla.enabled | toString) "true" }}
 ---
 # ScyllaDB schema job network policy
 apiVersion: networking.k8s.io/v1
@@ -674,5 +663,4 @@ spec:
       ports:
         - protocol: TCP
           port: 9042
-{{- end }}
 {{- end }}
