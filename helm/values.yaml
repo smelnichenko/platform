@@ -76,6 +76,10 @@ auth:
   tokenExpiration: 1h
   registrationEnabled: true
   secureCookies: true
+  registrationApproval:
+    mode: ai            # ai, admin, or skip
+    criteria: ""        # AI evaluation criteria (empty = default)
+    defaultGroup: Users # Group assigned on approval
 
 # Monitor configuration
 monitor:
@@ -224,7 +228,6 @@ grafana:
       secretName: ""
       clusterIssuer: "letsencrypt-prod"
 
-# Chat E2E encryption
 chat:
   e2eEnabled: false             # Enable end-to-end encryption for chat channels
 
@@ -234,7 +237,6 @@ captcha:
 
 # Kafka (KRaft mode, for chat messaging)
 kafka:
-  enabled: false
   image: apache/kafka:3.9.0
   replicas: 1
   clusterId: ""                 # Generated once, stored in Vault
@@ -266,7 +268,6 @@ kafka:
 
 # ScyllaDB (chat message storage)
 scylla:
-  enabled: false
   image: scylladb/scylla:6.2
   replicas: 1
   args:

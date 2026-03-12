@@ -1,4 +1,3 @@
-{{- if eq (.Values.kafka.enabled | toString) "true" }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -114,4 +113,3 @@ spec:
         resources:
           requests:
             storage: {{ .Values.kafka.storage.size }}
-{{- end }}

@@ -110,7 +110,6 @@ data:
         secret-key: ${MINIO_SECRET_KEY:minioadmin}
         bucket: ${MINIO_BUCKET:email-attachments}
       chat:
-        enabled: ${CHAT_ENABLED:false}
         e2e-enabled: ${CHAT_E2E_ENABLED:false}
         scylla:
           contact-points: ${SCYLLA_CONTACT_POINTS:localhost}
@@ -122,7 +121,6 @@ data:
         requests-per-minute: 300
         burst-capacity: 50
 
-    {{- if eq (.Values.kafka.enabled | toString) "true" }}
     spring.kafka:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
       producer:
@@ -135,5 +133,4 @@ data:
         value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
         properties:
           spring.json.trusted.packages: io.schnappy.monitor.chat.dto
-    {{- end }}
 

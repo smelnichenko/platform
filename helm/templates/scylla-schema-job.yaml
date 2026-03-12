@@ -1,4 +1,3 @@
-{{- if eq (.Values.scylla.enabled | toString) "true" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -107,8 +106,9 @@ spec:
               cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD hash text;" 2>/dev/null || true
               cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD prev_hash text;" 2>/dev/null || true
               cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD key_version int;" 2>/dev/null || true
+              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD message_type text;" 2>/dev/null || true
+              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD metadata text;" 2>/dev/null || true
               cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD hash text;" 2>/dev/null || true
               cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD key_version int;" 2>/dev/null || true
               echo "Schema applied successfully."
       restartPolicy: OnFailure
-{{- end }}
