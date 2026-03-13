@@ -15,9 +15,10 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "monitor.elasticsearch.selectorLabels" . | nindent 8 }}
+        {{- include "monitor.fluentbit.selectorLabels" . | nindent 8 }}
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: {{ include "monitor.fullname" . }}-fluentbit
       containers:
         - name: ilm-setup
           image: curlimages/curl:8.11.0
