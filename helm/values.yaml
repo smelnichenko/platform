@@ -328,7 +328,7 @@ sonarqube:
     size: 5Gi
     storageClass: ""
 
-# ELK Stack (Elasticsearch + Kibana + Filebeat)
+# ELK Stack (Elasticsearch + Kibana + Fluent-bit)
 elk:
   enabled: false
   elasticsearch:
@@ -367,8 +367,8 @@ elk:
         enabled: false
         secretName: ""
         clusterIssuer: "letsencrypt-prod"
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.17.4
+  fluentbit:
+    image: cr.fluentbit.io/fluent/fluent-bit:3.2
     resources:
       requests:
         memory: "128Mi"
