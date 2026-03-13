@@ -6,7 +6,7 @@ metadata:
     {{- include "monitor.kafka.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "monitor.kafka.serviceName" . }}
-  replicas: 1
+  replicas: {{ .Values.kafka.replicas }}
   selector:
     matchLabels:
       {{- include "monitor.kafka.selectorLabels" . | nindent 6 }}

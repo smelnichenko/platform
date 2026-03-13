@@ -376,3 +376,7 @@ elk:
       limits:
         memory: "256Mi"
         cpu: "200m"
+  ciLogs:
+    enabled: false       # Ship Docker container logs (CI jobs) to separate index
+    retention:
+      days: 90

@@ -21,12 +21,34 @@ data:
               when:
                 equals:
                   kubernetes.container.name: "filebeat"
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+      - type: container
+        paths:
+          - /var/lib/docker/containers/*/*.log
+        scan_frequency: 1s
+        close_inactive: 5m
+        processors:
+          - add_docker_metadata:
+              host: "unix:///var/run/docker.sock"
+          - add_fields:
+              target: 'fields'
+              fields:
+                log_source: ci
+{{- end }}
 
     output.elasticsearch:
       hosts: ["${ELASTICSEARCH_HOST}"]
       username: "elastic"
       password: "${ELASTICSEARCH_PASSWORD}"
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+      indices:
+        - index: "ci-logs-%{+yyyy.MM.dd}"
+          when.equals:
+            fields.log_source: "ci"
+        - index: "filebeat-%{+yyyy.MM.dd}"
+{{- else }}
       index: "filebeat-%{+yyyy.MM.dd}"
+{{- end }}
 
     setup.template.name: "filebeat"
     setup.template.pattern: "filebeat-*"
@@ -34,6 +56,9 @@ data:
       index.number_of_shards: 1
       index.number_of_replicas: 0
 
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+    setup.ilm.enabled: false
+{{- else }}
     setup.ilm.enabled: true
     setup.ilm.rollover_alias: "filebeat"
     setup.ilm.pattern: "{now/d}-000001"
@@ -50,6 +75,7 @@ data:
           min_age: "{{ .Values.elk.elasticsearch.retention.days }}d"
           actions:
             delete: {}
+{{- end }}
 
     logging.level: warning
     logging.to_stderr: true
