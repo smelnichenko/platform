@@ -448,6 +448,14 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+    # Allow from ES ILM job
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.esIlmJob.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
   egress:
     # DNS only — Elasticsearch doesn't initiate external connections
     - ports:
@@ -545,6 +553,37 @@ spec:
         - protocol: TCP
           port: 6443
 {{- end }}
+---
+# ES ILM job network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "monitor.fullname" . }}-es-ilm-job
+  labels:
+    {{- include "monitor.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.esIlmJob.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # ILM job → Elasticsearch
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.elasticsearch.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
 ---
 # Kafka network policy
 apiVersion: networking.k8s.io/v1
