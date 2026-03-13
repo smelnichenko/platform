@@ -6,7 +6,7 @@ metadata:
     {{- include "monitor.scylla.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "monitor.scylla.serviceName" . }}
-  replicas: 1
+  replicas: {{ .Values.scylla.replicas }}
   selector:
     matchLabels:
       {{- include "monitor.scylla.selectorLabels" . | nindent 6 }}

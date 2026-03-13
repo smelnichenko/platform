@@ -51,6 +51,14 @@ spec:
             - name: varlogcontainers
               mountPath: /var/log/containers
               readOnly: true
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+            - name: docker-containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+              readOnly: true
+{{- end }}
             - name: data
               mountPath: /usr/share/filebeat/data
           resources:
@@ -72,6 +80,14 @@ spec:
         - name: varlogcontainers
           hostPath:
             path: /var/log/containers
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+        - name: docker-containers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+{{- end }}
         - name: data
           hostPath:
             path: /var/lib/filebeat-data
