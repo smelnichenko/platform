@@ -462,17 +462,17 @@ SonarQube PostgreSQL service name
 {{- end }}
 
 {{/*
-Filebeat labels
+Fluent-bit labels
 */}}
-{{- define "monitor.filebeat.labels" -}}
+{{- define "monitor.fluentbit.labels" -}}
 {{ include "monitor.labels" . }}
-app.kubernetes.io/component: filebeat
+app.kubernetes.io/component: fluentbit
 {{- end }}
 
 {{/*
-Filebeat selector labels
+Fluent-bit selector labels
 */}}
-{{- define "monitor.filebeat.selectorLabels" -}}
+{{- define "monitor.fluentbit.selectorLabels" -}}
 {{ include "monitor.selectorLabels" . }}
-app.kubernetes.io/component: filebeat
+app.kubernetes.io/component: fluentbit
 {{- end }}

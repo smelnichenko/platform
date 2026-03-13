@@ -440,11 +440,11 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
-    # Allow from Filebeat
+    # Allow from Fluent-bit
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.filebeat.selectorLabels" . | nindent 14 }}
+              {{- include "monitor.fluentbit.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -494,20 +494,32 @@ spec:
         - protocol: TCP
           port: 9200
 ---
-# Filebeat network policy
+# Fluent-bit network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-filebeat
+  name: {{ include "monitor.fullname" . }}-fluentbit
   labels:
     {{- include "monitor.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.filebeat.selectorLabels" . | nindent 6 }}
+      {{- include "monitor.fluentbit.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
+  ingress:
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+    # Docker containers → Fluent-bit forward input (CI log shipping)
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 24224
+{{- else }}
+    []
+{{- end }}
   egress:
     # DNS
     - ports:
@@ -515,7 +527,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Filebeat → Elasticsearch
+    # Fluent-bit → Elasticsearch
     - to:
         - podSelector:
             matchLabels:
@@ -523,6 +535,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+    # Fluent-bit → Kubernetes API (metadata enrichment)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
 {{- end }}
 ---
 # Kafka network policy

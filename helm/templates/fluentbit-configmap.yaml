@@ -1,0 +1,85 @@
+{{- if eq (.Values.elk.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "monitor.fullname" . }}-fluentbit-config
+  labels:
+    {{- include "monitor.fluentbit.labels" . | nindent 4 }}
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush        1
+        Log_Level    warn
+        Parsers_File /fluent-bit/etc/parsers.conf
+        storage.path /fluent-bit/db/
+
+    [INPUT]
+        Name              tail
+        Tag               kube.*
+        Path              /var/log/containers/*.log
+        Parser            cri
+        DB                /fluent-bit/db/tail.db
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  5
+
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+    [INPUT]
+        Name              forward
+        Listen            0.0.0.0
+        Port              24224
+        Tag               ci
+{{- end }}
+
+    [FILTER]
+        Name              kubernetes
+        Match             kube.*
+        Kube_URL          https://kubernetes.default.svc:443
+        Kube_CA_File      /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File   /var/run/secrets/kubernetes.io/serviceaccount/token
+        Merge_Log         On
+        K8S-Logging.Parser On
+
+    [FILTER]
+        Name              grep
+        Match             kube.*
+        Exclude           $kubernetes['container_name'] fluent-bit
+
+    [OUTPUT]
+        Name              es
+        Match             kube.*
+        Host              {{ include "monitor.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc
+        Port              9200
+        HTTP_User         elastic
+        HTTP_Passwd       ${ELASTICSEARCH_PASSWORD}
+        Index             filebeat
+        Logstash_Format   On
+        Logstash_Prefix   filebeat
+        Suppress_Type_Name On
+        tls               Off
+        Retry_Limit       3
+
+{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
+    [OUTPUT]
+        Name              es
+        Match             ci
+        Host              {{ include "monitor.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc
+        Port              9200
+        HTTP_User         elastic
+        HTTP_Passwd       ${ELASTICSEARCH_PASSWORD}
+        Index             ci-logs
+        Logstash_Format   On
+        Logstash_Prefix   ci-logs
+        Suppress_Type_Name On
+        tls               Off
+        Retry_Limit       3
+{{- end }}
+
+  parsers.conf: |
+    [PARSER]
+        Name        cri
+        Format      regex
+        Regex       ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<_p>[^ ]*) (?<log>.*)$
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+{{- end }}
