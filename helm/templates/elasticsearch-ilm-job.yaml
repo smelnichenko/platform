@@ -55,14 +55,15 @@ spec:
               }')
               echo "ILM logs-{{ .Values.elk.elasticsearch.retention.days }}d-retention: ${RESP}"
 
-              # Delete old Filebeat-managed index template if it exists (has managed_by flag that blocks overwrite)
+              # Clean up old Filebeat data streams and templates (replaced by Fluent-bit)
+              es_curl -X DELETE "${ES_URL}/_data_stream/filebeat-*" >/dev/null 2>&1 || true
               es_curl -X DELETE "${ES_URL}/_index_template/filebeat-8.17.4" >/dev/null 2>&1 || true
               es_curl -X DELETE "${ES_URL}/_index_template/filebeat" >/dev/null 2>&1 || true
 
-              # Create index template for filebeat-* (pod logs)
+              # Create index template for podlogs-* (pod logs)
               RESP=$(es_curl -X PUT "${ES_URL}/_index_template/fluentbit-pods" \
                 -H 'Content-Type: application/json' -d '{
-                "index_patterns": ["filebeat-*"],
+                "index_patterns": ["podlogs-*"],
                 "priority": 200,
                 "template": {
                   "settings": {

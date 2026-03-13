@@ -52,9 +52,9 @@ data:
         Port              9200
         HTTP_User         elastic
         HTTP_Passwd       ${ELASTICSEARCH_PASSWORD}
-        Index             filebeat
+        Index             podlogs
         Logstash_Format   On
-        Logstash_Prefix   filebeat
+        Logstash_Prefix   podlogs
         Suppress_Type_Name On
         tls               Off
         Retry_Limit       3
