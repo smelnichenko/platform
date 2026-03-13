@@ -33,44 +33,37 @@ spec:
             - /bin/sh
             - -c
             - |
-              set -e
+              FAIL=0
+              es_curl() { curl -s -u "elastic:${ES_PASSWORD}" "$@"; }
 
               # Wait for Elasticsearch to be ready
-              until curl -sf -u "elastic:${ES_PASSWORD}" "${ES_URL}/_cluster/health?wait_for_status=yellow&timeout=30s"; do
+              until es_curl -f "${ES_URL}/_cluster/health?wait_for_status=yellow&timeout=30s" >/dev/null; do
                 echo "Waiting for Elasticsearch..."
                 sleep 5
               done
-              echo ""
+              echo "Elasticsearch ready"
 
               # Create ILM policy for pod logs ({{ .Values.elk.elasticsearch.retention.days }}d retention)
-              curl -sf -u "elastic:${ES_PASSWORD}" -X PUT "${ES_URL}/_ilm/policy/logs-{{ .Values.elk.elasticsearch.retention.days }}d-retention" \
-                -H 'Content-Type: application/json' -d '
-              {
+              RESP=$(es_curl -X PUT "${ES_URL}/_ilm/policy/logs-{{ .Values.elk.elasticsearch.retention.days }}d-retention" \
+                -H 'Content-Type: application/json' -d '{
                 "policy": {
                   "phases": {
-                    "hot": {
-                      "actions": {
-                        "rollover": {
-                          "max_age": "1d",
-                          "max_primary_shard_size": "5gb"
-                        }
-                      }
-                    },
-                    "delete": {
-                      "min_age": "{{ .Values.elk.elasticsearch.retention.days }}d",
-                      "actions": { "delete": {} }
-                    }
+                    "hot": { "actions": { "rollover": { "max_age": "1d", "max_primary_shard_size": "5gb" } } },
+                    "delete": { "min_age": "{{ .Values.elk.elasticsearch.retention.days }}d", "actions": { "delete": {} } }
                   }
                 }
-              }'
-              echo ""
-              echo "Created pod logs ILM policy ({{ .Values.elk.elasticsearch.retention.days }}d retention)"
+              }')
+              echo "ILM logs-{{ .Values.elk.elasticsearch.retention.days }}d-retention: ${RESP}"
+
+              # Delete old Filebeat-managed index template if it exists (has managed_by flag that blocks overwrite)
+              es_curl -X DELETE "${ES_URL}/_index_template/filebeat-8.17.4" >/dev/null 2>&1 || true
+              es_curl -X DELETE "${ES_URL}/_index_template/filebeat" >/dev/null 2>&1 || true
 
               # Create index template for filebeat-* (pod logs)
-              curl -sf -u "elastic:${ES_PASSWORD}" -X PUT "${ES_URL}/_index_template/filebeat" \
-                -H 'Content-Type: application/json' -d '
-              {
+              RESP=$(es_curl -X PUT "${ES_URL}/_index_template/fluentbit-pods" \
+                -H 'Content-Type: application/json' -d '{
                 "index_patterns": ["filebeat-*"],
+                "priority": 200,
                 "template": {
                   "settings": {
                     "number_of_shards": 1,
@@ -78,40 +71,28 @@ spec:
                     "index.lifecycle.name": "logs-{{ .Values.elk.elasticsearch.retention.days }}d-retention"
                   }
                 }
-              }'
-              echo ""
-              echo "Created filebeat-* index template"
+              }')
+              echo "Index template fluentbit-pods: ${RESP}"
+              echo "${RESP}" | grep -q '"acknowledged":true' || FAIL=1
 
 {{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
               # Create ILM policy for CI logs ({{ .Values.elk.ciLogs.retention.days }}d retention)
-              curl -sf -u "elastic:${ES_PASSWORD}" -X PUT "${ES_URL}/_ilm/policy/ci-logs-{{ .Values.elk.ciLogs.retention.days }}d-retention" \
-                -H 'Content-Type: application/json' -d '
-              {
+              RESP=$(es_curl -X PUT "${ES_URL}/_ilm/policy/ci-logs-{{ .Values.elk.ciLogs.retention.days }}d-retention" \
+                -H 'Content-Type: application/json' -d '{
                 "policy": {
                   "phases": {
-                    "hot": {
-                      "actions": {
-                        "rollover": {
-                          "max_age": "1d",
-                          "max_primary_shard_size": "1gb"
-                        }
-                      }
-                    },
-                    "delete": {
-                      "min_age": "{{ .Values.elk.ciLogs.retention.days }}d",
-                      "actions": { "delete": {} }
-                    }
+                    "hot": { "actions": { "rollover": { "max_age": "1d", "max_primary_shard_size": "1gb" } } },
+                    "delete": { "min_age": "{{ .Values.elk.ciLogs.retention.days }}d", "actions": { "delete": {} } }
                   }
                 }
-              }'
-              echo ""
-              echo "Created CI logs ILM policy ({{ .Values.elk.ciLogs.retention.days }}d retention)"
+              }')
+              echo "ILM ci-logs-{{ .Values.elk.ciLogs.retention.days }}d-retention: ${RESP}"
 
               # Create index template for ci-logs-*
-              curl -sf -u "elastic:${ES_PASSWORD}" -X PUT "${ES_URL}/_index_template/ci-logs" \
-                -H 'Content-Type: application/json' -d '
-              {
+              RESP=$(es_curl -X PUT "${ES_URL}/_index_template/fluentbit-ci" \
+                -H 'Content-Type: application/json' -d '{
                 "index_patterns": ["ci-logs-*"],
+                "priority": 200,
                 "template": {
                   "settings": {
                     "number_of_shards": 1,
@@ -119,12 +100,17 @@ spec:
                     "index.lifecycle.name": "ci-logs-{{ .Values.elk.ciLogs.retention.days }}d-retention"
                   }
                 }
-              }'
-              echo ""
-              echo "Created ci-logs-* index template"
+              }')
+              echo "Index template fluentbit-ci: ${RESP}"
+              echo "${RESP}" | grep -q '"acknowledged":true' || FAIL=1
 {{- end }}
 
-              echo "ILM setup complete"
+              if [ "$FAIL" = "0" ]; then
+                echo "ILM setup complete"
+              else
+                echo "ILM setup had errors — check output above"
+                exit 1
+              fi
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
