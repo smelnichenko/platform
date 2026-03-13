@@ -476,3 +476,11 @@ Fluent-bit selector labels
 {{ include "monitor.selectorLabels" . }}
 app.kubernetes.io/component: fluentbit
 {{- end }}
+
+{{/*
+ES ILM job selector labels (must not overlap with DaemonSet selectors)
+*/}}
+{{- define "monitor.esIlmJob.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: es-ilm-job
+{{- end }}
