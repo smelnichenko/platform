@@ -24,13 +24,6 @@ spec:
       containers:
         - name: fluent-bit
           image: {{ .Values.elk.fluentbit.image }}
-          ports:
-{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
-            - name: forward
-              containerPort: 24224
-              hostPort: 24224
-              protocol: TCP
-{{- end }}
           env:
             - name: ELASTICSEARCH_PASSWORD
               valueFrom:

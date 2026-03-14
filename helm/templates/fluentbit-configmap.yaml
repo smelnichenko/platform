@@ -23,14 +23,6 @@ data:
         Skip_Long_Lines   On
         Refresh_Interval  5
 
-{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
-    [INPUT]
-        Name              forward
-        Listen            0.0.0.0
-        Port              24224
-        Tag               ci
-{{- end }}
-
     [FILTER]
         Name              kubernetes
         Match             kube.*
@@ -58,22 +50,6 @@ data:
         Suppress_Type_Name On
         tls               Off
         Retry_Limit       3
-
-{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
-    [OUTPUT]
-        Name              es
-        Match             ci
-        Host              {{ include "monitor.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc
-        Port              9200
-        HTTP_User         elastic
-        HTTP_Passwd       ${ELASTICSEARCH_PASSWORD}
-        Index             ci-logs
-        Logstash_Format   On
-        Logstash_Prefix   ci-logs
-        Suppress_Type_Name On
-        tls               Off
-        Retry_Limit       3
-{{- end }}
 
   parsers.conf: |
     [PARSER]
