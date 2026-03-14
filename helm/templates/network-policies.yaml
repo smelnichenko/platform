@@ -516,18 +516,7 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  ingress:
-{{- if eq (.Values.elk.ciLogs.enabled | toString) "true" }}
-    # Docker containers → Fluent-bit forward input (CI log shipping)
-    - from:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-      ports:
-        - protocol: TCP
-          port: 24224
-{{- else }}
-    []
-{{- end }}
+  ingress: []
   egress:
     # DNS
     - ports:

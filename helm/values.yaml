@@ -1,4 +1,4 @@
-# Monitor Application Helm Chart Values
+# Monitor Application - Helm Chart Values
 #
 # SECURITY NOTE: Default passwords below are for development only.
 # For production, either:
@@ -376,7 +376,3 @@ elk:
       limits:
         memory: "256Mi"
         cpu: "200m"
-  ciLogs:
-    enabled: false       # Ship Docker container logs (CI jobs) to separate index
-    retention:
-      days: 90
