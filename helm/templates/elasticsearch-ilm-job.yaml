@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "monitor.fullname" . }}-es-ilm-setup-{{ .Release.Revision }}
+  name: {{ include "monitor.fullname" . }}-es-ilm-setup
   labels:
     {{- include "monitor.elasticsearch.labels" . | nindent 4 }}
   annotations:
