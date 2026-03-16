@@ -116,7 +116,7 @@ minio:
 kafka:
   enabled: true
   existingSecret: monitor-kafka
-  image: apache/kafka:3.9.0
+  image: apache/kafka:4.2.0
   javaOpts: -Xmx1g -Xms1g
   retention:
     hours: 168
@@ -182,7 +182,7 @@ elk:
       requests: { cpu: 100m, memory: 1Gi }
       limits: { cpu: 1000m, memory: 2Gi }
   fluentbit:
-    image: cr.fluentbit.io/fluent/fluent-bit:3.2
+    image: cr.fluentbit.io/fluent/fluent-bit:4.2.3
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits: { cpu: 200m, memory: 256Mi }
