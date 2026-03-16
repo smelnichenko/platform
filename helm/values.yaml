@@ -332,7 +332,7 @@ sonarqube:
 elk:
   enabled: false
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.4
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.8
     replicas: 1
     javaOpts: "-Xms1g -Xmx1g"
     password: ""
@@ -350,7 +350,7 @@ elk:
     retention:
       days: 30
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.17.4
+    image: docker.elastic.co/kibana/kibana:8.19.8
     replicas: 1
     resources:
       requests:
