@@ -39,6 +39,12 @@ frontend:
     requests: { cpu: 100m, memory: 64Mi }
     limits: { cpu: 500m, memory: 256Mi }
 
+aptCache:
+  enabled: true
+  storage:
+    size: 10Gi
+    storageClass: local-path
+
 auth:
   existingSecret: monitor-auth
   registrationEnabled: true

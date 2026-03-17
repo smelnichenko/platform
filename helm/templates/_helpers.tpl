@@ -478,6 +478,29 @@ app.kubernetes.io/component: fluentbit
 {{- end }}
 
 {{/*
+apt-cache labels
+*/}}
+{{- define "monitor.aptCache.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: apt-cache
+{{- end }}
+
+{{/*
+apt-cache selector labels
+*/}}
+{{- define "monitor.aptCache.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: apt-cache
+{{- end }}
+
+{{/*
+apt-cache service name
+*/}}
+{{- define "monitor.aptCache.serviceName" -}}
+{{- printf "%s-apt-cache" (include "monitor.fullname" .) }}
+{{- end }}
+
+{{/*
 ES ILM job selector labels (must not overlap with DaemonSet selectors)
 */}}
 {{- define "monitor.esIlmJob.selectorLabels" -}}

@@ -1,0 +1,77 @@
+{{- if eq (.Values.aptCache.enabled | toString) "true" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "monitor.fullname" . }}-apt-cache
+  labels:
+    {{- include "monitor.aptCache.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "monitor.aptCache.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "monitor.aptCache.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: apt-cacher-ng
+          image: {{ .Values.aptCache.image }}
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/sbin/apt-cacher-ng", "-c", "/etc/apt-cacher-ng", "ForeGround=1"]
+          ports:
+            - containerPort: 3142
+              protocol: TCP
+              name: apt-cache
+          resources:
+            {{- toYaml .Values.aptCache.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /acng-report.html
+              port: 3142
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /acng-report.html
+              port: 3142
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: cache
+              mountPath: /var/cache/apt-cacher-ng
+            - name: log
+              mountPath: /var/log/apt-cacher-ng
+            - name: run
+              mountPath: /run/apt-cacher-ng
+            - name: config
+              mountPath: /etc/apt-cacher-ng/zzz_custom.conf
+              subPath: zzz_custom.conf
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: {{ include "monitor.fullname" . }}-apt-cache
+        - name: log
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: {{ include "monitor.fullname" . }}-apt-cache
+{{- end }}

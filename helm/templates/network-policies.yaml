@@ -713,3 +713,49 @@ spec:
         - protocol: TCP
           port: 9042
 {{- end }}
+{{- if eq (.Values.aptCache.enabled | toString) "true" }}
+---
+# apt-cache network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "monitor.fullname" . }}-apt-cache
+  labels:
+    {{- include "monitor.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.aptCache.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from woodpecker namespace (pipeline pods)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: woodpecker
+      ports:
+        - protocol: TCP
+          port: 3142
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # External HTTP/HTTPS to upstream apt mirrors
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+{{- end }}

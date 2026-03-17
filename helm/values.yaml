@@ -133,6 +133,21 @@ minio:
     size: 20Gi
     storageClass: ""
 
+# apt-cacher-ng (apt package caching proxy for Docker builds)
+aptCache:
+  enabled: true
+  image: sameersbn/apt-cacher-ng:3.7.4-20220421
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "25m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+  storage:
+    size: 5Gi
+    storageClass: ""
+
 # Redis configuration (volatile cache, no persistence)
 redis:
   enabled: true
