@@ -136,7 +136,7 @@ minio:
 # apt-cacher-ng (apt package caching proxy for Docker builds)
 aptCache:
   enabled: true
-  image: sameersbn/apt-cacher-ng:3.7.4-20220421
+  image: git.pmon.dev/schnappy/apt-cacher-ng:1.0
   resources:
     requests:
       memory: "32Mi"
