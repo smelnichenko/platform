@@ -155,6 +155,10 @@ spec:
             - name: CAPTCHA_ENABLED
               value: "true"
             {{- end }}
+            {{- if eq (.Values.chess.enabled | toString) "true" }}
+            - name: CHESS_ENABLED
+              value: "true"
+            {{- end }}
             - name: REGISTRATION_APPROVAL_MODE
               value: {{ .Values.auth.registrationApproval.mode | default "ai" | quote }}
             {{- if .Values.auth.registrationApproval.criteria }}
