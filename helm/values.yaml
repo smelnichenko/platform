@@ -250,6 +250,10 @@ chat:
 captcha:
   enabled: true                 # Enable PoW captcha on auth endpoints
 
+# Chess platform (uses existing Redis + Kafka)
+chess:
+  enabled: false                # Enable chess game feature
+
 # Kafka (KRaft mode, for chat messaging)
 kafka:
   image: apache/kafka:4.2.0
