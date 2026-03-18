@@ -49,20 +49,20 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.postgres.secretName" . }}
-                  key: username
+                  key: POSTGRES_USER
                   optional: true
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.postgres.secretName" . }}
-                  key: password
+                  key: POSTGRES_PASSWORD
             - name: REDIS_HOST
               value: {{ include "monitor.redis.serviceName" . }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.auth.secretName" . }}
-                  key: jwt-secret
+                  key: JWT_SECRET
             - name: TOKEN_EXPIRATION
               value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
             - name: SECURE_COOKIES

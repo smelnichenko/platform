@@ -49,20 +49,20 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.postgres.secretName" . }}
-                  key: username
+                  key: POSTGRES_USER
                   optional: true
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.postgres.secretName" . }}
-                  key: password
+                  key: POSTGRES_PASSWORD
             - name: REDIS_HOST
               value: {{ include "monitor.redis.serviceName" . }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.auth.secretName" . }}
-                  key: jwt-secret
+                  key: JWT_SECRET
             - name: TOKEN_EXPIRATION
               value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
             - name: REGISTRATION_ENABLED
@@ -89,15 +89,12 @@ spec:
             - name: SPRING_MAIL_PORT
               value: {{ .Values.mail.port | default "587" | quote }}
             - name: SPRING_MAIL_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "monitor.mail.secretName" . }}
-                  key: username
+              value: {{ .Values.mail.username | default "resend" | quote }}
             - name: SPRING_MAIL_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.mail.secretName" . }}
-                  key: password
+                  key: MAIL_PASSWORD
             {{- end }}
             {{- if eq (.Values.ai.enabled | toString) "true" }}
             - name: AI_ENABLED
@@ -108,7 +105,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "monitor.ai.secretName" . }}
-                  key: api-key
+                  key: ANTHROPIC_API_KEY
             {{- end }}
             {{- if eq (.Values.captcha.enabled | toString) "true" }}
             - name: CAPTCHA_ENABLED
