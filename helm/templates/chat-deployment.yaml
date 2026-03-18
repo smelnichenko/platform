@@ -83,14 +83,14 @@ spec:
             {{- toYaml .Values.chatService.resources | nindent 12 }}
           livenessProbe:
             httpGet:
-              path: /actuator/health/liveness
+              path: /api/actuator/health/liveness
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
-              path: /actuator/health/readiness
+              path: /api/actuator/health/readiness
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 5
