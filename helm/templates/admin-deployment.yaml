@@ -58,6 +58,13 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: REDIS_HOST
               value: {{ include "monitor.redis.serviceName" . }}
+            {{- if or .Values.redis.password .Values.redis.existingSecret }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.redis.secretName" . }}
+                  key: REDIS_PASSWORD
+            {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
