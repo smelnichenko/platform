@@ -32,14 +32,30 @@ spec:
     - {{ if .Values.app.ingress.host }}host: {{ .Values.app.ingress.host }}{{ end }}
       http:
         paths:
-          # API routes go to backend
+          # API routes — go through gateway if enabled, otherwise direct to backend
           - path: /api
             pathType: Prefix
             backend:
               service:
+                {{- if eq (.Values.gateway.enabled | toString) "true" }}
+                name: {{ include "monitor.gateway.serviceName" . }}
+                port:
+                  number: {{ .Values.gateway.service.port }}
+                {{- else }}
                 name: {{ include "monitor.app.serviceName" . }}
                 port:
                   number: {{ .Values.app.service.port }}
+                {{- end }}
+          {{- if eq (.Values.gateway.enabled | toString) "true" }}
+          # WebSocket routes go through gateway
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "monitor.gateway.serviceName" . }}
+                port:
+                  number: {{ .Values.gateway.service.port }}
+          {{- end }}
           {{- if .Values.frontend.enabled }}
           # All other routes go to frontend
           - path: /

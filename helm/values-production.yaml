@@ -50,6 +50,22 @@ auth:
   registrationEnabled: true
   secureCookies: true
   tokenExpiration: 1h
+  registrationApproval:
+    mode: ai
+    defaultGroup: Users
+
+captcha:
+  enabled: true
+
+chess:
+  enabled: true
+
+chat:
+  e2eEnabled: false
+
+linkerd:
+  enabled: false                # Enable after Linkerd is installed on cluster
+  authorizationPolicy: false
 
 postgres:
   enabled: true
@@ -119,6 +135,50 @@ minio:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { cpu: 1000m, memory: 1Gi }
 
+gateway:
+  enabled: false                # Enable when ready to route through gateway
+  image:
+    repository: git.pmon.dev/schnappy/api-gateway
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: -Xmx256m -XX:+UseZGC
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 1000m, memory: 512Mi }
+
+admin:
+  enabled: false                # Enable when user service is extracted
+  image:
+    repository: git.pmon.dev/schnappy/admin
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: -Xmx512m -XX:+UseZGC
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: 2000m, memory: 1Gi }
+
+chatService:
+  enabled: false                # Enable when chat service is extracted
+  image:
+    repository: git.pmon.dev/schnappy/chat
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: -Xmx512m -XX:+UseZGC
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: 2000m, memory: 1Gi }
+
+chessService:
+  enabled: false                # Enable when chess service is extracted
+  image:
+    repository: git.pmon.dev/schnappy/chess
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: -Xmx512m -XX:+UseZGC
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: 2000m, memory: 1Gi }
+
 kafka:
   enabled: true
   existingSecret: monitor-kafka
@@ -141,6 +201,12 @@ kafka:
       partitions: 6
       replicationFactor: 1
     - name: chat.notifications
+      partitions: 3
+      replicationFactor: 1
+    - name: chess.moves
+      partitions: 6
+      replicationFactor: 1
+    - name: user.events
       partitions: 3
       replicationFactor: 1
 

@@ -1,0 +1,17 @@
+{{- if eq (.Values.chessService.enabled | toString) "true" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "monitor.chess.serviceName" . }}
+  labels:
+    {{- include "monitor.chess.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.chessService.service.type }}
+  ports:
+    - port: {{ .Values.chessService.service.port }}
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "monitor.chess.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -507,3 +507,95 @@ ES ILM job selector labels (must not overlap with DaemonSet selectors)
 {{ include "monitor.selectorLabels" . }}
 app.kubernetes.io/component: es-ilm-job
 {{- end }}
+
+{{/*
+Admin labels
+*/}}
+{{- define "monitor.admin.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: admin
+{{- end }}
+
+{{/*
+Admin selector labels
+*/}}
+{{- define "monitor.admin.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: admin
+{{- end }}
+
+{{/*
+Admin service name
+*/}}
+{{- define "monitor.admin.serviceName" -}}
+{{- printf "%s-admin" (include "monitor.fullname" .) }}
+{{- end }}
+
+{{/*
+Chat microservice labels
+*/}}
+{{- define "monitor.chat.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: chat
+{{- end }}
+
+{{/*
+Chat microservice selector labels
+*/}}
+{{- define "monitor.chat.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: chat
+{{- end }}
+
+{{/*
+Chat microservice service name
+*/}}
+{{- define "monitor.chat.serviceName" -}}
+{{- printf "%s-chat" (include "monitor.fullname" .) }}
+{{- end }}
+
+{{/*
+Chess microservice labels
+*/}}
+{{- define "monitor.chess.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: chess
+{{- end }}
+
+{{/*
+Chess microservice selector labels
+*/}}
+{{- define "monitor.chess.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: chess
+{{- end }}
+
+{{/*
+Chess microservice service name
+*/}}
+{{- define "monitor.chess.serviceName" -}}
+{{- printf "%s-chess" (include "monitor.fullname" .) }}
+{{- end }}
+
+{{/*
+Gateway labels
+*/}}
+{{- define "monitor.gateway.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: gateway
+{{- end }}
+
+{{/*
+Gateway selector labels
+*/}}
+{{- define "monitor.gateway.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: gateway
+{{- end }}
+
+{{/*
+Gateway service name
+*/}}
+{{- define "monitor.gateway.serviceName" -}}
+{{- printf "%s-gateway" (include "monitor.fullname" .) }}
+{{- end }}

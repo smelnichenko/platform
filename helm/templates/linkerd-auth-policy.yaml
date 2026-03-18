@@ -1,0 +1,283 @@
+{{- if and (eq (.Values.linkerd.enabled | toString) "true") (eq (.Values.linkerd.authorizationPolicy | toString) "true") }}
+# Linkerd Server + ServerAuthorization CRDs
+# Enforce which services can talk to which using mTLS identity (ServiceAccounts)
+---
+# App (core backend) — only gateway can reach it
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.app.serviceName" . }}
+  labels:
+    {{- include "monitor.app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.app.selectorLabels" . | nindent 6 }}
+  port: 8080
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.app.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.app.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.app.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    # Allow gateway to reach core
+    # (gateway runs as default SA in monitor namespace)
+    {{- end }}
+    # Allow Prometheus scraping
+    {{- if .Values.prometheus.enabled }}
+    unauthenticated: true
+    {{- end }}
+{{- if eq (.Values.admin.enabled | toString) "true" }}
+---
+# Admin (user service) — only gateway can reach it
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.admin.serviceName" . }}
+  labels:
+    {{- include "monitor.admin.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.admin.selectorLabels" . | nindent 6 }}
+  port: 8080
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.admin.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.admin.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.admin.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+    {{- if .Values.prometheus.enabled }}
+    unauthenticated: true
+    {{- end }}
+{{- end }}
+{{- if eq (.Values.chatService.enabled | toString) "true" }}
+---
+# Chat microservice — only gateway can reach it
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.chat.serviceName" . }}
+  labels:
+    {{- include "monitor.chat.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.chat.selectorLabels" . | nindent 6 }}
+  port: 8080
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.chat.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.chat.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.chat.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+    {{- if .Values.prometheus.enabled }}
+    unauthenticated: true
+    {{- end }}
+{{- end }}
+{{- if eq (.Values.chessService.enabled | toString) "true" }}
+---
+# Chess microservice — only gateway can reach it
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.chess.serviceName" . }}
+  labels:
+    {{- include "monitor.chess.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.chess.selectorLabels" . | nindent 6 }}
+  port: 8080
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.chess.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.chess.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.chess.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+    {{- if .Values.prometheus.enabled }}
+    unauthenticated: true
+    {{- end }}
+{{- end }}
+{{- if eq (.Values.gateway.enabled | toString) "true" }}
+---
+# Gateway — only Traefik (ingress) can reach it
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.gateway.serviceName" . }}
+  labels:
+    {{- include "monitor.gateway.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.gateway.selectorLabels" . | nindent 6 }}
+  port: 8080
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.gateway.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.gateway.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.gateway.serviceName" . }}
+  client:
+    # Traefik is not meshed — allow unauthenticated for ingress traffic
+    unauthenticated: true
+{{- end }}
+---
+# Redis — only app and gateway can reach it
+{{- if .Values.redis.enabled }}
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.redis.serviceName" . }}
+  labels:
+    {{- include "monitor.redis.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.redis.selectorLabels" . | nindent 6 }}
+  port: 6379
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.redis.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.redis.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.redis.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+{{- end }}
+---
+# PostgreSQL — only app can reach it
+{{- if .Values.postgres.enabled }}
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.postgres.serviceName" . }}
+  labels:
+    {{- include "monitor.postgres.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.postgres.selectorLabels" . | nindent 6 }}
+  port: 5432
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.postgres.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.postgres.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.postgres.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+{{- end }}
+---
+# Kafka — only app can reach it
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.kafka.serviceName" . }}
+  labels:
+    {{- include "monitor.kafka.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.kafka.selectorLabels" . | nindent 6 }}
+  port: 9092
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.kafka.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.kafka.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.kafka.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+---
+# ScyllaDB — only app can reach it
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: {{ include "monitor.scylla.serviceName" . }}
+  labels:
+    {{- include "monitor.scylla.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.scylla.selectorLabels" . | nindent 6 }}
+  port: 9042
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: ServerAuthorization
+metadata:
+  name: {{ include "monitor.scylla.serviceName" . }}-allow
+  labels:
+    {{- include "monitor.scylla.labels" . | nindent 4 }}
+spec:
+  server:
+    name: {{ include "monitor.scylla.serviceName" . }}
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: default
+          namespace: {{ .Release.Namespace }}
+{{- end }}

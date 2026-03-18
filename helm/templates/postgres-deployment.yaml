@@ -44,6 +44,18 @@ spec:
                 psql -U "$POSTGRES_USER" -d template1 -c "ALTER USER \"$POSTGRES_USER\" PASSWORD '$POSTGRES_PASSWORD';"
                 psql -U "$POSTGRES_USER" -d template1 -c "SELECT 1 FROM pg_database WHERE datname = '$POSTGRES_DB'" | grep -q 1 || \
                   psql -U "$POSTGRES_USER" -d template1 -c "CREATE DATABASE \"$POSTGRES_DB\";"
+                {{- if eq (.Values.admin.enabled | toString) "true" }}
+                psql -U "$POSTGRES_USER" -d template1 -c "SELECT 1 FROM pg_database WHERE datname = 'monitor_admin'" | grep -q 1 || \
+                  psql -U "$POSTGRES_USER" -d template1 -c "CREATE DATABASE monitor_admin;"
+                {{- end }}
+                {{- if eq (.Values.chatService.enabled | toString) "true" }}
+                psql -U "$POSTGRES_USER" -d template1 -c "SELECT 1 FROM pg_database WHERE datname = 'monitor_chat'" | grep -q 1 || \
+                  psql -U "$POSTGRES_USER" -d template1 -c "CREATE DATABASE monitor_chat;"
+                {{- end }}
+                {{- if eq (.Values.chessService.enabled | toString) "true" }}
+                psql -U "$POSTGRES_USER" -d template1 -c "SELECT 1 FROM pg_database WHERE datname = 'monitor_chess'" | grep -q 1 || \
+                  psql -U "$POSTGRES_USER" -d template1 -c "CREATE DATABASE monitor_chess;"
+                {{- end }}
                 pg_ctl -D /var/lib/postgresql/data/pgdata -w stop
               else
                 echo "Database already initialized"

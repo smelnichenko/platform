@@ -1,0 +1,101 @@
+{{- if eq (.Values.chatService.enabled | toString) "true" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "monitor.chat.serviceName" . }}
+  labels:
+    {{- include "monitor.chat.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.chatService.replicas }}
+  selector:
+    matchLabels:
+      {{- include "monitor.chat.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "monitor.chat.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: chat
+          image: "{{ .Values.chatService.image.repository }}:{{ .Values.chatService.image.tag }}"
+          imagePullPolicy: {{ .Values.chatService.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.chatService.javaOpts | default "-Xmx512m" | quote }}
+            - name: DB_HOST
+              value: {{ include "monitor.postgres.serviceName" . }}
+            - name: DB_NAME
+              value: "monitor_chat"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.postgres.secretName" . }}
+                  key: username
+                  optional: true
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.postgres.secretName" . }}
+                  key: password
+            - name: REDIS_HOST
+              value: {{ include "monitor.redis.serviceName" . }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.auth.secretName" . }}
+                  key: jwt-secret
+            - name: TOKEN_EXPIRATION
+              value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
+            - name: SECURE_COOKIES
+              value: {{ .Values.auth.secureCookies | default true | toString | quote }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ include "monitor.kafka.serviceName" . }}:9092"
+            - name: SCYLLA_HOST
+              value: {{ include "monitor.scylla.serviceName" . }}
+            - name: SCYLLA_PORT
+              value: "9042"
+            - name: SCYLLA_DATACENTER
+              value: {{ .Values.scylla.datacenter | default "datacenter1" | quote }}
+            - name: SCYLLA_KEYSPACE
+              value: {{ .Values.scylla.keyspace | default "chat" | quote }}
+            - name: CHAT_E2E_ENABLED
+              value: {{ .Values.chat.e2eEnabled | default false | toString | quote }}
+          resources:
+            {{- toYaml .Values.chatService.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

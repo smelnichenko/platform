@@ -1,0 +1,91 @@
+{{- if eq (.Values.chessService.enabled | toString) "true" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "monitor.chess.serviceName" . }}
+  labels:
+    {{- include "monitor.chess.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.chessService.replicas }}
+  selector:
+    matchLabels:
+      {{- include "monitor.chess.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "monitor.chess.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: chess
+          image: "{{ .Values.chessService.image.repository }}:{{ .Values.chessService.image.tag }}"
+          imagePullPolicy: {{ .Values.chessService.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.chessService.javaOpts | default "-Xmx512m" | quote }}
+            - name: DB_HOST
+              value: {{ include "monitor.postgres.serviceName" . }}
+            - name: DB_NAME
+              value: "monitor_chess"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.postgres.secretName" . }}
+                  key: username
+                  optional: true
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.postgres.secretName" . }}
+                  key: password
+            - name: REDIS_HOST
+              value: {{ include "monitor.redis.serviceName" . }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.auth.secretName" . }}
+                  key: jwt-secret
+            - name: TOKEN_EXPIRATION
+              value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
+            - name: SECURE_COOKIES
+              value: {{ .Values.auth.secureCookies | default true | toString | quote }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ include "monitor.kafka.serviceName" . }}:9092"
+          resources:
+            {{- toYaml .Values.chessService.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

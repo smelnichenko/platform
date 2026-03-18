@@ -44,6 +44,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    # Allow from gateway
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
     # Allow from frontend (nginx proxy to API)
     {{- if .Values.frontend.enabled }}
     - from:
@@ -143,6 +153,352 @@ spec:
         - protocol: TCP
           port: 80
 ---
+{{- if eq (.Values.gateway.enabled | toString) "true" }}
+---
+# Gateway network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "monitor.fullname" . }}-gateway
+  labels:
+    {{- include "monitor.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.gateway.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller (Traefik)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Gateway → App (core backend)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Gateway → Admin (user service)
+    {{- if eq (.Values.admin.enabled | toString) "true" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Gateway → Chat microservice
+    {{- if eq (.Values.chatService.enabled | toString) "true" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Gateway → Chess microservice
+    {{- if eq (.Values.chessService.enabled | toString) "true" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Gateway → Redis (rate limiting)
+    {{- if .Values.redis.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+{{- end }}
+{{- if eq (.Values.admin.enabled | toString) "true" }}
+---
+# Admin (user service) network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "monitor.fullname" . }}-admin
+  labels:
+    {{- include "monitor.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.admin.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from gateway
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Allow from ingress controller (when gateway disabled, direct routing)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    {{- if .Values.prometheus.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Admin → PostgreSQL
+    {{- if .Values.postgres.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    # Admin → Redis (session, captcha, permission version)
+    {{- if .Values.redis.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+    # Admin → Kafka (user.events producer)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Admin → external HTTPS (SMTP, AI API)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 587
+{{- end }}
+---
+{{- if eq (.Values.chessService.enabled | toString) "true" }}
+# Chess microservice network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "monitor.fullname" . }}-chess-service
+  labels:
+    {{- include "monitor.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.chess.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from gateway
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Allow from ingress controller (when gateway disabled, direct routing)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    {{- if .Values.prometheus.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Chess → PostgreSQL
+    {{- if .Values.postgres.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    # Chess → Redis (game cache)
+    {{- if .Values.redis.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+    # Chess → Kafka (chess.moves producer/consumer)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+---
+{{- end }}
+{{- if eq (.Values.chatService.enabled | toString) "true" }}
+# Chat microservice network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "monitor.fullname" . }}-chat-service
+  labels:
+    {{- include "monitor.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "monitor.chat.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from gateway
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Allow from ingress controller (when gateway disabled, direct routing)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    {{- if .Values.prometheus.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Chat → PostgreSQL
+    {{- if .Values.postgres.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    # Chat → Redis (presence, user cache)
+    {{- if .Values.redis.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+    # Chat → Kafka (chat.messages producer/consumer, user.events consumer)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Chat → ScyllaDB (message persistence)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.scylla.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9042
+{{- end }}
+---
 {{- if .Values.frontend.enabled }}
 # Frontend network policy
 apiVersion: networking.k8s.io/v1
@@ -207,6 +563,33 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
+    {{- if eq (.Values.admin.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    {{- if eq (.Values.chatService.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    {{- if eq (.Values.chessService.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
   egress:
     # DNS
     - ports:
@@ -272,6 +655,42 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+    {{- if eq (.Values.admin.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+    {{- if eq (.Values.chatService.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+    {{- if eq (.Values.chessService.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
   egress:
     # DNS only — Redis doesn't initiate connections
     - ports:
@@ -599,6 +1018,21 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+        {{- if eq (.Values.admin.enabled | toString) "true" }}
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+        {{- end }}
+        {{- if eq (.Values.chatService.enabled | toString) "true" }}
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+        {{- end }}
+        {{- if eq (.Values.chessService.enabled | toString) "true" }}
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: 9092
@@ -642,6 +1076,11 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: scylla-job
+        {{- if eq (.Values.chatService.enabled | toString) "true" }}
+        - podSelector:
+            matchLabels:
+              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: 9042

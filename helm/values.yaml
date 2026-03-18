@@ -243,6 +243,93 @@ grafana:
       secretName: ""
       clusterIssuer: "letsencrypt-prod"
 
+# API Gateway (Spring Cloud Gateway)
+gateway:
+  enabled: false                # Enable API Gateway (routes /api traffic to services)
+  image:
+    repository: git.pmon.dev/schnappy/api-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx256m"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "1000m"
+  service:
+    type: ClusterIP
+    port: 8080
+  cors:
+    allowedOrigins: "*"
+
+# Admin / User Service
+admin:
+  enabled: false                # Enable admin (user) microservice
+  image:
+    repository: git.pmon.dev/schnappy/admin
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx512m"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "2000m"
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Chat microservice
+chatService:
+  enabled: false                # Enable chat microservice
+  image:
+    repository: git.pmon.dev/schnappy/chat
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx512m"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "2000m"
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Chess microservice
+chessService:
+  enabled: false                # Enable chess microservice
+  image:
+    repository: git.pmon.dev/schnappy/chess
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx512m"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "2000m"
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Linkerd service mesh
+linkerd:
+  enabled: false                # Enable Linkerd sidecar annotations + authorization policies
+  authorizationPolicy: false    # Enable Server + ServerAuthorization CRDs (requires Linkerd installed)
+
 chat:
   e2eEnabled: false             # Enable end-to-end encryption for chat channels
 
@@ -276,6 +363,9 @@ kafka:
       replicationFactor: 1
     - name: chess.moves
       partitions: 6
+      replicationFactor: 1
+    - name: user.events
+      partitions: 3
       replicationFactor: 1
   resources:
     requests:
