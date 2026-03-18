@@ -17,7 +17,6 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/api/actuator/prometheus"
         prometheus.io/port: "8080"
-        checksum/config: {{ include (print $.Template.BasePath "/app-configmap.yaml") . | sha256sum }}
     spec:
       securityContext:
         runAsNonRoot: true

@@ -14,8 +14,6 @@ spec:
     metadata:
       labels:
         {{- include "monitor.kibana.selectorLabels" . | nindent 8 }}
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/kibana-configmap.yaml") . | sha256sum }}
     spec:
       securityContext:
         runAsNonRoot: true

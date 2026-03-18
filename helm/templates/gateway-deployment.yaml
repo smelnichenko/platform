@@ -14,8 +14,6 @@ spec:
     metadata:
       labels:
         {{- include "monitor.gateway.selectorLabels" . | nindent 8 }}
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/gateway-configmap.yaml") . | sha256sum }}
     spec:
       securityContext:
         runAsNonRoot: true

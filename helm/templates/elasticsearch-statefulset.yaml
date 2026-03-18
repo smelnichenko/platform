@@ -15,8 +15,6 @@ spec:
     metadata:
       labels:
         {{- include "monitor.elasticsearch.selectorLabels" . | nindent 8 }}
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/elasticsearch-configmap.yaml") . | sha256sum }}
     spec:
       securityContext:
         runAsNonRoot: true
