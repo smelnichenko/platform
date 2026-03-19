@@ -798,12 +798,8 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Prometheus → Alertmanager
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
-      ports:
+    # Prometheus + kubelet probes
+    - ports:
         - protocol: TCP
           port: 9093
   egress:
@@ -839,14 +835,12 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Prometheus scraping
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
-      ports:
+    # Prometheus scraping + kubelet probes
+    - ports:
         - protocol: TCP
           port: 8080
+        - protocol: TCP
+          port: 8081
   egress:
     # DNS
     - ports:
