@@ -4,6 +4,7 @@ description: A Helm chart for deploying the Web Page Monitor application with Po
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
+icon: https://pmon.dev/favicon.ico
 keywords:
   - monitoring
   - web
