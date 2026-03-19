@@ -134,9 +134,6 @@ minio:
     storageClass: ""
 
 # apt-cacher-ng (apt package caching proxy for Docker builds)
-dependencyCheck:
-  enabled: false
-
 aptCache:
   enabled: true
   image: git.pmon.dev/schnappy/apt-cacher-ng:1.0
