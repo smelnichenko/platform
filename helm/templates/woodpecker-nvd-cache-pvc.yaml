@@ -1,0 +1,18 @@
+{{- if .Values.dependencyCheck.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: woodpecker-nvd-cache
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/name: monitor
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nvd-cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.postgres.storage.storageClass | default "local-path" }}
+  resources:
+    requests:
+      storage: 2Gi
+{{- end }}
