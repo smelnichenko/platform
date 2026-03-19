@@ -44,7 +44,7 @@ spec:
             {{- toYaml .Values.kubeStateMetrics.resources | nindent 12 }}
           livenessProbe:
             httpGet:
-              path: /livez
+              path: /readyz
               port: 8081
             initialDelaySeconds: 30
             periodSeconds: 10
