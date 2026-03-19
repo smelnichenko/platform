@@ -201,6 +201,10 @@ prometheus:
   scrapeInterval: 15s
   vault:
     enabled: false
+  woodpecker:
+    enabled: false
+  forgejo:
+    enabled: false
   resources:
     requests:
       memory: "256Mi"

@@ -760,6 +760,26 @@ spec:
         - protocol: TCP
           port: 8200
     {{- end }}
+    # Prometheus → Woodpecker (scrape)
+    {{- if eq (.Values.prometheus.woodpecker.enabled | toString) "true" }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: woodpecker
+      ports:
+        - protocol: TCP
+          port: 8000
+    {{- end }}
+    # Prometheus → Forgejo (scrape)
+    {{- if eq (.Values.prometheus.forgejo.enabled | toString) "true" }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: forgejo
+      ports:
+        - protocol: TCP
+          port: 3000
+    {{- end }}
     # Prometheus → Alertmanager
     {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
     - to:
