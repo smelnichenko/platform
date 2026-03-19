@@ -120,6 +120,24 @@ spec:
                   name: {{ include "monitor.webhook.secretName" . }}
                   key: RESEND_API_KEY
             {{- end }}
+            {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
+            - name: ALERTMANAGER_WEBHOOK_ENABLED
+              value: "true"
+            - name: ALERTMANAGER_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.alertmanager.secretName" . }}
+                  key: ALERTMANAGER_WEBHOOK_SECRET
+            - name: ALERTMANAGER_EMAIL_TO
+              value: {{ .Values.alertmanager.alertEmailTo | quote }}
+            - name: ALERTMANAGER_EMAIL_FROM
+              value: {{ .Values.alertmanager.alertEmailFrom | default "alerts@pmon.dev" | quote }}
+            - name: RESEND_API_KEY_ALERTS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.webhook.secretName" . }}
+                  key: RESEND_API_KEY
+            {{- end }}
             {{- if eq (.Values.minio.enabled | toString) "true" }}
             - name: MINIO_ENABLED
               value: "true"

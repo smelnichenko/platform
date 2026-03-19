@@ -212,6 +212,40 @@ prometheus:
     size: 2Gi
     storageClass: ""
 
+# Alertmanager configuration
+alertmanager:
+  enabled: false
+  image: prom/alertmanager:v0.28.1
+  alertEmailTo: ""
+  alertEmailFrom: "alerts@pmon.dev"
+  webhookSecret: ""
+  existingSecret: ""
+  groupWait: 30s
+  groupInterval: 5m
+  repeatInterval: 4h
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "25m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  storage:
+    size: 1Gi
+    storageClass: ""
+
+# kube-state-metrics
+kubeStateMetrics:
+  enabled: false
+  image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.15.0
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "25m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
 # Grafana configuration
 grafana:
   enabled: false

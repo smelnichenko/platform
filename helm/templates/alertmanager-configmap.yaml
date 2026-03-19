@@ -1,0 +1,39 @@
+{{- if and .Values.prometheus.enabled (eq (.Values.alertmanager.enabled | toString) "true") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "monitor.fullname" . }}-alertmanager-config
+  labels:
+    {{- include "monitor.alertmanager.labels" . | nindent 4 }}
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: resend-webhook
+      group_by: ['alertname', 'namespace', 'pod']
+      group_wait: {{ .Values.alertmanager.groupWait }}
+      group_interval: {{ .Values.alertmanager.groupInterval }}
+      repeat_interval: {{ .Values.alertmanager.repeatInterval }}
+      routes:
+        - match:
+            severity: critical
+          repeat_interval: 1h
+        - match:
+            alertname: Watchdog
+          receiver: 'null'
+    receivers:
+      - name: 'null'
+      - name: resend-webhook
+        webhook_configs:
+          - url: 'http://{{ include "monitor.app.serviceName" . }}:8080/api/webhooks/alertmanager'
+            send_resolved: true
+            http_config:
+              bearer_token_file: /etc/alertmanager/secrets/ALERTMANAGER_WEBHOOK_SECRET
+    inhibit_rules:
+      - source_match:
+          severity: critical
+        target_match:
+          severity: warning
+        equal: ['alertname', 'namespace']
+{{- end }}

@@ -1,0 +1,79 @@
+{{- if and .Values.prometheus.enabled (eq (.Values.alertmanager.enabled | toString) "true") -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "monitor.alertmanager.serviceName" . }}
+  labels:
+    {{- include "monitor.alertmanager.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "monitor.alertmanager.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "monitor.alertmanager.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: alertmanager
+          image: {{ .Values.alertmanager.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          args:
+            - '--config.file=/etc/alertmanager/alertmanager.yml'
+            - '--storage.path=/alertmanager'
+            - '--web.listen-address=:9093'
+          ports:
+            - containerPort: 9093
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager/
+            - name: secrets
+              mountPath: /etc/alertmanager/secrets/
+              readOnly: true
+            - name: data
+              mountPath: /alertmanager
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.alertmanager.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9093
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9093
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "monitor.fullname" . }}-alertmanager-config
+        - name: secrets
+          secret:
+            secretName: {{ include "monitor.alertmanager.secretName" . }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "monitor.fullname" . }}-alertmanager
+        - name: tmp
+          emptyDir: {}
+{{- end }}

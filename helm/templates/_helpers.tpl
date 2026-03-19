@@ -599,3 +599,60 @@ Gateway service name
 {{- define "monitor.gateway.serviceName" -}}
 {{- printf "%s-gateway" (include "monitor.fullname" .) }}
 {{- end }}
+
+{{/*
+Alertmanager labels
+*/}}
+{{- define "monitor.alertmanager.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: alertmanager
+{{- end }}
+
+{{/*
+Alertmanager selector labels
+*/}}
+{{- define "monitor.alertmanager.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: alertmanager
+{{- end }}
+
+{{/*
+Alertmanager service name
+*/}}
+{{- define "monitor.alertmanager.serviceName" -}}
+{{- printf "%s-alertmanager" (include "monitor.fullname" .) }}
+{{- end }}
+
+{{/*
+Alertmanager secret name
+*/}}
+{{- define "monitor.alertmanager.secretName" -}}
+{{- if .Values.alertmanager.existingSecret }}
+{{- .Values.alertmanager.existingSecret }}
+{{- else }}
+{{- printf "%s-alertmanager" (include "monitor.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+kube-state-metrics labels
+*/}}
+{{- define "monitor.kubeStateMetrics.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: kube-state-metrics
+{{- end }}
+
+{{/*
+kube-state-metrics selector labels
+*/}}
+{{- define "monitor.kubeStateMetrics.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: kube-state-metrics
+{{- end }}
+
+{{/*
+kube-state-metrics service name
+*/}}
+{{- define "monitor.kubeStateMetrics.serviceName" -}}
+{{- printf "%s-kube-state-metrics" (include "monitor.fullname" .) }}
+{{- end }}

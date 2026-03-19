@@ -1,0 +1,57 @@
+{{- if and .Values.prometheus.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "monitor.fullname" . }}-kube-state-metrics
+  labels:
+    {{- include "monitor.kubeStateMetrics.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "monitor.fullname" . }}-kube-state-metrics
+  labels:
+    {{- include "monitor.kubeStateMetrics.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - nodes
+      - namespaces
+      - persistentvolumeclaims
+      - services
+      - endpoints
+      - replicationcontrollers
+    verbs: ["list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - statefulsets
+      - daemonsets
+      - replicasets
+    verbs: ["list", "watch"]
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["list", "watch"]
+  - apiGroups: ["cert-manager.io"]
+    resources:
+      - certificates
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "monitor.fullname" . }}-kube-state-metrics
+  labels:
+    {{- include "monitor.kubeStateMetrics.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "monitor.fullname" . }}-kube-state-metrics
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "monitor.fullname" . }}-kube-state-metrics
+    namespace: {{ .Release.Namespace }}
+{{- end }}
