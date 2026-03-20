@@ -58,28 +58,25 @@ data:
     groups:
       - name: resources
         rules:
-          - alert: ContainerMemoryHigh
+          - alert: JvmMemoryHigh
             expr: |
-              (container_memory_working_set_bytes{namespace="monitor", container!=""}
-              / on(pod, container, namespace) kube_pod_container_resource_limits{namespace="monitor", resource="memory"})
+              sum(jvm_memory_used_bytes{job="monitor-app"})
+              / sum(jvm_memory_max_bytes{job="monitor-app"})
               > 0.85
             for: 10m
             labels:
               severity: warning
             annotations:
-              summary: "Container {{ "{{" }} $labels.pod {{ "}}" }}/{{ "{{" }} $labels.container {{ "}}" }} memory usage high"
-              description: "Container memory usage is above 85% of limit ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
-          - alert: ContainerCPUHigh
-            expr: |
-              (rate(container_cpu_usage_seconds_total{namespace="monitor", container!=""}[5m])
-              / on(pod, container, namespace) kube_pod_container_resource_limits{namespace="monitor", resource="cpu"})
-              > 0.9
+              summary: "JVM memory usage high"
+              description: "JVM memory usage is above 85% of max ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
+          - alert: ProcessCPUHigh
+            expr: process_cpu_usage{job="monitor-app"} > 0.9
             for: 15m
             labels:
               severity: warning
             annotations:
-              summary: "Container {{ "{{" }} $labels.pod {{ "}}" }}/{{ "{{" }} $labels.container {{ "}}" }} CPU usage high"
-              description: "Container CPU usage is above 90% of limit."
+              summary: "Process CPU usage high"
+              description: "Process CPU usage is above 90%."
           - alert: PVCUsageHigh
             expr: kubelet_volume_stats_used_bytes{namespace="monitor"} / kubelet_volume_stats_capacity_bytes{namespace="monitor"} > 0.8
             for: 10m
@@ -110,13 +107,13 @@ data:
               summary: "High HTTP 5xx error rate"
               description: "More than 5% of HTTP requests are returning 5xx errors ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: HighRequestLatency
-            expr: histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job="monitor-app"}[5m])) by (le)) > 5
+            expr: http_server_requests_seconds_max{job="monitor-app"} > 5
             for: 10m
             labels:
               severity: warning
             annotations:
-              summary: "High request latency (p99 > 5s)"
-              description: "99th percentile request latency is above 5 seconds."
+              summary: "High request latency (max > 5s)"
+              description: "Maximum request latency is above 5 seconds."
           - alert: AppDown
             expr: up{job="monitor-app"} == 0
             for: 2m

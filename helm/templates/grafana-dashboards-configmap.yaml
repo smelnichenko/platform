@@ -384,29 +384,21 @@ data:
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"monitor-app\"}[5m])) by (le))",
-              "legendFormat": "p99",
+              "expr": "http_server_requests_seconds_max{job=\"monitor-app\"}",
+              "legendFormat": "max",
               "range": true,
               "refId": "A"
             },
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"monitor-app\"}[5m])) by (le))",
-              "legendFormat": "p95",
+              "expr": "rate(http_server_requests_seconds_sum{job=\"monitor-app\"}[5m]) / rate(http_server_requests_seconds_count{job=\"monitor-app\"}[5m])",
+              "legendFormat": "avg",
               "range": true,
               "refId": "B"
-            },
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "editorMode": "code",
-              "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"monitor-app\"}[5m])) by (le))",
-              "legendFormat": "p50",
-              "range": true,
-              "refId": "C"
             }
           ],
-          "title": "Response Time Percentiles",
+          "title": "Response Time (Max & Avg)",
           "type": "timeseries"
         },
         {
@@ -1393,21 +1385,21 @@ data:
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, rate(monitor_check_duration_seconds_bucket[5m]))",
-              "legendFormat": "p95 {{ `{{page}}` }}",
+              "expr": "monitor_check_duration_seconds_max{job=\"monitor-app\"}",
+              "legendFormat": "max {{ `{{page}}` }}",
               "range": true,
               "refId": "A"
             },
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.50, rate(monitor_check_duration_seconds_bucket[5m]))",
-              "legendFormat": "p50 {{ `{{page}}` }}",
+              "expr": "rate(monitor_check_duration_seconds_sum{job=\"monitor-app\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"monitor-app\"}[5m])",
+              "legendFormat": "avg {{ `{{page}}` }}",
               "range": true,
               "refId": "B"
             }
           ],
-          "title": "Response Time Percentiles",
+          "title": "Response Time (Max & Avg)",
           "type": "timeseries"
         },
         {
@@ -1530,13 +1522,13 @@ data:
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, sum(rate(rss_check_duration_seconds_bucket{job=\"monitor-app\"}[5m])) by (le, feed))",
+              "expr": "rss_check_duration_seconds_max{job=\"monitor-app\"}",
               "legendFormat": "{{ `{{feed}}` }}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "RSS Check Duration p95",
+          "title": "RSS Check Duration Max",
           "type": "timeseries"
         },
         {
@@ -1857,13 +1849,13 @@ data:
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "container_memory_working_set_bytes{namespace=\"monitor\",container!=\"\"} / on(pod,container,namespace) kube_pod_container_resource_limits{namespace=\"monitor\",resource=\"memory\"} * 100",
-              "legendFormat": "{{ `{{pod}}` }} / {{ `{{container}}` }}",
+              "expr": "sum(jvm_memory_used_bytes{job=\"monitor-app\"}) / sum(jvm_memory_max_bytes{job=\"monitor-app\"}) * 100",
+              "legendFormat": "JVM Heap",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Container Memory %",
+          "title": "JVM Memory Usage %",
           "type": "bargauge"
         },
         {

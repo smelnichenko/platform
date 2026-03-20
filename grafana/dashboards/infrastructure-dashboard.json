@@ -236,13 +236,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "container_memory_working_set_bytes{namespace=\"monitor\",container!=\"\"} / on(pod,container,namespace) kube_pod_container_resource_limits{namespace=\"monitor\",resource=\"memory\"} * 100",
-          "legendFormat": "{{pod}} / {{container}}",
+          "expr": "sum(jvm_memory_used_bytes{job=\"monitor-app\"}) / sum(jvm_memory_max_bytes{job=\"monitor-app\"}) * 100",
+          "legendFormat": "JVM Heap",
           "instant": true,
           "refId": "A"
         }
       ],
-      "title": "Container Memory %",
+      "title": "JVM Memory Usage %",
       "type": "bargauge"
     },
     {
