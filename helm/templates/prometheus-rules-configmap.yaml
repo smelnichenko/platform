@@ -11,7 +11,9 @@ data:
       - name: infrastructure
         rules:
           - alert: PodRestartingFrequently
-            expr: increase(kube_pod_container_status_restarts_total{namespace="monitor"}[1h]) > 3
+            expr: |
+              increase(kube_pod_container_status_restarts_total{namespace="monitor"}[1h]) > 3
+              unless on(pod, namespace) kube_pod_owner{namespace="monitor", owner_kind="Job"}
             for: 5m
             labels:
               severity: warning
@@ -37,6 +39,7 @@ data:
             expr: |
               kube_pod_status_ready{namespace="monitor", condition="true"} == 0
               unless on(pod, namespace) kube_pod_status_phase{phase=~"Succeeded|Failed"} == 1
+              unless on(pod, namespace) kube_pod_owner{namespace="monitor", owner_kind="Job"}
             for: 10m
             labels:
               severity: warning
@@ -159,7 +162,7 @@ data:
         rules:
           - alert: PostgreSQLDown
             expr: |
-              kube_pod_status_ready{namespace="monitor", condition="true", pod=~"monitor-postgres-[a-z0-9]+-[a-z0-9]+$"} == 0
+              kube_pod_status_ready{namespace="monitor", condition="true", pod=~"monitor-postgres-[a-z0-9]+-[a-z0-9]+", pod!~".*backup.*"} == 0
             for: 2m
             labels:
               severity: critical
