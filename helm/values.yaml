@@ -280,6 +280,14 @@ grafana:
       enabled: false
       secretName: ""
       clusterIssuer: "letsencrypt-prod"
+  oauth:
+    enabled: false
+    name: "Forgejo"
+    authUrl: ""
+    tokenUrl: ""
+    apiUrl: ""
+    scopes: "openid profile email"
+    autoLogin: false
 
 # API Gateway (Spring Cloud Gateway)
 gateway:

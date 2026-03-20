@@ -949,6 +949,16 @@ spec:
         - protocol: TCP
           port: 9090
     {{- end }}
+    # Grafana → Forgejo (OAuth2 SSO)
+    {{- if eq (.Values.grafana.oauth.enabled | toString) "true" }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: forgejo
+      ports:
+        - protocol: TCP
+          port: 3000
+    {{- end }}
 {{- end }}
 {{- if eq (.Values.elk.enabled | toString) "true" }}
 ---

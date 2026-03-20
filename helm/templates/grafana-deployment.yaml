@@ -56,6 +56,36 @@ spec:
               value: "false"
             - name: GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES
               value: "false"
+            {{- if eq (.Values.grafana.oauth.enabled | toString) "true" }}
+            - name: GF_AUTH_GENERIC_OAUTH_ENABLED
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_NAME
+              value: {{ .Values.grafana.oauth.name | default "Forgejo" | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.grafana.secretName" . }}
+                  key: oauth-client-id
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monitor.grafana.secretName" . }}
+                  key: oauth-client-secret
+            - name: GF_AUTH_GENERIC_OAUTH_SCOPES
+              value: {{ .Values.grafana.oauth.scopes | default "openid profile email" | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
+              value: {{ .Values.grafana.oauth.authUrl | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
+              value: {{ .Values.grafana.oauth.tokenUrl | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_API_URL
+              value: {{ .Values.grafana.oauth.apiUrl | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN
+              value: {{ .Values.grafana.oauth.autoLogin | default false | toString | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP
+              value: "true"
+            - name: GF_SERVER_ROOT_URL
+              value: "https://{{ .Values.grafana.ingress.host }}"
+            {{- end }}
           volumeMounts:
             - name: tmp
               mountPath: /tmp
