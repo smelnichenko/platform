@@ -768,7 +768,7 @@ spec:
               kubernetes.io/metadata.name: woodpecker
       ports:
         - protocol: TCP
-          port: 8000
+          port: 80
     {{- end }}
     # Prometheus → Forgejo (scrape)
     {{- if eq (.Values.prometheus.forgejo.enabled | toString) "true" }}

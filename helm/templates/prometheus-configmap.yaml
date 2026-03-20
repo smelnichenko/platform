@@ -49,7 +49,7 @@ data:
       {{- if eq (.Values.prometheus.woodpecker.enabled | toString) "true" }}
       - job_name: 'woodpecker'
         static_configs:
-          - targets: ['woodpecker-server.woodpecker.svc:8000']
+          - targets: ['woodpecker-server.woodpecker.svc:80']
       {{- end }}
       {{- if eq (.Values.prometheus.forgejo.enabled | toString) "true" }}
       - job_name: 'forgejo'
