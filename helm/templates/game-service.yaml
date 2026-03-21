@@ -9,7 +9,7 @@ spec:
   type: {{ .Values.game.service.type }}
   ports:
     - port: {{ .Values.game.service.port }}
-      targetPort: 80
+      targetPort: 8080
       protocol: TCP
       name: http
   selector:
