@@ -1,0 +1,58 @@
+{{- if .Values.game.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "monitor.game.serviceName" . }}
+  labels:
+    {{- include "monitor.game.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.game.replicas }}
+  selector:
+    matchLabels:
+      {{- include "monitor.game.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "monitor.game.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: game
+          image: "{{ .Values.game.image.repository }}:{{ .Values.game.image.tag }}"
+          imagePullPolicy: {{ .Values.game.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.game.resources | nindent 12 }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+{{- end }}

@@ -656,3 +656,26 @@ kube-state-metrics service name
 {{- define "monitor.kubeStateMetrics.serviceName" -}}
 {{- printf "%s-kube-state-metrics" (include "monitor.fullname" .) }}
 {{- end }}
+
+{{/*
+Game labels
+*/}}
+{{- define "monitor.game.labels" -}}
+{{ include "monitor.labels" . }}
+app.kubernetes.io/component: game
+{{- end }}
+
+{{/*
+Game selector labels
+*/}}
+{{- define "monitor.game.selectorLabels" -}}
+{{ include "monitor.selectorLabels" . }}
+app.kubernetes.io/component: game
+{{- end }}
+
+{{/*
+Game service name
+*/}}
+{{- define "monitor.game.serviceName" -}}
+{{- printf "%s-game" (include "monitor.fullname" .) }}
+{{- end }}

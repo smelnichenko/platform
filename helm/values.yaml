@@ -33,6 +33,25 @@ site:
     type: ClusterIP
     port: 8080
 
+# Game (Godot web export)
+game:
+  enabled: false
+  image:
+    repository: git.pmon.dev/schnappy/game-scp
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "25m"
+    limits:
+      memory: "64Mi"
+      cpu: "100m"
+  service:
+    type: ClusterIP
+    port: 80
+
 # Application configuration (backend API)
 app:
   image:

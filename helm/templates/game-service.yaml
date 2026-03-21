@@ -1,0 +1,17 @@
+{{- if .Values.game.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "monitor.game.serviceName" . }}
+  labels:
+    {{- include "monitor.game.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.game.service.type }}
+  ports:
+    - port: {{ .Values.game.service.port }}
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "monitor.game.selectorLabels" . | nindent 4 }}
+{{- end }}
