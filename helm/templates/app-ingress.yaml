@@ -56,15 +56,6 @@ spec:
                 port:
                   number: {{ .Values.gateway.service.port }}
           {{- end }}
-          {{- if .Values.game.enabled }}
-          - path: /game
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "monitor.game.serviceName" . }}
-                port:
-                  number: {{ .Values.game.service.port }}
-          {{- end }}
           {{- if .Values.site.enabled }}
           # All other routes go to site
           - path: /
