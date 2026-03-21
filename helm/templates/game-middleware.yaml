@@ -1,0 +1,12 @@
+{{- if and .Values.game.enabled .Values.app.ingress.enabled -}}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "monitor.fullname" . }}-game-strip
+  labels:
+    {{- include "monitor.game.labels" . | nindent 4 }}
+spec:
+  stripPrefix:
+    prefixes:
+      - /game
+{{- end }}
