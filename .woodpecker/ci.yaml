@@ -1,0 +1,18 @@
+# CI: Lint Helm chart on push
+
+when:
+  - event: push
+  - event: pull_request
+
+clone:
+  - name: git
+    image: woodpeckerci/plugin-git
+    settings:
+      partial: false
+      depth: 100
+
+steps:
+  - name: helm-lint
+    image: alpine/helm:latest
+    commands:
+      - helm lint helm/ --set postgres.password=test --set auth.jwtSecret=testtesttesttesttesttesttesttest
