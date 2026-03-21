@@ -56,15 +56,15 @@ spec:
                 port:
                   number: {{ .Values.gateway.service.port }}
           {{- end }}
-          {{- if .Values.frontend.enabled }}
-          # All other routes go to frontend
+          {{- if .Values.site.enabled }}
+          # All other routes go to site
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.frontend.serviceName" . }}
+                name: {{ include "monitor.site.serviceName" . }}
                 port:
-                  number: {{ .Values.frontend.service.port }}
+                  number: {{ .Values.site.service.port }}
           {{- else }}
           # No frontend, serve API at root
           - path: /

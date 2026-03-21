@@ -1,19 +1,19 @@
-{{- if .Values.frontend.enabled -}}
+{{- if .Values.site.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.frontend.serviceName" . }}
+  name: {{ include "monitor.site.serviceName" . }}
   labels:
-    {{- include "monitor.frontend.labels" . | nindent 4 }}
+    {{- include "monitor.site.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.frontend.replicas }}
+  replicas: {{ .Values.site.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.frontend.selectorLabels" . | nindent 6 }}
+      {{- include "monitor.site.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.frontend.selectorLabels" . | nindent 8 }}
+        {{- include "monitor.site.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -23,9 +23,9 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: frontend
-          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
-          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        - name: site
+          image: "{{ .Values.site.image.repository }}:{{ .Values.site.image.tag }}"
+          imagePullPolicy: {{ .Values.site.image.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -46,7 +46,7 @@ spec:
             - name: nginx-conf
               mountPath: /etc/nginx/conf.d
           resources:
-            {{- toYaml .Values.frontend.resources | nindent 12 }}
+            {{- toYaml .Values.site.resources | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /

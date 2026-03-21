@@ -1,0 +1,17 @@
+{{- if .Values.site.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "monitor.site.serviceName" . }}
+  labels:
+    {{- include "monitor.site.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.site.service.type }}
+  ports:
+    - port: {{ .Values.site.service.port }}
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "monitor.site.selectorLabels" . | nindent 4 }}
+{{- end }}

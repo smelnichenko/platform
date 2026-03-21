@@ -247,24 +247,24 @@ Redis service name
 {{/*
 Frontend labels
 */}}
-{{- define "monitor.frontend.labels" -}}
+{{- define "monitor.site.labels" -}}
 {{ include "monitor.labels" . }}
-app.kubernetes.io/component: frontend
+app.kubernetes.io/component: site
 {{- end }}
 
 {{/*
 Frontend selector labels
 */}}
-{{- define "monitor.frontend.selectorLabels" -}}
+{{- define "monitor.site.selectorLabels" -}}
 {{ include "monitor.selectorLabels" . }}
-app.kubernetes.io/component: frontend
+app.kubernetes.io/component: site
 {{- end }}
 
 {{/*
 Frontend service name
 */}}
-{{- define "monitor.frontend.serviceName" -}}
-{{- printf "%s-frontend" (include "monitor.fullname" .) }}
+{{- define "monitor.site.serviceName" -}}
+{{- printf "%s-site" (include "monitor.fullname" .) }}
 {{- end }}
 
 {{/*

@@ -15,7 +15,7 @@ networkPolicies:
   enabled: true
 
 # Frontend configuration
-frontend:
+site:
   enabled: true
   image:
     repository: git.pmon.dev/schnappy/site

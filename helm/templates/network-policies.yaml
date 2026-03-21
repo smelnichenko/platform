@@ -54,12 +54,12 @@ spec:
         - protocol: TCP
           port: 8080
     {{- end }}
-    # Allow from frontend (nginx proxy to API)
-    {{- if .Values.frontend.enabled }}
+    # Allow from site (nginx proxy to API)
+    {{- if .Values.site.enabled }}
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.frontend.selectorLabels" . | nindent 14 }}
+              {{- include "monitor.site.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -509,7 +509,7 @@ spec:
           port: 9042
 {{- end }}
 ---
-{{- if .Values.frontend.enabled }}
+{{- if .Values.site.enabled }}
 # Frontend network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -520,7 +520,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.frontend.selectorLabels" . | nindent 6 }}
+      {{- include "monitor.site.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
