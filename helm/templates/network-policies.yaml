@@ -1365,3 +1365,37 @@ spec:
         - protocol: TCP
           port: 443
 {{- end }}
+{{- if and (eq (.Values.sonarqube.enabled | toString) "true") (eq (.Values.sonarqube.setup.enabled | toString) "true") }}
+---
+# SonarQube setup job network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-sonarqube-setup
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.sonarqube.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: sonarqube-setup
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Setup job → SonarQube
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.sonarqube.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
+{{- end }}
