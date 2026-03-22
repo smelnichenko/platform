@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.game.serviceName" . }}
+  name: {{ include "schnappy.game-scp.serviceName" . }}
   labels:
-    {{- include "monitor.game.labels" . | nindent 4 }}
+    {{- include "schnappy.game-scp.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.game.service.type }}
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "monitor.game.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.game-scp.selectorLabels" . | nindent 4 }}
 {{- end }}

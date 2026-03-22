@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "monitor.sonarqube.postgres.serviceName" . }}
+  name: {{ include "schnappy.sonarqube.postgres.serviceName" . }}
   labels:
-    {{- include "monitor.sonarqube.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ include "monitor.sonarqube.postgres.serviceName" . }}
+  serviceName: {{ include "schnappy.sonarqube.postgres.serviceName" . }}
   replicas: 1
   selector:
     matchLabels:
-      {{- include "monitor.sonarqube.postgres.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.sonarqube.postgres.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -34,7 +34,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.sonarqube.secretName" . }}
+                  name: {{ include "schnappy.sonarqube.secretName" . }}
                   key: SONARQUBE_POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata

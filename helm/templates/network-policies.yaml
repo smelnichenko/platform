@@ -3,9 +3,9 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-default-deny
+  name: {{ include "schnappy.fullname" . }}-default-deny
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -25,13 +25,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-app
+  name: {{ include "schnappy.fullname" . }}-app
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.app.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.monitor.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -49,7 +49,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -59,7 +59,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.site.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.site.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -69,7 +69,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -79,7 +79,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.alertmanager.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.alertmanager.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -96,7 +96,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.postgres.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -106,7 +106,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -116,7 +116,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.minio.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.minio.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9000
@@ -126,7 +126,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.elasticsearch.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -135,7 +135,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9092
@@ -143,7 +143,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.scylla.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.scylla.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9042
@@ -169,13 +169,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-gateway
+  name: {{ include "schnappy.fullname" . }}-gateway
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.gateway.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.gateway.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -199,7 +199,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -208,7 +208,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -218,7 +218,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -228,7 +228,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -238,7 +238,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -250,13 +250,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-admin
+  name: {{ include "schnappy.fullname" . }}-admin
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.admin.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.admin.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -266,7 +266,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -284,7 +284,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -301,7 +301,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.postgres.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -311,7 +311,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -320,7 +320,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9092
@@ -344,13 +344,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-chess-service
+  name: {{ include "schnappy.fullname" . }}-chess-service
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.chess.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.chess.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -360,7 +360,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -378,7 +378,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -395,7 +395,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.postgres.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -405,7 +405,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -414,7 +414,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9092
@@ -425,13 +425,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-chat-service
+  name: {{ include "schnappy.fullname" . }}-chat-service
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.chat.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.chat.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -441,7 +441,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -459,7 +459,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -476,7 +476,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.postgres.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -486,7 +486,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -495,7 +495,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9092
@@ -503,7 +503,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.scylla.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.scylla.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9042
@@ -514,13 +514,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-site
+  name: {{ include "schnappy.fullname" . }}-site
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.site.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.site.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -544,7 +544,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -556,13 +556,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-game
+  name: {{ include "schnappy.fullname" . }}-game
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.game.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.game-scp.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -588,13 +588,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-postgres
+  name: {{ include "schnappy.fullname" . }}-postgres
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.postgres.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.postgres.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -602,7 +602,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -610,7 +610,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -619,7 +619,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -628,7 +628,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 5432
@@ -647,13 +647,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-postgres-backup
+  name: {{ include "schnappy.fullname" . }}-postgres-backup
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "monitor.name" . }}
+      app.kubernetes.io/name: {{ include "schnappy.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/component: postgres-backup
   policyTypes:
@@ -680,13 +680,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-redis
+  name: {{ include "schnappy.fullname" . }}-redis
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.redis.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.redis.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -694,7 +694,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -702,7 +702,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.gateway.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -711,7 +711,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -720,7 +720,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -729,7 +729,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -748,13 +748,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-prometheus
+  name: {{ include "schnappy.fullname" . }}-prometheus
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.prometheus.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.prometheus.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -763,7 +763,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.grafana.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.grafana.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9090
@@ -779,7 +779,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -818,7 +818,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.alertmanager.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.alertmanager.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9093
@@ -828,7 +828,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kubeStateMetrics.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -840,13 +840,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-alertmanager
+  name: {{ include "schnappy.fullname" . }}-alertmanager
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.alertmanager.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.alertmanager.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -866,7 +866,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -877,13 +877,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-kube-state-metrics
+  name: {{ include "schnappy.fullname" . }}-kube-state-metrics
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.kubeStateMetrics.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -914,13 +914,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-minio
+  name: {{ include "schnappy.fullname" . }}-minio
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.minio.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.minio.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -928,7 +928,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9000
@@ -946,13 +946,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-grafana
+  name: {{ include "schnappy.fullname" . }}-grafana
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.grafana.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.grafana.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -977,7 +977,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.prometheus.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9090
@@ -999,13 +999,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-elasticsearch
+  name: {{ include "schnappy.fullname" . }}-elasticsearch
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.elasticsearch.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -1014,7 +1014,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -1022,7 +1022,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kibana.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kibana.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -1030,7 +1030,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.fluentbit.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.fluentbit.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -1038,7 +1038,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.esIlmJob.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -1054,13 +1054,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-kibana
+  name: {{ include "schnappy.fullname" . }}-kibana
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.kibana.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.kibana.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -1083,7 +1083,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.elasticsearch.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -1092,13 +1092,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-fluentbit
+  name: {{ include "schnappy.fullname" . }}-fluentbit
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.fluentbit.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.fluentbit.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -1114,7 +1114,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.elasticsearch.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -1133,13 +1133,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-es-ilm-job
+  name: {{ include "schnappy.fullname" . }}-es-ilm-job
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.esIlmJob.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -1155,7 +1155,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.elasticsearch.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9200
@@ -1164,13 +1164,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-kafka
+  name: {{ include "schnappy.fullname" . }}-kafka
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.kafka.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.kafka.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -1178,27 +1178,27 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: kafka-job
         - podSelector:
             matchLabels:
-              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
         {{- if eq (.Values.admin.enabled | toString) "true" }}
         - podSelector:
             matchLabels:
-              {{- include "monitor.admin.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
         {{- end }}
         {{- if eq (.Values.chatService.enabled | toString) "true" }}
         - podSelector:
             matchLabels:
-              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
         {{- end }}
         {{- if eq (.Values.chessService.enabled | toString) "true" }}
         - podSelector:
             matchLabels:
-              {{- include "monitor.chess.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
         {{- end }}
       ports:
         - protocol: TCP
@@ -1214,7 +1214,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9092
@@ -1225,13 +1225,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-scylla
+  name: {{ include "schnappy.fullname" . }}-scylla
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.scylla.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.scylla.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -1239,14 +1239,14 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              {{- include "monitor.app.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: scylla-job
         {{- if eq (.Values.chatService.enabled | toString) "true" }}
         - podSelector:
             matchLabels:
-              {{- include "monitor.chat.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
         {{- end }}
       ports:
         - protocol: TCP
@@ -1263,9 +1263,9 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-kafka-job
+  name: {{ include "schnappy.fullname" . }}-kafka-job
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -1284,7 +1284,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.kafka.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9092
@@ -1293,9 +1293,9 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-scylla-job
+  name: {{ include "schnappy.fullname" . }}-scylla-job
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -1314,7 +1314,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "monitor.scylla.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.scylla.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 9042
@@ -1325,13 +1325,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "monitor.fullname" . }}-apt-cache
+  name: {{ include "schnappy.fullname" . }}-apt-cache
   labels:
-    {{- include "monitor.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.aptCache.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.aptCache.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress

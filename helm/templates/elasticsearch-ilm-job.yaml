@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "monitor.fullname" . }}-es-ilm-setup
+  name: {{ include "schnappy.fullname" . }}-es-ilm-setup
   labels:
-    {{- include "monitor.elasticsearch.labels" . | nindent 4 }}
+    {{- include "schnappy.elasticsearch.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-upgrade,post-install
     "helm.sh/hook-weight": "10"
@@ -15,7 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "monitor.esIlmJob.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 8 }}
     spec:
       restartPolicy: OnFailure
       containers:
@@ -23,11 +23,11 @@ spec:
           image: curlimages/curl:8.11.0
           env:
             - name: ES_URL
-              value: "http://{{ include "monitor.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc:9200"
+              value: "http://{{ include "schnappy.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc:9200"
             - name: ES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.elasticsearch.secretName" . }}
+                  name: {{ include "schnappy.elasticsearch.secretName" . }}
                   key: ELASTICSEARCH_PASSWORD
           command:
             - /bin/sh

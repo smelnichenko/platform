@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ include "monitor.fullname" . }}-fluentbit
+  name: {{ include "schnappy.fullname" . }}-fluentbit
   labels:
-    {{- include "monitor.fluentbit.labels" . | nindent 4 }}
+    {{- include "schnappy.fluentbit.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "monitor.fluentbit.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.fluentbit.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.fluentbit.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.fluentbit.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "monitor.fullname" . }}-fluentbit
+      serviceAccountName: {{ include "schnappy.fullname" . }}-fluentbit
       securityContext:
         runAsUser: 0
         seccompProfile:
@@ -26,7 +26,7 @@ spec:
             - name: ELASTICSEARCH_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.elasticsearch.secretName" . }}
+                  name: {{ include "schnappy.elasticsearch.secretName" . }}
                   key: ELASTICSEARCH_PASSWORD
             - name: NODE_NAME
               valueFrom:
@@ -60,10 +60,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "monitor.fullname" . }}-fluentbit-config
+            name: {{ include "schnappy.fullname" . }}-fluentbit-config
         - name: parsers
           configMap:
-            name: {{ include "monitor.fullname" . }}-fluentbit-config
+            name: {{ include "schnappy.fullname" . }}-fluentbit-config
         - name: varlogcontainers
           hostPath:
             path: /var/log/containers

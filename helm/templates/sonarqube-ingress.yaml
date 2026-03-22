@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "monitor.fullname" . }}-sonarqube
+  name: {{ include "schnappy.fullname" . }}-sonarqube
   labels:
-    {{- include "monitor.sonarqube.labels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.labels" . | nindent 4 }}
   {{- if and .Values.sonarqube.ingress.tls .Values.sonarqube.ingress.tls.enabled }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.sonarqube.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
@@ -29,7 +29,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.sonarqube.serviceName" . }}
+                name: {{ include "schnappy.sonarqube.serviceName" . }}
                 port:
                   number: {{ .Values.sonarqube.service.port }}
 {{- end }}

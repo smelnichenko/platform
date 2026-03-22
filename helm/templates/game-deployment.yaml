@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.game.serviceName" . }}
+  name: {{ include "schnappy.game-scp.serviceName" . }}
   labels:
-    {{- include "monitor.game.labels" . | nindent 4 }}
+    {{- include "schnappy.game-scp.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.game.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.game.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.game-scp.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.game.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.game-scp.selectorLabels" . | nindent 8 }}
     spec:
       containers:
         - name: game

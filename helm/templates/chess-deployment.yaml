@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.chess.serviceName" . }}
+  name: {{ include "schnappy.chess.serviceName" . }}
   labels:
-    {{- include "monitor.chess.labels" . | nindent 4 }}
+    {{- include "schnappy.chess.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.chessService.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.chess.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.chess.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.chess.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.chess.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -42,40 +42,40 @@ spec:
             - name: JAVA_OPTS
               value: {{ .Values.chessService.javaOpts | default "-Xmx512m" | quote }}
             - name: DB_HOST
-              value: {{ include "monitor.postgres.serviceName" . }}
+              value: {{ include "schnappy.postgres.serviceName" . }}
             - name: DB_NAME
               value: "monitor_chess"
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_USER
                   optional: true
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_PASSWORD
             - name: REDIS_HOST
-              value: {{ include "monitor.redis.serviceName" . }}
+              value: {{ include "schnappy.redis.serviceName" . }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.redis.secretName" . }}
+                  name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.auth.secretName" . }}
+                  name: {{ include "schnappy.auth.secretName" . }}
                   key: JWT_SECRET
             - name: TOKEN_EXPIRATION
               value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
             - name: SECURE_COOKIES
               value: {{ .Values.auth.secureCookies | default true | toString | quote }}
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "{{ include "monitor.kafka.serviceName" . }}:9092"
+              value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
           resources:
             {{- toYaml .Values.chessService.resources | nindent 12 }}
           livenessProbe:

@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.postgres.serviceName" . }}
+  name: {{ include "schnappy.postgres.serviceName" . }}
   labels:
-    {{- include "monitor.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "monitor.postgres.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.postgres.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.postgres.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.postgres.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -62,7 +62,7 @@ spec:
               fi
           envFrom:
             - secretRef:
-                name: {{ include "monitor.postgres.secretName" . }}
+                name: {{ include "schnappy.postgres.secretName" . }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -106,7 +106,7 @@ spec:
               name: postgres
           envFrom:
             - secretRef:
-                name: {{ include "monitor.postgres.secretName" . }}
+                name: {{ include "schnappy.postgres.secretName" . }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
@@ -131,5 +131,5 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "monitor.fullname" . }}-postgres
+            claimName: {{ include "schnappy.fullname" . }}-postgres
 {{- end }}

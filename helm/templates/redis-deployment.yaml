@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.redis.serviceName" . }}
+  name: {{ include "schnappy.redis.serviceName" . }}
   labels:
-    {{- include "monitor.redis.labels" . | nindent 4 }}
+    {{- include "schnappy.redis.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "monitor.redis.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.redis.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.redis.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.redis.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -44,7 +44,7 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.redis.secretName" . }}
+                  name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
           {{- end }}
           resources:

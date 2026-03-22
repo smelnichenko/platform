@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.chat.serviceName" . }}
+  name: {{ include "schnappy.chat.serviceName" . }}
   labels:
-    {{- include "monitor.chat.labels" . | nindent 4 }}
+    {{- include "schnappy.chat.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.chatService.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.chat.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.chat.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.chat.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.chat.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -42,42 +42,42 @@ spec:
             - name: JAVA_OPTS
               value: {{ .Values.chatService.javaOpts | default "-Xmx512m" | quote }}
             - name: DB_HOST
-              value: {{ include "monitor.postgres.serviceName" . }}
+              value: {{ include "schnappy.postgres.serviceName" . }}
             - name: DB_NAME
               value: "monitor_chat"
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_USER
                   optional: true
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_PASSWORD
             - name: REDIS_HOST
-              value: {{ include "monitor.redis.serviceName" . }}
+              value: {{ include "schnappy.redis.serviceName" . }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.redis.secretName" . }}
+                  name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.auth.secretName" . }}
+                  name: {{ include "schnappy.auth.secretName" . }}
                   key: JWT_SECRET
             - name: TOKEN_EXPIRATION
               value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
             - name: SECURE_COOKIES
               value: {{ .Values.auth.secureCookies | default true | toString | quote }}
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "{{ include "monitor.kafka.serviceName" . }}:9092"
+              value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
             - name: SCYLLA_HOST
-              value: {{ include "monitor.scylla.serviceName" . }}
+              value: {{ include "schnappy.scylla.serviceName" . }}
             - name: SCYLLA_PORT
               value: "9042"
             - name: SCYLLA_DATACENTER

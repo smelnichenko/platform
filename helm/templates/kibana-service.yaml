@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.kibana.serviceName" . }}
+  name: {{ include "schnappy.kibana.serviceName" . }}
   labels:
-    {{- include "monitor.kibana.labels" . | nindent 4 }}
+    {{- include "schnappy.kibana.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "monitor.kibana.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.kibana.selectorLabels" . | nindent 4 }}
 {{- end }}

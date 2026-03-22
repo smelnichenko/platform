@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "monitor.fullname" . }}-grafana-dashboard-provider
+  name: {{ include "schnappy.fullname" . }}-grafana-dashboard-provider
   labels:
-    {{- include "monitor.grafana.labels" . | nindent 4 }}
+    {{- include "schnappy.grafana.labels" . | nindent 4 }}
 data:
   dashboards.yml: |
     apiVersion: 1

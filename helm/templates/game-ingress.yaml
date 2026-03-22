@@ -2,11 +2,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "monitor.fullname" . }}-game
+  name: {{ include "schnappy.fullname" . }}-game
   labels:
-    {{- include "monitor.game.labels" . | nindent 4 }}
+    {{- include "schnappy.game-scp.labels" . | nindent 4 }}
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-{{ include "monitor.fullname" . }}-game-strip@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-{{ include "schnappy.fullname" . }}-game-strip@kubernetescrd
     {{- if and .Values.app.ingress.tls .Values.app.ingress.tls.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.app.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
     {{- end }}
@@ -22,13 +22,13 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.game.serviceName" . }}
+                name: {{ include "schnappy.game-scp.serviceName" . }}
                 port:
                   number: {{ .Values.game.service.port }}
   {{- if and .Values.app.ingress.tls .Values.app.ingress.tls.enabled }}
   tls:
     - hosts:
         - {{ .Values.app.ingress.host }}
-      secretName: {{ .Values.app.ingress.tls.secretName | default (printf "%s-tls" (include "monitor.fullname" .)) }}
+      secretName: {{ .Values.app.ingress.tls.secretName | default (printf "%s-tls" (include "schnappy.fullname" .)) }}
   {{- end }}
 {{- end }}

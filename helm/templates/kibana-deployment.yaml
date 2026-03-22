@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.kibana.serviceName" . }}
+  name: {{ include "schnappy.kibana.serviceName" . }}
   labels:
-    {{- include "monitor.kibana.labels" . | nindent 4 }}
+    {{- include "schnappy.kibana.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.elk.kibana.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.kibana.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.kibana.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.kibana.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.kibana.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -30,14 +30,14 @@ spec:
             - -c
             - |
               echo "Waiting for Elasticsearch..."
-              until curl -sf -u "elastic:${ELASTIC_PASSWORD}" "http://{{ include "monitor.elasticsearch.serviceName" . }}:9200/_cluster/health" >/dev/null 2>&1; do
+              until curl -sf -u "elastic:${ELASTIC_PASSWORD}" "http://{{ include "schnappy.elasticsearch.serviceName" . }}:9200/_cluster/health" >/dev/null 2>&1; do
                 echo "ES not ready, retrying in 5s..."
                 sleep 5
               done
               echo "Setting kibana_system password..."
               curl -sf -X POST -u "elastic:${ELASTIC_PASSWORD}" \
                 -H "Content-Type: application/json" \
-                "http://{{ include "monitor.elasticsearch.serviceName" . }}:9200/_security/user/kibana_system/_password" \
+                "http://{{ include "schnappy.elasticsearch.serviceName" . }}:9200/_security/user/kibana_system/_password" \
                 -d "{\"password\":\"${KIBANA_PASSWORD}\"}"
               echo ""
               echo "kibana_system password set."
@@ -45,12 +45,12 @@ spec:
             - name: ELASTIC_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.elasticsearch.secretName" . }}
+                  name: {{ include "schnappy.elasticsearch.secretName" . }}
                   key: ELASTICSEARCH_PASSWORD
             - name: KIBANA_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.elasticsearch.secretName" . }}
+                  name: {{ include "schnappy.elasticsearch.secretName" . }}
                   key: KIBANA_PASSWORD
         - name: init-config
           image: {{ .Values.elk.kibana.image }}
@@ -78,7 +78,7 @@ spec:
             - name: ELASTICSEARCH_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.elasticsearch.secretName" . }}
+                  name: {{ include "schnappy.elasticsearch.secretName" . }}
                   key: KIBANA_PASSWORD
           ports:
             - containerPort: 5601
@@ -122,5 +122,5 @@ spec:
           emptyDir: {}
         - name: config-source
           configMap:
-            name: {{ include "monitor.fullname" . }}-kibana-config
+            name: {{ include "schnappy.fullname" . }}-kibana-config
 {{- end }}

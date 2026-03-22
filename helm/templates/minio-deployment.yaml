@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.fullname" . }}-minio
+  name: {{ include "schnappy.fullname" . }}-minio
   labels:
-    {{- include "monitor.minio.labels" . | nindent 4 }}
+    {{- include "schnappy.minio.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "monitor.minio.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.minio.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.minio.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.minio.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -38,12 +38,12 @@ spec:
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.minio.secretName" . }}
+                  name: {{ include "schnappy.minio.secretName" . }}
                   key: MINIO_ROOT_USER
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.minio.secretName" . }}
+                  name: {{ include "schnappy.minio.secretName" . }}
                   key: MINIO_ROOT_PASSWORD
           resources:
             {{- toYaml .Values.minio.resources | nindent 12 }}
@@ -75,5 +75,5 @@ spec:
           emptyDir: {}
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "monitor.fullname" . }}-minio
+            claimName: {{ include "schnappy.fullname" . }}-minio
 {{- end }}

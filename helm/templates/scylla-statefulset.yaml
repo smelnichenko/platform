@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "monitor.scylla.serviceName" . }}
+  name: {{ include "schnappy.scylla.serviceName" . }}
   labels:
-    {{- include "monitor.scylla.labels" . | nindent 4 }}
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ include "monitor.scylla.serviceName" . }}
+  serviceName: {{ include "schnappy.scylla.serviceName" . }}
   replicas: {{ .Values.scylla.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.scylla.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.scylla.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.scylla.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.scylla.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         fsGroup: 1000

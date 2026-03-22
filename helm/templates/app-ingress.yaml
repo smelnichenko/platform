@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "monitor.fullname" . }}-app
+  name: {{ include "schnappy.fullname" . }}-app
   labels:
-    {{- include "monitor.app.labels" . | nindent 4 }}
+    {{- include "schnappy.monitor.labels" . | nindent 4 }}
   {{- $annotations := dict }}
   {{- if and .Values.app.ingress.tls .Values.app.ingress.tls.enabled }}
   {{- $_ := set $annotations "cert-manager.io/cluster-issuer" (.Values.app.ingress.tls.clusterIssuer | default "letsencrypt-prod") }}
@@ -38,11 +38,11 @@ spec:
             backend:
               service:
                 {{- if eq (.Values.gateway.enabled | toString) "true" }}
-                name: {{ include "monitor.gateway.serviceName" . }}
+                name: {{ include "schnappy.gateway.serviceName" . }}
                 port:
                   number: {{ .Values.gateway.service.port }}
                 {{- else }}
-                name: {{ include "monitor.app.serviceName" . }}
+                name: {{ include "schnappy.monitor.serviceName" . }}
                 port:
                   number: {{ .Values.app.service.port }}
                 {{- end }}
@@ -52,7 +52,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.gateway.serviceName" . }}
+                name: {{ include "schnappy.gateway.serviceName" . }}
                 port:
                   number: {{ .Values.gateway.service.port }}
           {{- end }}
@@ -62,7 +62,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.site.serviceName" . }}
+                name: {{ include "schnappy.site.serviceName" . }}
                 port:
                   number: {{ .Values.site.service.port }}
           {{- else }}
@@ -71,7 +71,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.app.serviceName" . }}
+                name: {{ include "schnappy.monitor.serviceName" . }}
                 port:
                   number: {{ .Values.app.service.port }}
           {{- end }}

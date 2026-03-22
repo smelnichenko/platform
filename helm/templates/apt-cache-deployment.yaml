@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.fullname" . }}-apt-cache
+  name: {{ include "schnappy.fullname" . }}-apt-cache
   labels:
-    {{- include "monitor.aptCache.labels" . | nindent 4 }}
+    {{- include "schnappy.aptCache.labels" . | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "monitor.aptCache.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.aptCache.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.aptCache.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.aptCache.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -66,12 +66,12 @@ spec:
       volumes:
         - name: cache
           persistentVolumeClaim:
-            claimName: {{ include "monitor.fullname" . }}-apt-cache
+            claimName: {{ include "schnappy.fullname" . }}-apt-cache
         - name: log
           emptyDir: {}
         - name: run
           emptyDir: {}
         - name: config
           configMap:
-            name: {{ include "monitor.fullname" . }}-apt-cache
+            name: {{ include "schnappy.fullname" . }}-apt-cache
 {{- end }}

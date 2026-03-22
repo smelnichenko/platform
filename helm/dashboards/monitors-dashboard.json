@@ -389,7 +389,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "monitor_check_duration_seconds_max{job=\"monitor-app\"}",
+          "expr": "monitor_check_duration_seconds_max{job=\"schnappy-monitor\"}",
           "legendFormat": "max {{page}}",
           "range": true,
           "refId": "A"
@@ -397,7 +397,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "rate(monitor_check_duration_seconds_sum{job=\"monitor-app\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"monitor-app\"}[5m])",
+          "expr": "rate(monitor_check_duration_seconds_sum{job=\"schnappy-monitor\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"schnappy-monitor\"}[5m])",
           "legendFormat": "avg {{page}}",
           "range": true,
           "refId": "B"
@@ -465,7 +465,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(rate(rss_check_total{job=\"monitor-app\"}[5m])) by (feed)",
+          "expr": "sum(rate(rss_check_total{job=\"schnappy-monitor\"}[5m])) by (feed)",
           "legendFormat": "{{feed}}",
           "range": true,
           "refId": "A"
@@ -526,7 +526,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "rss_check_duration_seconds_max{job=\"monitor-app\"}",
+          "expr": "rss_check_duration_seconds_max{job=\"schnappy-monitor\"}",
           "legendFormat": "{{feed}}",
           "range": true,
           "refId": "A"
@@ -587,7 +587,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(rate(rss_check_total{job=\"monitor-app\",success=\"true\"}[5m])) by (feed) / sum(rate(rss_check_total{job=\"monitor-app\"}[5m])) by (feed)",
+          "expr": "sum(rate(rss_check_total{job=\"schnappy-monitor\",success=\"true\"}[5m])) by (feed) / sum(rate(rss_check_total{job=\"schnappy-monitor\"}[5m])) by (feed)",
           "legendFormat": "{{feed}}",
           "range": true,
           "refId": "A"

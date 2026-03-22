@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "monitor.fullname" . }}-prometheus-config
+  name: {{ include "schnappy.fullname" . }}-prometheus-config
   labels:
-    {{- include "monitor.prometheus.labels" . | nindent 4 }}
+    {{- include "schnappy.prometheus.labels" . | nindent 4 }}
 data:
   prometheus.yml: |
     global:
@@ -15,7 +15,7 @@ data:
     alerting:
       alertmanagers:
         - static_configs:
-            - targets: ['{{ include "monitor.alertmanager.serviceName" . }}:9093']
+            - targets: ['{{ include "schnappy.alertmanager.serviceName" . }}:9093']
     rule_files:
       - '/etc/prometheus/rules/*.yml'
     {{- end }}
@@ -25,10 +25,10 @@ data:
         static_configs:
           - targets: ['localhost:9090']
 
-      - job_name: 'monitor-app'
+      - job_name: '{{ include "schnappy.monitor.serviceName" . }}'
         metrics_path: '/api/actuator/prometheus'
         static_configs:
-          - targets: ['{{ include "monitor.app.serviceName" . }}:{{ .Values.app.service.port }}']
+          - targets: ['{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}']
 {{- if .Values.prometheus.vault.enabled }}
       - job_name: 'vault'
         metrics_path: '/v1/sys/metrics'
@@ -44,7 +44,7 @@ data:
       {{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
       - job_name: 'kube-state-metrics'
         static_configs:
-          - targets: ['{{ include "monitor.kubeStateMetrics.serviceName" . }}:8080']
+          - targets: ['{{ include "schnappy.kubeStateMetrics.serviceName" . }}:8080']
       {{- end }}
       {{- if eq (.Values.prometheus.woodpecker.enabled | toString) "true" }}
       - job_name: 'woodpecker'

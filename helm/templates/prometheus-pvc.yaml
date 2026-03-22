@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "monitor.fullname" . }}-prometheus
+  name: {{ include "schnappy.fullname" . }}-prometheus
   labels:
-    {{- include "monitor.prometheus.labels" . | nindent 4 }}
+    {{- include "schnappy.prometheus.labels" . | nindent 4 }}
 spec:
   accessModes:
     - ReadWriteOnce

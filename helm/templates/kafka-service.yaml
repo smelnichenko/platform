@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.kafka.serviceName" . }}
+  name: {{ include "schnappy.kafka.serviceName" . }}
   labels:
-    {{- include "monitor.kafka.labels" . | nindent 4 }}
+    {{- include "schnappy.kafka.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       name: client
   selector:
-    {{- include "monitor.kafka.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.kafka.selectorLabels" . | nindent 4 }}

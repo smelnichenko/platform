@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "monitor.fullname" . }}-fluentbit-config
+  name: {{ include "schnappy.fullname" . }}-fluentbit-config
   labels:
-    {{- include "monitor.fluentbit.labels" . | nindent 4 }}
+    {{- include "schnappy.fluentbit.labels" . | nindent 4 }}
 data:
   fluent-bit.conf: |
     [SERVICE]
@@ -41,7 +41,7 @@ data:
     [OUTPUT]
         Name              es
         Match             kube.*
-        Host              {{ include "monitor.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc
+        Host              {{ include "schnappy.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc
         Port              9200
         HTTP_User         elastic
         HTTP_Passwd       ${ELASTICSEARCH_PASSWORD}

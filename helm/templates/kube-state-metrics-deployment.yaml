@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.kubeStateMetrics.serviceName" . }}
+  name: {{ include "schnappy.kubeStateMetrics.serviceName" . }}
   labels:
-    {{- include "monitor.kubeStateMetrics.labels" . | nindent 4 }}
+    {{- include "schnappy.kubeStateMetrics.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "monitor.kubeStateMetrics.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.kubeStateMetrics.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "monitor.fullname" . }}-kube-state-metrics
+      serviceAccountName: {{ include "schnappy.fullname" . }}-kube-state-metrics
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534

@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "monitor.fullname" . }}-kibana
+  name: {{ include "schnappy.fullname" . }}-kibana
   labels:
-    {{- include "monitor.kibana.labels" . | nindent 4 }}
+    {{- include "schnappy.kibana.labels" . | nindent 4 }}
   {{- if and .Values.elk.kibana.ingress.tls .Values.elk.kibana.ingress.tls.enabled }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.elk.kibana.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
@@ -29,7 +29,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.kibana.serviceName" . }}
+                name: {{ include "schnappy.kibana.serviceName" . }}
                 port:
                   number: 5601
 {{- end }}

@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.chess.serviceName" . }}
+  name: {{ include "schnappy.chess.serviceName" . }}
   labels:
-    {{- include "monitor.chess.labels" . | nindent 4 }}
+    {{- include "schnappy.chess.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.chessService.service.type }}
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "monitor.chess.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.chess.selectorLabels" . | nindent 4 }}
 {{- end }}

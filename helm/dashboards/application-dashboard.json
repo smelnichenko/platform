@@ -156,7 +156,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"monitor-app\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"schnappy-monitor\"}[5m]))",
           "legendFormat": "Request Rate",
           "range": true,
           "refId": "A"
@@ -201,7 +201,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"monitor-app\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"monitor-app\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"schnappy-monitor\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"schnappy-monitor\"}[5m]))",
           "legendFormat": "Error Rate",
           "range": true,
           "refId": "A"
@@ -246,7 +246,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_sum{job=\"monitor-app\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"monitor-app\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_sum{job=\"schnappy-monitor\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"schnappy-monitor\"}[5m]))",
           "legendFormat": "Avg Response",
           "range": true,
           "refId": "A"
@@ -314,7 +314,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "topk(10, sum(rate(http_server_requests_seconds_count{job=\"monitor-app\"}[5m])) by (uri))",
+          "expr": "topk(10, sum(rate(http_server_requests_seconds_count{job=\"schnappy-monitor\"}[5m])) by (uri))",
           "legendFormat": "{{uri}}",
           "range": true,
           "refId": "A"
@@ -375,7 +375,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "http_server_requests_seconds_max{job=\"monitor-app\"}",
+          "expr": "http_server_requests_seconds_max{job=\"schnappy-monitor\"}",
           "legendFormat": "max",
           "range": true,
           "refId": "A"
@@ -383,7 +383,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "rate(http_server_requests_seconds_sum{job=\"monitor-app\"}[5m]) / rate(http_server_requests_seconds_count{job=\"monitor-app\"}[5m])",
+          "expr": "rate(http_server_requests_seconds_sum{job=\"schnappy-monitor\"}[5m]) / rate(http_server_requests_seconds_count{job=\"schnappy-monitor\"}[5m])",
           "legendFormat": "avg",
           "range": true,
           "refId": "B"
@@ -446,7 +446,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(increase(http_server_requests_seconds_count{job=\"monitor-app\"}[1h])) by (status)",
+          "expr": "sum(increase(http_server_requests_seconds_count{job=\"schnappy-monitor\"}[1h])) by (status)",
           "legendFormat": "{{status}}",
           "range": true,
           "refId": "A"
@@ -523,7 +523,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(jvm_memory_used_bytes{job=\"monitor-app\",area=\"heap\"}) by (job)",
+          "expr": "sum(jvm_memory_used_bytes{job=\"schnappy-monitor\",area=\"heap\"}) by (job)",
           "legendFormat": "Used",
           "range": true,
           "refId": "A"
@@ -531,7 +531,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(jvm_memory_max_bytes{job=\"monitor-app\",area=\"heap\"}) by (job)",
+          "expr": "sum(jvm_memory_max_bytes{job=\"schnappy-monitor\",area=\"heap\"}) by (job)",
           "legendFormat": "Max",
           "range": true,
           "refId": "B"
@@ -592,7 +592,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "rate(jvm_gc_pause_seconds_sum{job=\"monitor-app\"}[5m])",
+          "expr": "rate(jvm_gc_pause_seconds_sum{job=\"schnappy-monitor\"}[5m])",
           "legendFormat": "{{cause}} {{action}}",
           "range": true,
           "refId": "A"
@@ -635,7 +635,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "jvm_threads_live_threads{job=\"monitor-app\"}",
+          "expr": "jvm_threads_live_threads{job=\"schnappy-monitor\"}",
           "legendFormat": "Live Threads",
           "range": true,
           "refId": "A"
@@ -696,7 +696,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "process_cpu_usage{job=\"monitor-app\"}",
+          "expr": "process_cpu_usage{job=\"schnappy-monitor\"}",
           "legendFormat": "CPU Usage",
           "range": true,
           "refId": "A"
@@ -774,7 +774,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "hikaricp_connections_active{job=\"monitor-app\"}",
+          "expr": "hikaricp_connections_active{job=\"schnappy-monitor\"}",
           "legendFormat": "Active",
           "range": true,
           "refId": "A"
@@ -782,7 +782,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "hikaricp_connections_idle{job=\"monitor-app\"}",
+          "expr": "hikaricp_connections_idle{job=\"schnappy-monitor\"}",
           "legendFormat": "Idle",
           "range": true,
           "refId": "B"
@@ -790,7 +790,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "hikaricp_connections_max{job=\"monitor-app\"}",
+          "expr": "hikaricp_connections_max{job=\"schnappy-monitor\"}",
           "legendFormat": "Max",
           "range": true,
           "refId": "C"
@@ -852,7 +852,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "hikaricp_connections_pending{job=\"monitor-app\"}",
+          "expr": "hikaricp_connections_pending{job=\"schnappy-monitor\"}",
           "legendFormat": "Pending",
           "range": true,
           "refId": "A"
@@ -913,7 +913,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=\"monitor-app\"}[5m]) / rate(hikaricp_connections_acquire_seconds_count{job=\"monitor-app\"}[5m])",
+          "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=\"schnappy-monitor\"}[5m]) / rate(hikaricp_connections_acquire_seconds_count{job=\"schnappy-monitor\"}[5m])",
           "legendFormat": "Acquire Time",
           "range": true,
           "refId": "A"
@@ -957,7 +957,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "increase(hikaricp_connections_timeout_total{job=\"monitor-app\"}[1h])",
+          "expr": "increase(hikaricp_connections_timeout_total{job=\"schnappy-monitor\"}[1h])",
           "legendFormat": "Timeouts",
           "range": true,
           "refId": "A"

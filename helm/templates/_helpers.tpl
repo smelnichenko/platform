@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "monitor.name" -}}
+{{- define "schnappy.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "monitor.fullname" -}}
+{{- define "schnappy.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "monitor.chart" -}}
+{{- define "schnappy.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "monitor.labels" -}}
-helm.sh/chart: {{ include "monitor.chart" . }}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.labels" -}}
+helm.sh/chart: {{ include "schnappy.chart" . }}
+{{ include "schnappy.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,639 +43,639 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "monitor.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "monitor.name" . }}
+{{- define "schnappy.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "schnappy.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 App labels
 */}}
-{{- define "monitor.app.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.monitor.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: app
 {{- end }}
 
 {{/*
 App selector labels
 */}}
-{{- define "monitor.app.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.monitor.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: app
 {{- end }}
 
 {{/*
 PostgreSQL labels
 */}}
-{{- define "monitor.postgres.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.postgres.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: postgres
 {{- end }}
 
 {{/*
 PostgreSQL selector labels
 */}}
-{{- define "monitor.postgres.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.postgres.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: postgres
 {{- end }}
 
 {{/*
 Prometheus labels
 */}}
-{{- define "monitor.prometheus.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.prometheus.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: prometheus
 {{- end }}
 
 {{/*
 Prometheus selector labels
 */}}
-{{- define "monitor.prometheus.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.prometheus.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: prometheus
 {{- end }}
 
 {{/*
 Grafana labels
 */}}
-{{- define "monitor.grafana.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.grafana.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: grafana
 {{- end }}
 
 {{/*
 Grafana selector labels
 */}}
-{{- define "monitor.grafana.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.grafana.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: grafana
 {{- end }}
 
 {{/*
 PostgreSQL service name
 */}}
-{{- define "monitor.postgres.serviceName" -}}
-{{- printf "%s-postgres" (include "monitor.fullname" .) }}
+{{- define "schnappy.postgres.serviceName" -}}
+{{- printf "%s-postgres" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Prometheus service name
 */}}
-{{- define "monitor.prometheus.serviceName" -}}
-{{- printf "%s-prometheus" (include "monitor.fullname" .) }}
+{{- define "schnappy.prometheus.serviceName" -}}
+{{- printf "%s-prometheus" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 App service name
 */}}
-{{- define "monitor.app.serviceName" -}}
-{{- printf "%s-app" (include "monitor.fullname" .) }}
+{{- define "schnappy.monitor.serviceName" -}}
+{{- printf "%s-monitor" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 PostgreSQL secret name
 */}}
-{{- define "monitor.postgres.secretName" -}}
+{{- define "schnappy.postgres.secretName" -}}
 {{- if .Values.postgres.existingSecret }}
 {{- .Values.postgres.existingSecret }}
 {{- else }}
-{{- printf "%s-postgres" (include "monitor.fullname" .) }}
+{{- printf "%s-postgres" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Grafana secret name
 */}}
-{{- define "monitor.grafana.secretName" -}}
+{{- define "schnappy.grafana.secretName" -}}
 {{- if .Values.grafana.existingSecret }}
 {{- .Values.grafana.existingSecret }}
 {{- else }}
-{{- printf "%s-grafana" (include "monitor.fullname" .) }}
+{{- printf "%s-grafana" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Auth secret name
 */}}
-{{- define "monitor.auth.secretName" -}}
+{{- define "schnappy.auth.secretName" -}}
 {{- if .Values.auth.existingSecret }}
 {{- .Values.auth.existingSecret }}
 {{- else }}
-{{- printf "%s-auth" (include "monitor.fullname" .) }}
+{{- printf "%s-auth" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Mail secret name
 */}}
-{{- define "monitor.mail.secretName" -}}
+{{- define "schnappy.mail.secretName" -}}
 {{- if .Values.mail.existingSecret }}
 {{- .Values.mail.existingSecret }}
 {{- else }}
-{{- printf "%s-mail" (include "monitor.fullname" .) }}
+{{- printf "%s-mail" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 AI secret name
 */}}
-{{- define "monitor.ai.secretName" -}}
+{{- define "schnappy.ai.secretName" -}}
 {{- if .Values.ai.existingSecret }}
 {{- .Values.ai.existingSecret }}
 {{- else }}
-{{- printf "%s-ai" (include "monitor.fullname" .) }}
+{{- printf "%s-ai" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Webhook secret name
 */}}
-{{- define "monitor.webhook.secretName" -}}
+{{- define "schnappy.webhook.secretName" -}}
 {{- if .Values.webhook.existingSecret }}
 {{- .Values.webhook.existingSecret }}
 {{- else }}
-{{- printf "%s-webhook" (include "monitor.fullname" .) }}
+{{- printf "%s-webhook" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Redis secret name
 */}}
-{{- define "monitor.redis.secretName" -}}
+{{- define "schnappy.redis.secretName" -}}
 {{- if .Values.redis.existingSecret }}
 {{- .Values.redis.existingSecret }}
 {{- else }}
-{{- printf "%s-redis" (include "monitor.fullname" .) }}
+{{- printf "%s-redis" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 MinIO secret name
 */}}
-{{- define "monitor.minio.secretName" -}}
+{{- define "schnappy.minio.secretName" -}}
 {{- if .Values.minio.existingSecret }}
 {{- .Values.minio.existingSecret }}
 {{- else }}
-{{- printf "%s-minio" (include "monitor.fullname" .) }}
+{{- printf "%s-minio" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Redis labels
 */}}
-{{- define "monitor.redis.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.redis.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: redis
 {{- end }}
 
 {{/*
 Redis selector labels
 */}}
-{{- define "monitor.redis.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.redis.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: redis
 {{- end }}
 
 {{/*
 Redis service name
 */}}
-{{- define "monitor.redis.serviceName" -}}
-{{- printf "%s-redis" (include "monitor.fullname" .) }}
+{{- define "schnappy.redis.serviceName" -}}
+{{- printf "%s-redis" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Frontend labels
 */}}
-{{- define "monitor.site.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.site.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: site
 {{- end }}
 
 {{/*
 Frontend selector labels
 */}}
-{{- define "monitor.site.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.site.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: site
 {{- end }}
 
 {{/*
 Frontend service name
 */}}
-{{- define "monitor.site.serviceName" -}}
-{{- printf "%s-site" (include "monitor.fullname" .) }}
+{{- define "schnappy.site.serviceName" -}}
+{{- printf "%s-site" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 MinIO labels
 */}}
-{{- define "monitor.minio.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.minio.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: minio
 {{- end }}
 
 {{/*
 MinIO selector labels
 */}}
-{{- define "monitor.minio.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.minio.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: minio
 {{- end }}
 
 {{/*
 MinIO service name
 */}}
-{{- define "monitor.minio.serviceName" -}}
-{{- printf "%s-minio" (include "monitor.fullname" .) }}
+{{- define "schnappy.minio.serviceName" -}}
+{{- printf "%s-minio" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Elasticsearch labels
 */}}
-{{- define "monitor.elasticsearch.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.elasticsearch.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: elasticsearch
 {{- end }}
 
 {{/*
 Elasticsearch selector labels
 */}}
-{{- define "monitor.elasticsearch.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.elasticsearch.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: elasticsearch
 {{- end }}
 
 {{/*
 Elasticsearch service name
 */}}
-{{- define "monitor.elasticsearch.serviceName" -}}
-{{- printf "%s-elasticsearch" (include "monitor.fullname" .) }}
+{{- define "schnappy.elasticsearch.serviceName" -}}
+{{- printf "%s-elasticsearch" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Elasticsearch secret name
 */}}
-{{- define "monitor.elasticsearch.secretName" -}}
+{{- define "schnappy.elasticsearch.secretName" -}}
 {{- if .Values.elk.elasticsearch.existingSecret }}
 {{- .Values.elk.elasticsearch.existingSecret }}
 {{- else }}
-{{- printf "%s-elasticsearch" (include "monitor.fullname" .) }}
+{{- printf "%s-elasticsearch" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Kibana labels
 */}}
-{{- define "monitor.kibana.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.kibana.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: kibana
 {{- end }}
 
 {{/*
 Kibana selector labels
 */}}
-{{- define "monitor.kibana.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.kibana.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: kibana
 {{- end }}
 
 {{/*
 Kibana service name
 */}}
-{{- define "monitor.kibana.serviceName" -}}
-{{- printf "%s-kibana" (include "monitor.fullname" .) }}
+{{- define "schnappy.kibana.serviceName" -}}
+{{- printf "%s-kibana" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Kafka labels
 */}}
-{{- define "monitor.kafka.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.kafka.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: kafka
 {{- end }}
 
 {{/*
 Kafka selector labels
 */}}
-{{- define "monitor.kafka.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.kafka.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: kafka
 {{- end }}
 
 {{/*
 Kafka service name
 */}}
-{{- define "monitor.kafka.serviceName" -}}
-{{- printf "%s-kafka" (include "monitor.fullname" .) }}
+{{- define "schnappy.kafka.serviceName" -}}
+{{- printf "%s-kafka" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Kafka secret name
 */}}
-{{- define "monitor.kafka.secretName" -}}
+{{- define "schnappy.kafka.secretName" -}}
 {{- if .Values.kafka.existingSecret }}
 {{- .Values.kafka.existingSecret }}
 {{- else }}
-{{- printf "%s-kafka" (include "monitor.fullname" .) }}
+{{- printf "%s-kafka" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 ScyllaDB labels
 */}}
-{{- define "monitor.scylla.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.scylla.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: scylla
 {{- end }}
 
 {{/*
 ScyllaDB selector labels
 */}}
-{{- define "monitor.scylla.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.scylla.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: scylla
 {{- end }}
 
 {{/*
 ScyllaDB service name
 */}}
-{{- define "monitor.scylla.serviceName" -}}
-{{- printf "%s-scylla" (include "monitor.fullname" .) }}
+{{- define "schnappy.scylla.serviceName" -}}
+{{- printf "%s-scylla" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 SonarQube labels
 */}}
-{{- define "monitor.sonarqube.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.sonarqube.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: sonarqube
 {{- end }}
 
 {{/*
 SonarQube selector labels
 */}}
-{{- define "monitor.sonarqube.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.sonarqube.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: sonarqube
 {{- end }}
 
 {{/*
 SonarQube service name
 */}}
-{{- define "monitor.sonarqube.serviceName" -}}
-{{- printf "%s-sonarqube" (include "monitor.fullname" .) }}
+{{- define "schnappy.sonarqube.serviceName" -}}
+{{- printf "%s-sonarqube" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 SonarQube secret name
 */}}
-{{- define "monitor.sonarqube.secretName" -}}
+{{- define "schnappy.sonarqube.secretName" -}}
 {{- if .Values.sonarqube.existingSecret }}
 {{- .Values.sonarqube.existingSecret }}
 {{- else }}
-{{- printf "%s-sonarqube" (include "monitor.fullname" .) }}
+{{- printf "%s-sonarqube" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 SonarQube PostgreSQL labels
 */}}
-{{- define "monitor.sonarqube.postgres.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.sonarqube.postgres.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: sonarqube-postgres
 {{- end }}
 
 {{/*
 SonarQube PostgreSQL selector labels
 */}}
-{{- define "monitor.sonarqube.postgres.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.sonarqube.postgres.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: sonarqube-postgres
 {{- end }}
 
 {{/*
 SonarQube PostgreSQL service name
 */}}
-{{- define "monitor.sonarqube.postgres.serviceName" -}}
-{{- printf "%s-sonarqube-postgres" (include "monitor.fullname" .) }}
+{{- define "schnappy.sonarqube.postgres.serviceName" -}}
+{{- printf "%s-sonarqube-postgres" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Fluent-bit labels
 */}}
-{{- define "monitor.fluentbit.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.fluentbit.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: fluentbit
 {{- end }}
 
 {{/*
 Fluent-bit selector labels
 */}}
-{{- define "monitor.fluentbit.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.fluentbit.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: fluentbit
 {{- end }}
 
 {{/*
 apt-cache labels
 */}}
-{{- define "monitor.aptCache.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.aptCache.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: apt-cache
 {{- end }}
 
 {{/*
 apt-cache selector labels
 */}}
-{{- define "monitor.aptCache.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.aptCache.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: apt-cache
 {{- end }}
 
 {{/*
 apt-cache service name
 */}}
-{{- define "monitor.aptCache.serviceName" -}}
-{{- printf "%s-apt-cache" (include "monitor.fullname" .) }}
+{{- define "schnappy.aptCache.serviceName" -}}
+{{- printf "%s-apt-cache" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 ES ILM job selector labels (must not overlap with DaemonSet selectors)
 */}}
-{{- define "monitor.esIlmJob.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.esIlmJob.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: es-ilm-job
 {{- end }}
 
 {{/*
 Admin labels
 */}}
-{{- define "monitor.admin.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.admin.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: admin
 {{- end }}
 
 {{/*
 Admin selector labels
 */}}
-{{- define "monitor.admin.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.admin.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: admin
 {{- end }}
 
 {{/*
 Admin service name
 */}}
-{{- define "monitor.admin.serviceName" -}}
-{{- printf "%s-admin" (include "monitor.fullname" .) }}
+{{- define "schnappy.admin.serviceName" -}}
+{{- printf "%s-admin" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Chat microservice labels
 */}}
-{{- define "monitor.chat.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.chat.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: chat
 {{- end }}
 
 {{/*
 Chat microservice selector labels
 */}}
-{{- define "monitor.chat.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.chat.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: chat
 {{- end }}
 
 {{/*
 Chat microservice service name
 */}}
-{{- define "monitor.chat.serviceName" -}}
-{{- printf "%s-chat" (include "monitor.fullname" .) }}
+{{- define "schnappy.chat.serviceName" -}}
+{{- printf "%s-chat" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Chess microservice labels
 */}}
-{{- define "monitor.chess.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.chess.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: chess
 {{- end }}
 
 {{/*
 Chess microservice selector labels
 */}}
-{{- define "monitor.chess.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.chess.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: chess
 {{- end }}
 
 {{/*
 Chess microservice service name
 */}}
-{{- define "monitor.chess.serviceName" -}}
-{{- printf "%s-chess" (include "monitor.fullname" .) }}
+{{- define "schnappy.chess.serviceName" -}}
+{{- printf "%s-chess" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Gateway labels
 */}}
-{{- define "monitor.gateway.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.gateway.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: gateway
 {{- end }}
 
 {{/*
 Gateway selector labels
 */}}
-{{- define "monitor.gateway.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.gateway.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: gateway
 {{- end }}
 
 {{/*
 Gateway service name
 */}}
-{{- define "monitor.gateway.serviceName" -}}
-{{- printf "%s-gateway" (include "monitor.fullname" .) }}
+{{- define "schnappy.gateway.serviceName" -}}
+{{- printf "%s-gateway" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Alertmanager labels
 */}}
-{{- define "monitor.alertmanager.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.alertmanager.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: alertmanager
 {{- end }}
 
 {{/*
 Alertmanager selector labels
 */}}
-{{- define "monitor.alertmanager.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.alertmanager.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: alertmanager
 {{- end }}
 
 {{/*
 Alertmanager service name
 */}}
-{{- define "monitor.alertmanager.serviceName" -}}
-{{- printf "%s-alertmanager" (include "monitor.fullname" .) }}
+{{- define "schnappy.alertmanager.serviceName" -}}
+{{- printf "%s-alertmanager" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Alertmanager secret name
 */}}
-{{- define "monitor.alertmanager.secretName" -}}
+{{- define "schnappy.alertmanager.secretName" -}}
 {{- if .Values.alertmanager.existingSecret }}
 {{- .Values.alertmanager.existingSecret }}
 {{- else }}
-{{- printf "%s-alertmanager" (include "monitor.fullname" .) }}
+{{- printf "%s-alertmanager" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 kube-state-metrics labels
 */}}
-{{- define "monitor.kubeStateMetrics.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.kubeStateMetrics.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: kube-state-metrics
 {{- end }}
 
 {{/*
 kube-state-metrics selector labels
 */}}
-{{- define "monitor.kubeStateMetrics.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.kubeStateMetrics.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: kube-state-metrics
 {{- end }}
 
 {{/*
 kube-state-metrics service name
 */}}
-{{- define "monitor.kubeStateMetrics.serviceName" -}}
-{{- printf "%s-kube-state-metrics" (include "monitor.fullname" .) }}
+{{- define "schnappy.kubeStateMetrics.serviceName" -}}
+{{- printf "%s-kube-state-metrics" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/*
 Game labels
 */}}
-{{- define "monitor.game.labels" -}}
-{{ include "monitor.labels" . }}
+{{- define "schnappy.game-scp.labels" -}}
+{{ include "schnappy.labels" . }}
 app.kubernetes.io/component: game
 {{- end }}
 
 {{/*
 Game selector labels
 */}}
-{{- define "monitor.game.selectorLabels" -}}
-{{ include "monitor.selectorLabels" . }}
+{{- define "schnappy.game-scp.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: game
 {{- end }}
 
 {{/*
 Game service name
 */}}
-{{- define "monitor.game.serviceName" -}}
-{{- printf "%s-game" (include "monitor.fullname" .) }}
+{{- define "schnappy.game-scp.serviceName" -}}
+{{- printf "%s-game-scp" (include "schnappy.fullname" .) }}
 {{- end }}

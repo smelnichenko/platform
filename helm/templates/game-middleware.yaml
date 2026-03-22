@@ -2,9 +2,9 @@
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "monitor.fullname" . }}-game-strip
+  name: {{ include "schnappy.fullname" . }}-game-strip
   labels:
-    {{- include "monitor.game.labels" . | nindent 4 }}
+    {{- include "schnappy.game-scp.labels" . | nindent 4 }}
 spec:
   stripPrefix:
     prefixes:

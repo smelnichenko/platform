@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.site.serviceName" . }}
+  name: {{ include "schnappy.site.serviceName" . }}
   labels:
-    {{- include "monitor.site.labels" . | nindent 4 }}
+    {{- include "schnappy.site.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.site.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.site.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.site.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.site.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.site.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -37,7 +37,7 @@ spec:
               name: http
           env:
             - name: API_BACKEND_HOST
-              value: "{{ include "monitor.app.serviceName" . }}"
+              value: "{{ include "schnappy.monitor.serviceName" . }}"
           volumeMounts:
             - name: nginx-cache
               mountPath: /var/cache/nginx

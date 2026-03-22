@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.gateway.serviceName" . }}
+  name: {{ include "schnappy.gateway.serviceName" . }}
   labels:
-    {{- include "monitor.gateway.labels" . | nindent 4 }}
+    {{- include "schnappy.gateway.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.gateway.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.gateway.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.gateway.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.gateway.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.gateway.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -46,41 +46,41 @@ spec:
             - name: JAVA_OPTS
               value: {{ .Values.gateway.javaOpts | default "-Xmx256m" | quote }}
             - name: CORE_URL
-              value: "http://{{ include "monitor.app.serviceName" . }}:{{ .Values.app.service.port }}"
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
             {{- if eq (.Values.admin.enabled | toString) "true" }}
             - name: ADMIN_URL
-              value: "http://{{ include "monitor.admin.serviceName" . }}:{{ .Values.admin.service.port }}"
+              value: "http://{{ include "schnappy.admin.serviceName" . }}:{{ .Values.admin.service.port }}"
             {{- else }}
             - name: ADMIN_URL
-              value: "http://{{ include "monitor.app.serviceName" . }}:{{ .Values.app.service.port }}"
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
             {{- end }}
             {{- if eq (.Values.chatService.enabled | toString) "true" }}
             - name: CHAT_URL
-              value: "http://{{ include "monitor.chat.serviceName" . }}:{{ .Values.chatService.service.port }}"
+              value: "http://{{ include "schnappy.chat.serviceName" . }}:{{ .Values.chatService.service.port }}"
             {{- else }}
             - name: CHAT_URL
-              value: "http://{{ include "monitor.app.serviceName" . }}:{{ .Values.app.service.port }}"
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
             {{- end }}
             {{- if eq (.Values.chessService.enabled | toString) "true" }}
             - name: CHESS_URL
-              value: "http://{{ include "monitor.chess.serviceName" . }}:{{ .Values.chessService.service.port }}"
+              value: "http://{{ include "schnappy.chess.serviceName" . }}:{{ .Values.chessService.service.port }}"
             {{- else }}
             - name: CHESS_URL
-              value: "http://{{ include "monitor.app.serviceName" . }}:{{ .Values.app.service.port }}"
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
             {{- end }}
             - name: REDIS_HOST
-              value: {{ include "monitor.redis.serviceName" . }}
+              value: {{ include "schnappy.redis.serviceName" . }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.redis.secretName" . }}
+                  name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.auth.secretName" . }}
+                  name: {{ include "schnappy.auth.secretName" . }}
                   key: JWT_SECRET
             - name: CORS_ALLOWED_ORIGINS
               value: {{ .Values.gateway.cors.allowedOrigins | default "*" | quote }}
@@ -103,7 +103,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "monitor.fullname" . }}-gateway-config
+            name: {{ include "schnappy.fullname" . }}-gateway-config
         - name: tmp
           emptyDir: {}
 {{- end }}

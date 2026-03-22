@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.app.serviceName" . }}
+  name: {{ include "schnappy.monitor.serviceName" . }}
   labels:
-    {{- include "monitor.app.labels" . | nindent 4 }}
+    {{- include "schnappy.monitor.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.app.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.app.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.monitor.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.app.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.monitor.selectorLabels" . | nindent 8 }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/api/actuator/prometheus"
@@ -49,12 +49,12 @@ spec:
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_PASSWORD
             - name: JAVA_OPTS
               value: {{ .Values.app.javaOpts | default "-Xmx1536m" | quote }}
@@ -66,14 +66,14 @@ spec:
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.auth.secretName" . }}
+                  name: {{ include "schnappy.auth.secretName" . }}
                   key: JWT_SECRET
             {{- end }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.redis.secretName" . }}
+                  name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
             {{- if or .Values.ai.apiKey .Values.ai.existingSecret }}
@@ -82,7 +82,7 @@ spec:
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.ai.secretName" . }}
+                  name: {{ include "schnappy.ai.secretName" . }}
                   key: ANTHROPIC_API_KEY
             {{- end }}
             {{- if eq (.Values.mail.enabled | toString) "true" }}
@@ -102,7 +102,7 @@ spec:
             - name: MAIL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.mail.secretName" . }}
+                  name: {{ include "schnappy.mail.secretName" . }}
                   key: MAIL_PASSWORD
             {{- end }}
             {{- end }}
@@ -112,12 +112,12 @@ spec:
             - name: RESEND_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.webhook.secretName" . }}
+                  name: {{ include "schnappy.webhook.secretName" . }}
                   key: RESEND_WEBHOOK_SECRET
             - name: RESEND_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.webhook.secretName" . }}
+                  name: {{ include "schnappy.webhook.secretName" . }}
                   key: RESEND_API_KEY
             {{- end }}
             {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
@@ -126,7 +126,7 @@ spec:
             - name: ALERTMANAGER_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.alertmanager.secretName" . }}
+                  name: {{ include "schnappy.alertmanager.secretName" . }}
                   key: ALERTMANAGER_WEBHOOK_SECRET
             - name: ALERTMANAGER_EMAIL_TO
               value: {{ .Values.alertmanager.alertEmailTo | quote }}
@@ -135,23 +135,23 @@ spec:
             - name: RESEND_API_KEY_ALERTS
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.webhook.secretName" . }}
+                  name: {{ include "schnappy.webhook.secretName" . }}
                   key: RESEND_API_KEY
             {{- end }}
             {{- if eq (.Values.minio.enabled | toString) "true" }}
             - name: MINIO_ENABLED
               value: "true"
             - name: MINIO_ENDPOINT
-              value: "http://{{ include "monitor.fullname" . }}-minio:9000"
+              value: "http://{{ include "schnappy.fullname" . }}-minio:9000"
             - name: MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.minio.secretName" . }}
+                  name: {{ include "schnappy.minio.secretName" . }}
                   key: MINIO_ROOT_USER
             - name: MINIO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.minio.secretName" . }}
+                  name: {{ include "schnappy.minio.secretName" . }}
                   key: MINIO_ROOT_PASSWORD
             - name: MINIO_BUCKET
               value: {{ .Values.minio.bucket | default "email-attachments" | quote }}
@@ -161,9 +161,9 @@ spec:
               value: "true"
             {{- end }}
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "{{ include "monitor.kafka.serviceName" . }}:9092"
+              value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
             - name: SCYLLA_CONTACT_POINTS
-              value: {{ include "monitor.scylla.serviceName" . }}
+              value: {{ include "schnappy.scylla.serviceName" . }}
             - name: SCYLLA_PORT
               value: "9042"
             - name: SCYLLA_DATACENTER
@@ -203,6 +203,6 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "monitor.fullname" . }}-app-config
+            name: {{ include "schnappy.fullname" . }}-app-config
         - name: tmp
           emptyDir: {}

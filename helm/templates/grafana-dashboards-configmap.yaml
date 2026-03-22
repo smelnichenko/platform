@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "monitor.fullname" . }}-grafana-dashboards
+  name: {{ include "schnappy.fullname" . }}-grafana-dashboards
   labels:
-    {{- include "monitor.grafana.labels" . | nindent 4 }}
+    {{- include "schnappy.grafana.labels" . | nindent 4 }}
 data:
   application-dashboard.json: |-
 {{ .Files.Get "dashboards/application-dashboard.json" | indent 4 }}

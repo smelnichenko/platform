@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.chat.serviceName" . }}
+  name: {{ include "schnappy.chat.serviceName" . }}
   labels:
-    {{- include "monitor.chat.labels" . | nindent 4 }}
+    {{- include "schnappy.chat.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.chatService.service.type }}
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "monitor.chat.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.chat.selectorLabels" . | nindent 4 }}
 {{- end }}

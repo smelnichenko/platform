@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "monitor.fullname" . }}-grafana-datasources
+  name: {{ include "schnappy.fullname" . }}-grafana-datasources
   labels:
-    {{- include "monitor.grafana.labels" . | nindent 4 }}
+    {{- include "schnappy.grafana.labels" . | nindent 4 }}
 data:
   datasources.yml: |
     apiVersion: 1
@@ -13,7 +13,7 @@ data:
         type: prometheus
         uid: prometheus
         access: proxy
-        url: http://{{ include "monitor.prometheus.serviceName" . }}:9090
+        url: http://{{ include "schnappy.prometheus.serviceName" . }}:9090
         isDefault: true
         editable: false
 {{- end }}

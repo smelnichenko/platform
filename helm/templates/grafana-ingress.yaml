@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "monitor.fullname" . }}-grafana
+  name: {{ include "schnappy.fullname" . }}-grafana
   labels:
-    {{- include "monitor.grafana.labels" . | nindent 4 }}
+    {{- include "schnappy.grafana.labels" . | nindent 4 }}
   {{- if and .Values.grafana.ingress.tls .Values.grafana.ingress.tls.enabled }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.grafana.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
@@ -29,7 +29,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "monitor.fullname" . }}-grafana
+                name: {{ include "schnappy.fullname" . }}-grafana
                 port:
                   number: {{ .Values.grafana.service.port }}
 {{- end }}

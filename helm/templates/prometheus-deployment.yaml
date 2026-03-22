@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.prometheus.serviceName" . }}
+  name: {{ include "schnappy.prometheus.serviceName" . }}
   labels:
-    {{- include "monitor.prometheus.labels" . | nindent 4 }}
+    {{- include "schnappy.prometheus.labels" . | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "monitor.prometheus.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.prometheus.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.prometheus.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.prometheus.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -72,14 +72,14 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "monitor.fullname" . }}-prometheus-config
+            name: {{ include "schnappy.fullname" . }}-prometheus-config
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "monitor.fullname" . }}-prometheus
+            claimName: {{ include "schnappy.fullname" . }}-prometheus
         {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
         - name: rules
           configMap:
-            name: {{ include "monitor.fullname" . }}-prometheus-rules
+            name: {{ include "schnappy.fullname" . }}-prometheus-rules
         {{- end }}
         {{- if .Values.prometheus.vault.enabled }}
         - name: vault-ca

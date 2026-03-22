@@ -2,14 +2,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "monitor.fullname" . }}-kibana-config
+  name: {{ include "schnappy.fullname" . }}-kibana-config
   labels:
-    {{- include "monitor.kibana.labels" . | nindent 4 }}
+    {{- include "schnappy.kibana.labels" . | nindent 4 }}
 data:
   kibana.yml: |
     server.host: "::"
     server.name: "kibana"
-    elasticsearch.hosts: ["http://{{ include "monitor.elasticsearch.serviceName" . }}:9200"]
+    elasticsearch.hosts: ["http://{{ include "schnappy.elasticsearch.serviceName" . }}:9200"]
     xpack.encryptedSavedObjects.encryptionKey: "a]3{W`G:kj`m2~dEd;'L&Cx:f4{!&3fhMn(+Y-change-me"
     telemetry.enabled: false
 {{- if and .Values.elk.kibana.ingress.enabled .Values.elk.kibana.ingress.host }}

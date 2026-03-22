@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "monitor.scylla.serviceName" . }}-schema
+  name: {{ include "schnappy.scylla.serviceName" . }}-schema
   labels:
-    {{- include "monitor.scylla.labels" . | nindent 4 }}
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "10"
@@ -28,12 +28,12 @@ spec:
           args:
             - |
               echo "Waiting for ScyllaDB to be ready..."
-              until cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "SELECT now() FROM system.local" 2>/dev/null; do
+              until cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "SELECT now() FROM system.local" 2>/dev/null; do
                 echo "ScyllaDB not ready, retrying in 5s..."
                 sleep 5
               done
               echo "ScyllaDB is ready. Applying schema..."
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 <<'EOF'
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 <<'EOF'
               CREATE KEYSPACE IF NOT EXISTS chat WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
               CREATE TABLE IF NOT EXISTS chat.messages_by_channel (
@@ -104,13 +104,13 @@ spec:
               );
               EOF
               echo "Adding columns if missing..."
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD hash text;" 2>/dev/null || true
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD prev_hash text;" 2>/dev/null || true
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD key_version int;" 2>/dev/null || true
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD message_type text;" 2>/dev/null || true
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD metadata text;" 2>/dev/null || true
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD hash text;" 2>/dev/null || true
-              cqlsh {{ include "monitor.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD key_version int;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD hash text;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD prev_hash text;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD key_version int;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD message_type text;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD metadata text;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD hash text;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD key_version int;" 2>/dev/null || true
               echo "Schema applied successfully."
       restartPolicy: OnFailure
 {{- end }}

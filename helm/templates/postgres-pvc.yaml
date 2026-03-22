@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "monitor.fullname" . }}-postgres
+  name: {{ include "schnappy.fullname" . }}-postgres
   labels:
-    {{- include "monitor.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
   annotations:
     "helm.sh/resource-policy": keep
 spec:

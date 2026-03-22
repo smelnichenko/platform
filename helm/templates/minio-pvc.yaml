@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "monitor.fullname" . }}-minio
+  name: {{ include "schnappy.fullname" . }}-minio
   labels:
-    {{- include "monitor.minio.labels" . | nindent 4 }}
+    {{- include "schnappy.minio.labels" . | nindent 4 }}
   annotations:
     "helm.sh/resource-policy": keep
 spec:

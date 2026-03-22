@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "monitor.admin.serviceName" . }}
+  name: {{ include "schnappy.admin.serviceName" . }}
   labels:
-    {{- include "monitor.admin.labels" . | nindent 4 }}
+    {{- include "schnappy.admin.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.admin.replicas }}
   selector:
     matchLabels:
-      {{- include "monitor.admin.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.admin.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "monitor.admin.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.admin.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -42,33 +42,33 @@ spec:
             - name: JAVA_OPTS
               value: {{ .Values.admin.javaOpts | default "-Xmx512m" | quote }}
             - name: DB_HOST
-              value: {{ include "monitor.postgres.serviceName" . }}
+              value: {{ include "schnappy.postgres.serviceName" . }}
             - name: DB_NAME
               value: "monitor_admin"
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_USER
                   optional: true
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.postgres.secretName" . }}
+                  name: {{ include "schnappy.postgres.secretName" . }}
                   key: POSTGRES_PASSWORD
             - name: REDIS_HOST
-              value: {{ include "monitor.redis.serviceName" . }}
+              value: {{ include "schnappy.redis.serviceName" . }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.redis.secretName" . }}
+                  name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.auth.secretName" . }}
+                  name: {{ include "schnappy.auth.secretName" . }}
                   key: JWT_SECRET
             - name: TOKEN_EXPIRATION
               value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
@@ -83,7 +83,7 @@ spec:
             - name: REGISTRATION_APPROVAL_DEFAULT_GROUP
               value: {{ .Values.auth.registrationApproval.defaultGroup | default "Users" | quote }}
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "{{ include "monitor.kafka.serviceName" . }}:9092"
+              value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
             {{- if eq (.Values.mail.enabled | toString) "true" }}
             - name: MAIL_ENABLED
               value: "true"
@@ -100,7 +100,7 @@ spec:
             - name: SPRING_MAIL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.mail.secretName" . }}
+                  name: {{ include "schnappy.mail.secretName" . }}
                   key: MAIL_PASSWORD
             {{- end }}
             {{- if eq (.Values.ai.enabled | toString) "true" }}
@@ -111,7 +111,7 @@ spec:
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "monitor.ai.secretName" . }}
+                  name: {{ include "schnappy.ai.secretName" . }}
                   key: ANTHROPIC_API_KEY
             {{- end }}
             {{- if eq (.Values.captcha.enabled | toString) "true" }}

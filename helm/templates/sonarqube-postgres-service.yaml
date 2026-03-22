@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.sonarqube.postgres.serviceName" . }}
+  name: {{ include "schnappy.sonarqube.postgres.serviceName" . }}
   labels:
-    {{- include "monitor.sonarqube.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: postgres
   selector:
-    {{- include "monitor.sonarqube.postgres.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 4 }}
 {{- end }}

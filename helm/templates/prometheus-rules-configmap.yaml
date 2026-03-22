@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "monitor.fullname" . }}-prometheus-rules
+  name: {{ include "schnappy.fullname" . }}-prometheus-rules
   labels:
-    {{- include "monitor.prometheus.labels" . | nindent 4 }}
+    {{- include "schnappy.prometheus.labels" . | nindent 4 }}
 data:
   infrastructure.yml: |
     groups:
@@ -12,8 +12,8 @@ data:
         rules:
           - alert: PodRestartingFrequently
             expr: |
-              increase(kube_pod_container_status_restarts_total{namespace="monitor"}[1h]) > 3
-              unless on(pod, namespace) kube_pod_owner{namespace="monitor", owner_kind="Job"}
+              increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}"}[1h]) > 3
+              unless on(pod, namespace) kube_pod_owner{namespace="{{ .Release.Namespace }}", owner_kind="Job"}
             for: 5m
             labels:
               severity: warning
@@ -21,14 +21,14 @@ data:
               summary: "Pod {{ "{{" }} $labels.pod {{ "}}" }} restarting frequently"
               description: "Pod has restarted {{ "{{" }} $value {{ "}}" }} times in the last hour."
           - alert: ContainerOOMKilled
-            expr: kube_pod_container_status_last_terminated_reason{namespace="monitor", reason="OOMKilled"} == 1
+            expr: kube_pod_container_status_last_terminated_reason{namespace="{{ .Release.Namespace }}", reason="OOMKilled"} == 1
             labels:
               severity: critical
             annotations:
               summary: "Container {{ "{{" }} $labels.container {{ "}}" }} in {{ "{{" }} $labels.pod {{ "}}" }} was OOM killed"
               description: "Container was terminated due to out of memory."
           - alert: PodCrashLoopBackOff
-            expr: kube_pod_container_status_waiting_reason{namespace="monitor", reason="CrashLoopBackOff"} == 1
+            expr: kube_pod_container_status_waiting_reason{namespace="{{ .Release.Namespace }}", reason="CrashLoopBackOff"} == 1
             for: 5m
             labels:
               severity: critical
@@ -37,9 +37,9 @@ data:
               description: "Pod has been in CrashLoopBackOff for more than 5 minutes."
           - alert: PodNotReady
             expr: |
-              kube_pod_status_ready{namespace="monitor", condition="true"} == 0
+              kube_pod_status_ready{namespace="{{ .Release.Namespace }}", condition="true"} == 0
               unless on(pod, namespace) kube_pod_status_phase{phase=~"Succeeded|Failed"} == 1
-              unless on(pod, namespace) kube_pod_owner{namespace="monitor", owner_kind="Job"}
+              unless on(pod, namespace) kube_pod_owner{namespace="{{ .Release.Namespace }}", owner_kind="Job"}
             for: 10m
             labels:
               severity: warning
@@ -60,8 +60,8 @@ data:
         rules:
           - alert: JvmMemoryHigh
             expr: |
-              sum(jvm_memory_used_bytes{job="monitor-app"})
-              / sum(jvm_memory_max_bytes{job="monitor-app"})
+              sum(jvm_memory_used_bytes{job="{{ include "schnappy.monitor.serviceName" . }}"})
+              / sum(jvm_memory_max_bytes{job="{{ include "schnappy.monitor.serviceName" . }}"})
               > 0.85
             for: 10m
             labels:
@@ -70,7 +70,7 @@ data:
               summary: "JVM memory usage high"
               description: "JVM memory usage is above 85% of max ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: ProcessCPUHigh
-            expr: process_cpu_usage{job="monitor-app"} > 0.9
+            expr: process_cpu_usage{job="{{ include "schnappy.monitor.serviceName" . }}"} > 0.9
             for: 15m
             labels:
               severity: warning
@@ -78,7 +78,7 @@ data:
               summary: "Process CPU usage high"
               description: "Process CPU usage is above 90%."
           - alert: PVCUsageHigh
-            expr: kubelet_volume_stats_used_bytes{namespace="monitor"} / kubelet_volume_stats_capacity_bytes{namespace="monitor"} > 0.8
+            expr: kubelet_volume_stats_used_bytes{namespace="{{ .Release.Namespace }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ .Release.Namespace }}"} > 0.8
             for: 10m
             labels:
               severity: warning
@@ -86,7 +86,7 @@ data:
               summary: "PVC {{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} usage high"
               description: "PVC usage is above 80% ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: PVCUsageCritical
-            expr: kubelet_volume_stats_used_bytes{namespace="monitor"} / kubelet_volume_stats_capacity_bytes{namespace="monitor"} > 0.9
+            expr: kubelet_volume_stats_used_bytes{namespace="{{ .Release.Namespace }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ .Release.Namespace }}"} > 0.9
             for: 5m
             labels:
               severity: critical
@@ -99,7 +99,7 @@ data:
       - name: application
         rules:
           - alert: HighHTTPErrorRate
-            expr: sum(rate(http_server_requests_seconds_count{job="monitor-app", status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="monitor-app"}[5m])) > 0.05
+            expr: sum(rate(http_server_requests_seconds_count{job="{{ include "schnappy.monitor.serviceName" . }}", status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="{{ include "schnappy.monitor.serviceName" . }}"}[5m])) > 0.05
             for: 5m
             labels:
               severity: critical
@@ -107,7 +107,7 @@ data:
               summary: "High HTTP 5xx error rate"
               description: "More than 5% of HTTP requests are returning 5xx errors ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: HighRequestLatency
-            expr: http_server_requests_seconds_max{job="monitor-app"} > 5
+            expr: http_server_requests_seconds_max{job="{{ include "schnappy.monitor.serviceName" . }}"} > 5
             for: 10m
             labels:
               severity: warning
@@ -115,7 +115,7 @@ data:
               summary: "High request latency (max > 5s)"
               description: "Maximum request latency is above 5 seconds."
           - alert: AppDown
-            expr: up{job="monitor-app"} == 0
+            expr: up{job="{{ include "schnappy.monitor.serviceName" . }}"} == 0
             for: 2m
             labels:
               severity: critical
@@ -123,7 +123,7 @@ data:
               summary: "Monitor app is down"
               description: "The monitor application has been unreachable for more than 2 minutes."
           - alert: HikariPoolExhausted
-            expr: hikaricp_connections_active{job="monitor-app"} / hikaricp_connections_max{job="monitor-app"} > 0.8
+            expr: hikaricp_connections_active{job="{{ include "schnappy.monitor.serviceName" . }}"} / hikaricp_connections_max{job="{{ include "schnappy.monitor.serviceName" . }}"} > 0.8
             for: 5m
             labels:
               severity: warning
@@ -131,7 +131,7 @@ data:
               summary: "HikariCP connection pool nearly exhausted"
               description: "HikariCP active connections are above 80% of max ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: JVMHeapHigh
-            expr: jvm_memory_used_bytes{job="monitor-app", area="heap"} / jvm_memory_max_bytes{job="monitor-app", area="heap"} > 0.85
+            expr: jvm_memory_used_bytes{job="{{ include "schnappy.monitor.serviceName" . }}", area="heap"} / jvm_memory_max_bytes{job="{{ include "schnappy.monitor.serviceName" . }}", area="heap"} > 0.85
             for: 10m
             labels:
               severity: warning
@@ -145,7 +145,7 @@ data:
         rules:
           - alert: KafkaBrokerDown
             expr: |
-              kube_pod_status_ready{namespace="monitor", condition="true", pod=~".*kafka-\\d+$"} == 0
+              kube_pod_status_ready{namespace="{{ .Release.Namespace }}", condition="true", pod=~".*kafka-\\d+$"} == 0
             for: 5m
             labels:
               severity: critical
@@ -159,7 +159,7 @@ data:
         rules:
           - alert: PostgreSQLDown
             expr: |
-              kube_pod_status_ready{namespace="monitor", condition="true", pod=~"monitor-postgres-[a-z0-9]+-[a-z0-9]+", pod!~".*backup.*"} == 0
+              kube_pod_status_ready{namespace="{{ .Release.Namespace }}", condition="true", pod=~"{{ include "schnappy.fullname" . }}-postgres-[a-z0-9]+-[a-z0-9]+", pod!~".*backup.*"} == 0
             for: 2m
             labels:
               severity: critical
@@ -167,7 +167,7 @@ data:
               summary: "PostgreSQL {{ "{{" }} $labels.pod {{ "}}" }} is down"
               description: "PostgreSQL pod has been not ready for more than 2 minutes."
           - alert: DatabaseConnectionPoolExhausted
-            expr: hikaricp_connections_active{job="monitor-app"} / hikaricp_connections_max{job="monitor-app"} > 0.9
+            expr: hikaricp_connections_active{job="{{ include "schnappy.monitor.serviceName" . }}"} / hikaricp_connections_max{job="{{ include "schnappy.monitor.serviceName" . }}"} > 0.9
             for: 5m
             labels:
               severity: critical
@@ -175,7 +175,7 @@ data:
               summary: "Database connection pool nearly exhausted"
               description: "HikariCP active connections are above 90% of max ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: DatabaseConnectionsPending
-            expr: hikaricp_connections_pending{job="monitor-app"} > 5
+            expr: hikaricp_connections_pending{job="{{ include "schnappy.monitor.serviceName" . }}"} > 5
             for: 5m
             labels:
               severity: warning
@@ -184,7 +184,7 @@ data:
               description: "More than 5 database connections are pending ({{ "{{" }} $value {{ "}}" }})."
           - alert: ScyllaDBDown
             expr: |
-              kube_pod_status_ready{namespace="monitor", condition="true", pod=~"monitor-scylla-\\d+$"} == 0
+              kube_pod_status_ready{namespace="{{ .Release.Namespace }}", condition="true", pod=~"{{ include "schnappy.fullname" . }}-scylla-\\d+$"} == 0
             for: 5m
             labels:
               severity: critical
@@ -218,7 +218,7 @@ data:
       - name: backups
         rules:
           - alert: PostgresBackupFailed
-            expr: kube_job_status_failed{namespace="monitor", job_name=~".*postgres-backup.*"} > 0
+            expr: kube_job_status_failed{namespace="{{ .Release.Namespace }}", job_name=~".*postgres-backup.*"} > 0
             for: 5m
             labels:
               severity: critical
@@ -226,7 +226,7 @@ data:
               summary: "PostgreSQL backup job failed"
               description: "The PostgreSQL backup CronJob has failed."
           - alert: PostgresBackupMissed
-            expr: time() - max(kube_job_status_completion_time{namespace="monitor", job_name=~".*postgres-backup.*"}) > 26 * 3600
+            expr: time() - max(kube_job_status_completion_time{namespace="{{ .Release.Namespace }}", job_name=~".*postgres-backup.*"}) > 26 * 3600
             for: 1h
             labels:
               severity: warning
@@ -239,7 +239,7 @@ data:
       - name: elk
         rules:
           - alert: ElasticsearchDown
-            expr: kube_pod_status_ready{namespace="monitor", condition="true", pod=~"monitor-elasticsearch-\\d+$"} == 0
+            expr: kube_pod_status_ready{namespace="{{ .Release.Namespace }}", condition="true", pod=~"{{ include "schnappy.fullname" . }}-elasticsearch-\\d+$"} == 0
             for: 5m
             labels:
               severity: critical
@@ -247,7 +247,7 @@ data:
               summary: "Elasticsearch {{ "{{" }} $labels.pod {{ "}}" }} is down"
               description: "Elasticsearch pod has been not ready for more than 5 minutes."
           - alert: FluentbitDown
-            expr: kube_pod_status_ready{namespace="monitor", condition="true", pod=~"monitor-fluentbit-.*"} == 0
+            expr: kube_pod_status_ready{namespace="{{ .Release.Namespace }}", condition="true", pod=~"{{ include "schnappy.fullname" . }}-fluentbit-.*"} == 0
             for: 10m
             labels:
               severity: warning
@@ -255,7 +255,7 @@ data:
               summary: "Fluent-bit {{ "{{" }} $labels.pod {{ "}}" }} is down"
               description: "Fluent-bit pod has been not ready for more than 10 minutes."
           - alert: KibanaDown
-            expr: kube_pod_status_ready{namespace="monitor", condition="true", pod=~"monitor-kibana-.*"} == 0
+            expr: kube_pod_status_ready{namespace="{{ .Release.Namespace }}", condition="true", pod=~"{{ include "schnappy.fullname" . }}-kibana-.*"} == 0
             for: 10m
             labels:
               severity: warning

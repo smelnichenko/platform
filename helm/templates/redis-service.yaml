@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.redis.serviceName" . }}
+  name: {{ include "schnappy.redis.serviceName" . }}
   labels:
-    {{- include "monitor.redis.labels" . | nindent 4 }}
+    {{- include "schnappy.redis.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: redis
   selector:
-    {{- include "monitor.redis.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.redis.selectorLabels" . | nindent 4 }}
 {{- end }}

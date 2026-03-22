@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.fullname" . }}-apt-cache
+  name: {{ include "schnappy.fullname" . }}-apt-cache
   labels:
-    {{- include "monitor.aptCache.labels" . | nindent 4 }}
+    {{- include "schnappy.aptCache.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: apt-cache
   selector:
-    {{- include "monitor.aptCache.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.aptCache.selectorLabels" . | nindent 4 }}
 {{- end }}

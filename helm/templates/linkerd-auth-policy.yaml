@@ -6,24 +6,24 @@
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.app.serviceName" . }}
+  name: {{ include "schnappy.monitor.serviceName" . }}
   labels:
-    {{- include "monitor.app.labels" . | nindent 4 }}
+    {{- include "schnappy.monitor.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.app.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.monitor.selectorLabels" . | nindent 6 }}
   port: 8080
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.app.serviceName" . }}-allow
+  name: {{ include "schnappy.monitor.serviceName" . }}-allow
   labels:
-    {{- include "monitor.app.labels" . | nindent 4 }}
+    {{- include "schnappy.monitor.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.app.serviceName" . }}
+    name: {{ include "schnappy.monitor.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:
@@ -43,24 +43,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.admin.serviceName" . }}
+  name: {{ include "schnappy.admin.serviceName" . }}
   labels:
-    {{- include "monitor.admin.labels" . | nindent 4 }}
+    {{- include "schnappy.admin.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.admin.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.admin.selectorLabels" . | nindent 6 }}
   port: 8080
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.admin.serviceName" . }}-allow
+  name: {{ include "schnappy.admin.serviceName" . }}-allow
   labels:
-    {{- include "monitor.admin.labels" . | nindent 4 }}
+    {{- include "schnappy.admin.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.admin.serviceName" . }}
+    name: {{ include "schnappy.admin.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:
@@ -76,24 +76,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.chat.serviceName" . }}
+  name: {{ include "schnappy.chat.serviceName" . }}
   labels:
-    {{- include "monitor.chat.labels" . | nindent 4 }}
+    {{- include "schnappy.chat.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.chat.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.chat.selectorLabels" . | nindent 6 }}
   port: 8080
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.chat.serviceName" . }}-allow
+  name: {{ include "schnappy.chat.serviceName" . }}-allow
   labels:
-    {{- include "monitor.chat.labels" . | nindent 4 }}
+    {{- include "schnappy.chat.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.chat.serviceName" . }}
+    name: {{ include "schnappy.chat.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:
@@ -109,24 +109,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.chess.serviceName" . }}
+  name: {{ include "schnappy.chess.serviceName" . }}
   labels:
-    {{- include "monitor.chess.labels" . | nindent 4 }}
+    {{- include "schnappy.chess.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.chess.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.chess.selectorLabels" . | nindent 6 }}
   port: 8080
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.chess.serviceName" . }}-allow
+  name: {{ include "schnappy.chess.serviceName" . }}-allow
   labels:
-    {{- include "monitor.chess.labels" . | nindent 4 }}
+    {{- include "schnappy.chess.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.chess.serviceName" . }}
+    name: {{ include "schnappy.chess.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:
@@ -142,24 +142,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.gateway.serviceName" . }}
+  name: {{ include "schnappy.gateway.serviceName" . }}
   labels:
-    {{- include "monitor.gateway.labels" . | nindent 4 }}
+    {{- include "schnappy.gateway.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.gateway.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.gateway.selectorLabels" . | nindent 6 }}
   port: 8080
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.gateway.serviceName" . }}-allow
+  name: {{ include "schnappy.gateway.serviceName" . }}-allow
   labels:
-    {{- include "monitor.gateway.labels" . | nindent 4 }}
+    {{- include "schnappy.gateway.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.gateway.serviceName" . }}
+    name: {{ include "schnappy.gateway.serviceName" . }}
   client:
     # Traefik is not meshed — allow unauthenticated for ingress traffic
     unauthenticated: true
@@ -170,24 +170,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.redis.serviceName" . }}
+  name: {{ include "schnappy.redis.serviceName" . }}
   labels:
-    {{- include "monitor.redis.labels" . | nindent 4 }}
+    {{- include "schnappy.redis.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.redis.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.redis.selectorLabels" . | nindent 6 }}
   port: 6379
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.redis.serviceName" . }}-allow
+  name: {{ include "schnappy.redis.serviceName" . }}-allow
   labels:
-    {{- include "monitor.redis.labels" . | nindent 4 }}
+    {{- include "schnappy.redis.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.redis.serviceName" . }}
+    name: {{ include "schnappy.redis.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:
@@ -200,24 +200,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.postgres.serviceName" . }}
+  name: {{ include "schnappy.postgres.serviceName" . }}
   labels:
-    {{- include "monitor.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.postgres.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.postgres.selectorLabels" . | nindent 6 }}
   port: 5432
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.postgres.serviceName" . }}-allow
+  name: {{ include "schnappy.postgres.serviceName" . }}-allow
   labels:
-    {{- include "monitor.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.postgres.serviceName" . }}
+    name: {{ include "schnappy.postgres.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:
@@ -229,24 +229,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.kafka.serviceName" . }}
+  name: {{ include "schnappy.kafka.serviceName" . }}
   labels:
-    {{- include "monitor.kafka.labels" . | nindent 4 }}
+    {{- include "schnappy.kafka.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.kafka.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.kafka.selectorLabels" . | nindent 6 }}
   port: 9092
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.kafka.serviceName" . }}-allow
+  name: {{ include "schnappy.kafka.serviceName" . }}-allow
   labels:
-    {{- include "monitor.kafka.labels" . | nindent 4 }}
+    {{- include "schnappy.kafka.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.kafka.serviceName" . }}
+    name: {{ include "schnappy.kafka.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:
@@ -257,24 +257,24 @@ spec:
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
-  name: {{ include "monitor.scylla.serviceName" . }}
+  name: {{ include "schnappy.scylla.serviceName" . }}
   labels:
-    {{- include "monitor.scylla.labels" . | nindent 4 }}
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "monitor.scylla.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.scylla.selectorLabels" . | nindent 6 }}
   port: 9042
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: ServerAuthorization
 metadata:
-  name: {{ include "monitor.scylla.serviceName" . }}-allow
+  name: {{ include "schnappy.scylla.serviceName" . }}-allow
   labels:
-    {{- include "monitor.scylla.labels" . | nindent 4 }}
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   server:
-    name: {{ include "monitor.scylla.serviceName" . }}
+    name: {{ include "schnappy.scylla.serviceName" . }}
   client:
     meshTLS:
       serviceAccounts:

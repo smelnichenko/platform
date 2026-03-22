@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "monitor.site.serviceName" . }}
+  name: {{ include "schnappy.site.serviceName" . }}
   labels:
-    {{- include "monitor.site.labels" . | nindent 4 }}
+    {{- include "schnappy.site.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.site.service.type }}
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "monitor.site.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.site.selectorLabels" . | nindent 4 }}
 {{- end }}
