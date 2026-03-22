@@ -61,8 +61,8 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.keycloak.secretName" . }}
                   key: KEYCLOAK_ADMIN_PASSWORD
-            - name: KC_SPI_THEME_DEFAULT
-              value: schnappy
+            - name: KC_SPI_THEME_WELCOME_THEME
+              value: keycloak
           ports:
             - containerPort: 8080
               name: http
