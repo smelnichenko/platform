@@ -1,40 +1,48 @@
 /* Schnappy Keycloak Theme */
 
-/* Background */
-.login-pf body {
-  background: #1a1a2e;
-  background-image: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+/* Background - override default pattern */
+body.login-pf {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+  background-size: cover !important;
+}
+
+.login-pf-page {
+  background: transparent !important;
 }
 
 /* Card */
-#kc-form-wrapper,
 .card-pf {
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  border: none !important;
 }
 
-/* Header / Title */
+/* Header / Realm name */
+.login-pf-page-header #kc-header-wrapper,
 #kc-header-wrapper {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 1.8rem;
-  font-weight: 300;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #e0e0e0;
-  padding-bottom: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 1.8rem !important;
+  font-weight: 300 !important;
+  letter-spacing: 0.15em !important;
+  text-transform: uppercase !important;
+  color: #e0e0e0 !important;
+  padding-bottom: 20px !important;
 }
 
 /* Primary button */
+input[type="submit"].pf-c-button--primary,
+.pf-c-button.pf-m-primary,
 #kc-login,
 .btn-primary {
   background-color: #2563eb !important;
   border-color: #2563eb !important;
-  border-radius: 6px;
-  font-weight: 500;
-  padding: 10px 16px;
-  transition: background-color 0.2s;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  padding: 10px 16px !important;
 }
 
+input[type="submit"].pf-c-button--primary:hover,
+.pf-c-button.pf-m-primary:hover,
 #kc-login:hover,
 .btn-primary:hover {
   background-color: #1d4ed8 !important;
@@ -42,35 +50,47 @@
 }
 
 /* Links */
-#kc-registration a,
-#kc-form-options a,
-.login-pf a {
-  color: #2563eb;
+a {
+  color: #2563eb !important;
+}
+
+.card-pf a:hover {
+  color: #1d4ed8 !important;
 }
 
 /* Input fields */
-.login-pf input[type="text"],
-.login-pf input[type="password"],
-.login-pf input[type="email"] {
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  padding: 10px 12px;
+.pf-c-form-control,
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+  border-radius: 6px !important;
+  border: 1px solid #d1d5db !important;
+  padding: 10px 12px !important;
 }
 
-.login-pf input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+.pf-c-form-control:focus,
+input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
 }
 
 /* Error messages */
-.alert-error {
-  border-radius: 6px;
-  background-color: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+.alert-error,
+.pf-m-danger {
+  border-radius: 6px !important;
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #991b1b !important;
 }
 
-/* Footer - hide powered by */
+/* Hide "powered by Keycloak" */
 #kc-info-wrapper {
-  display: none;
+  display: none !important;
+}
+
+/* Login form header */
+.login-pf-header h1,
+#kc-page-title {
+  font-weight: 400 !important;
+  color: #333 !important;
 }
