@@ -63,8 +63,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.keycloak.secretName" . }}
                   key: KEYCLOAK_ADMIN_PASSWORD
-            - name: KC_BOOTSTRAP_ADMIN_CLIENT_ID
-              value: admin-cli
             - name: KC_SPI_THEME_WELCOME_THEME
               value: keycloak
             - name: KC_SPI_THEME_DEFAULT
