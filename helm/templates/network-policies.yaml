@@ -584,6 +584,7 @@ spec:
           port: 53
 {{- end }}
 {{- if .Values.postgres.enabled }}
+---
 # PostgreSQL network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
