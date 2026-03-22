@@ -82,6 +82,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.auth.secretName" . }}
                   key: JWT_SECRET
+            {{- if eq (.Values.keycloak.enabled | toString) "true" }}
+            - name: JWKS_URI
+              value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080/realms/schnappy/protocol/openid-connect/certs"
+            {{- end }}
             - name: CORS_ALLOWED_ORIGINS
               value: {{ .Values.gateway.cors.allowedOrigins | default "*" | quote }}
           resources:
