@@ -27,8 +27,11 @@ spec:
       containers:
         - name: keycloak
           image: {{ .Values.keycloak.image }}
+          command: ["/bin/sh", "-c"]
           args:
-            - start
+            - |
+              /opt/keycloak/bin/kc.sh import --dir /opt/keycloak/data/import --override realm
+              exec /opt/keycloak/bin/kc.sh start
           env:
             - name: KC_DB
               value: postgres
@@ -63,6 +66,13 @@ spec:
                   key: KEYCLOAK_ADMIN_PASSWORD
             - name: KC_SPI_THEME_WELCOME_THEME
               value: keycloak
+            - name: KC_SPI_THEME_DEFAULT
+              value: schnappy
+            - name: KC_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.mail.secretName" . }}
+                  key: MAIL_PASSWORD
           ports:
             - containerPort: 8080
               name: http
@@ -90,4 +100,12 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+      volumes:
+        - name: realm-config
+          configMap:
+            name: {{ include "schnappy.keycloak.serviceName" . }}-realm
 {{- end }}

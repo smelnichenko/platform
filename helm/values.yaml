@@ -514,6 +514,9 @@ keycloak:
   dbPassword: ""
   existingSecret: ""
   hostname: auth.pmon.dev
+  mail:
+    from: ""
+    fromDisplayName: schnappy
   resources:
     requests:
       cpu: "500m"

@@ -1,0 +1,37 @@
+{{- if eq (.Values.keycloak.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.keycloak.serviceName" . }}-realm
+  labels:
+    {{- include "schnappy.keycloak.labels" . | nindent 4 }}
+data:
+  schnappy-realm.json: |
+    {
+      "realm": "schnappy",
+      "enabled": true,
+      "resetPasswordAllowed": true,
+      "loginTheme": "schnappy",
+      "displayName": "schnappy",
+      "displayNameHtml": "<span style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:300;letter-spacing:0.15em;text-transform:uppercase;color:#a0a0a0;font-size:1.8rem\">schnappy</span>",
+      "smtpServer": {
+        "host": {{ .Values.mail.host | quote }},
+        "port": {{ .Values.mail.port | default "587" | quote }},
+        "from": {{ .Values.keycloak.mail.from | default .Values.mail.fromAddress | quote }},
+        "fromDisplayName": {{ .Values.keycloak.mail.fromDisplayName | default "schnappy" | quote }},
+        "replyTo": "",
+        "auth": "true",
+        "user": {{ .Values.mail.username | default "resend" | quote }},
+        "password": "${env.KC_SMTP_PASSWORD}",
+        "ssl": "false",
+        "starttls": "true"
+      }
+    }
+  master-realm.json: |
+    {
+      "realm": "master",
+      "loginTheme": "schnappy",
+      "displayName": "schnappy",
+      "displayNameHtml": "<span style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:300;letter-spacing:0.15em;text-transform:uppercase;color:#a0a0a0;font-size:1.8rem\">schnappy</span>"
+    }
+{{- end }}
