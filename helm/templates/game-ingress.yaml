@@ -6,7 +6,6 @@ metadata:
   labels:
     {{- include "schnappy.game-scp.labels" . | nindent 4 }}
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-{{ include "schnappy.fullname" . }}-game-strip@kubernetescrd
     {{- if and .Values.app.ingress.tls .Values.app.ingress.tls.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.app.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
     {{- end }}
