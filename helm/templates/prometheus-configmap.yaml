@@ -25,7 +25,7 @@ data:
         static_configs:
           - targets: ['localhost:9090']
 
-      - job_name: '{{ include "schnappy.monitor.serviceName" . }}'
+      - job_name: 'schnappy-app'
         metrics_path: '/api/actuator/prometheus'
         static_configs:
           - targets: ['{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}']

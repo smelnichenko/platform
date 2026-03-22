@@ -60,8 +60,8 @@ data:
         rules:
           - alert: JvmMemoryHigh
             expr: |
-              sum(jvm_memory_used_bytes{job="{{ include "schnappy.monitor.serviceName" . }}"})
-              / sum(jvm_memory_max_bytes{job="{{ include "schnappy.monitor.serviceName" . }}"})
+              sum(jvm_memory_used_bytes{job="schnappy-app"})
+              / sum(jvm_memory_max_bytes{job="schnappy-app"})
               > 0.85
             for: 10m
             labels:
@@ -70,7 +70,7 @@ data:
               summary: "JVM memory usage high"
               description: "JVM memory usage is above 85% of max ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: ProcessCPUHigh
-            expr: process_cpu_usage{job="{{ include "schnappy.monitor.serviceName" . }}"} > 0.9
+            expr: process_cpu_usage{job="schnappy-app"} > 0.9
             for: 15m
             labels:
               severity: warning
@@ -99,7 +99,7 @@ data:
       - name: application
         rules:
           - alert: HighHTTPErrorRate
-            expr: sum(rate(http_server_requests_seconds_count{job="{{ include "schnappy.monitor.serviceName" . }}", status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="{{ include "schnappy.monitor.serviceName" . }}"}[5m])) > 0.05
+            expr: sum(rate(http_server_requests_seconds_count{job="schnappy-app", status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="schnappy-app"}[5m])) > 0.05
             for: 5m
             labels:
               severity: critical
@@ -107,7 +107,7 @@ data:
               summary: "High HTTP 5xx error rate"
               description: "More than 5% of HTTP requests are returning 5xx errors ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: HighRequestLatency
-            expr: http_server_requests_seconds_max{job="{{ include "schnappy.monitor.serviceName" . }}"} > 5
+            expr: http_server_requests_seconds_max{job="schnappy-app"} > 5
             for: 10m
             labels:
               severity: warning
@@ -115,7 +115,7 @@ data:
               summary: "High request latency (max > 5s)"
               description: "Maximum request latency is above 5 seconds."
           - alert: AppDown
-            expr: up{job="{{ include "schnappy.monitor.serviceName" . }}"} == 0
+            expr: up{job="schnappy-app"} == 0
             for: 2m
             labels:
               severity: critical
@@ -123,7 +123,7 @@ data:
               summary: "Monitor app is down"
               description: "The monitor application has been unreachable for more than 2 minutes."
           - alert: HikariPoolExhausted
-            expr: hikaricp_connections_active{job="{{ include "schnappy.monitor.serviceName" . }}"} / hikaricp_connections_max{job="{{ include "schnappy.monitor.serviceName" . }}"} > 0.8
+            expr: hikaricp_connections_active{job="schnappy-app"} / hikaricp_connections_max{job="schnappy-app"} > 0.8
             for: 5m
             labels:
               severity: warning
@@ -131,7 +131,7 @@ data:
               summary: "HikariCP connection pool nearly exhausted"
               description: "HikariCP active connections are above 80% of max ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: JVMHeapHigh
-            expr: jvm_memory_used_bytes{job="{{ include "schnappy.monitor.serviceName" . }}", area="heap"} / jvm_memory_max_bytes{job="{{ include "schnappy.monitor.serviceName" . }}", area="heap"} > 0.85
+            expr: jvm_memory_used_bytes{job="schnappy-app", area="heap"} / jvm_memory_max_bytes{job="schnappy-app", area="heap"} > 0.85
             for: 10m
             labels:
               severity: warning
@@ -167,7 +167,7 @@ data:
               summary: "PostgreSQL {{ "{{" }} $labels.pod {{ "}}" }} is down"
               description: "PostgreSQL pod has been not ready for more than 2 minutes."
           - alert: DatabaseConnectionPoolExhausted
-            expr: hikaricp_connections_active{job="{{ include "schnappy.monitor.serviceName" . }}"} / hikaricp_connections_max{job="{{ include "schnappy.monitor.serviceName" . }}"} > 0.9
+            expr: hikaricp_connections_active{job="schnappy-app"} / hikaricp_connections_max{job="schnappy-app"} > 0.9
             for: 5m
             labels:
               severity: critical
@@ -175,7 +175,7 @@ data:
               summary: "Database connection pool nearly exhausted"
               description: "HikariCP active connections are above 90% of max ({{ "{{" }} $value | humanizePercentage {{ "}}" }})."
           - alert: DatabaseConnectionsPending
-            expr: hikaricp_connections_pending{job="{{ include "schnappy.monitor.serviceName" . }}"} > 5
+            expr: hikaricp_connections_pending{job="schnappy-app"} > 5
             for: 5m
             labels:
               severity: warning
