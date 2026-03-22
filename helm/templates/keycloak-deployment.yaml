@@ -29,7 +29,6 @@ spec:
           image: {{ .Values.keycloak.image }}
           args:
             - start
-            - --optimized
           env:
             - name: KC_DB
               value: postgres
