@@ -90,24 +90,4 @@ spec:
             capabilities:
               drop:
                 - ALL
-          volumeMounts:
-            - name: theme-properties
-              mountPath: /opt/keycloak/themes/schnappy/login/theme.properties
-              subPath: theme.properties
-            - name: theme-css
-              mountPath: /opt/keycloak/themes/schnappy/login/resources/css/schnappy.css
-              subPath: schnappy.css
-      volumes:
-        - name: theme-properties
-          configMap:
-            name: {{ include "schnappy.fullname" . }}-keycloak-theme
-            items:
-              - key: theme.properties
-                path: theme.properties
-        - name: theme-css
-          configMap:
-            name: {{ include "schnappy.fullname" . }}-keycloak-theme
-            items:
-              - key: schnappy.css
-                path: schnappy.css
 {{- end }}
