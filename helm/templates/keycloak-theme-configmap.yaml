@@ -1,0 +1,15 @@
+{{- if eq (.Values.keycloak.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-keycloak-theme
+  labels:
+    {{- include "schnappy.keycloak.labels" . | nindent 4 }}
+data:
+  theme.properties: |
+    parent=keycloak
+    import=common/keycloak
+    styles=css/login.css css/schnappy.css
+  schnappy.css: |
+{{ .Files.Get "keycloak-theme/login/resources/css/schnappy.css" | indent 4 }}
+{{- end }}
