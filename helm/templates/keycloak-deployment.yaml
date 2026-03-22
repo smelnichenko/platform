@@ -42,8 +42,8 @@ spec:
             - name: KC_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.keycloak.secretName" . }}
-                  key: KEYCLOAK_DB_PASSWORD
+                  name: {{ include "schnappy.postgres.secretName" . }}
+                  key: POSTGRES_PASSWORD
             - name: KC_HOSTNAME
               value: {{ .Values.keycloak.hostname | quote }}
             - name: KC_PROXY_HEADERS
