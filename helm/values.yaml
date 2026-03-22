@@ -504,6 +504,9 @@ sonarqube:
   postgresStorage:
     size: 5Gi
     storageClass: ""
+  setup:
+    enabled: true                # Auto-configure SQ on deploy
+    projects: []                 # List of {key, name, gate} — populated in helmrelease
 
 # ELK Stack (Elasticsearch + Kibana + Fluent-bit)
 elk:
