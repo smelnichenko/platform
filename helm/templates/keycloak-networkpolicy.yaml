@@ -50,6 +50,16 @@ spec:
         - protocol: TCP
           port: 8080
     {{- end }}
+    {{- if eq (.Values.grafana.enabled | toString) "true" }}
+    # Allow from Grafana (OAuth token exchange)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.grafana.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
   egress:
     # DNS
     - ports:
