@@ -119,7 +119,7 @@ spec:
               PROJ_EXISTS=$(sq "${SQ_URL}/api/projects/search?q={{ .key }}" | grep -c '"key":"{{ .key }}"' || true)
               if [ "$PROJ_EXISTS" = "0" ]; then
                 sq -X POST "${SQ_URL}/api/projects/create" \
-                  -d "project={{ .key }}&name={{ .name | replace " " "%20" }}" > /dev/null
+                  -d "project={{ .key }}&name={{ .name | replace " " "%20" }}&visibility=private" > /dev/null
                 echo "Created project: {{ .key }}"
               else
                 echo "Project exists: {{ .key }}"
