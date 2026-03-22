@@ -635,6 +635,15 @@ spec:
         - protocol: TCP
           port: 5432
     {{- end }}
+    {{- if eq (.Values.keycloak.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
   egress:
     # DNS
     - ports:
