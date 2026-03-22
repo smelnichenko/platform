@@ -550,19 +550,20 @@ spec:
           port: 8080
 ---
 {{- end }}
-{{- if .Values.game.enabled }}
+{{- range .Values.games }}
 ---
-# Game network policy
+# {{ .name }} network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-game
+  name: {{ include "schnappy.fullname" $ }}-{{ .name }}
   labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "schnappy.game-scp.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ .name }}
   policyTypes:
     - Ingress
     - Egress

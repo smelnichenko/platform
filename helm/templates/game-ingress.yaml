@@ -1,33 +1,38 @@
-{{- if and .Values.game.enabled .Values.app.ingress.enabled -}}
+{{- $root := . -}}
+{{- if and .Values.games .Values.app.ingress.enabled -}}
+{{- range .Values.games }}
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "schnappy.fullname" . }}-game
+  name: {{ include "schnappy.fullname" $root }}-{{ .name }}
   labels:
-    {{- include "schnappy.game-scp.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ .name }}
   annotations:
-    {{- if and .Values.app.ingress.tls .Values.app.ingress.tls.enabled }}
-    cert-manager.io/cluster-issuer: {{ .Values.app.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
+    {{- if and $root.Values.app.ingress.tls $root.Values.app.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ $root.Values.app.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
     {{- end }}
 spec:
-  {{- if .Values.app.ingress.className }}
-  ingressClassName: {{ .Values.app.ingress.className }}
+  {{- if $root.Values.app.ingress.className }}
+  ingressClassName: {{ $root.Values.app.ingress.className }}
   {{- end }}
   rules:
-    - host: {{ .Values.app.ingress.host }}
+    - host: {{ $root.Values.app.ingress.host }}
       http:
         paths:
-          - path: /game
+          - path: /{{ .name }}
             pathType: Prefix
             backend:
               service:
-                name: {{ include "schnappy.game-scp.serviceName" . }}
+                name: {{ include "schnappy.fullname" $root }}-{{ .name }}
                 port:
-                  number: {{ .Values.game.service.port }}
-  {{- if and .Values.app.ingress.tls .Values.app.ingress.tls.enabled }}
+                  number: {{ .port | default $root.Values.gameDefaults.port }}
+  {{- if and $root.Values.app.ingress.tls $root.Values.app.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.app.ingress.host }}
-      secretName: {{ .Values.app.ingress.tls.secretName | default (printf "%s-tls" (include "schnappy.fullname" .)) }}
+        - {{ $root.Values.app.ingress.host }}
+      secretName: {{ $root.Values.app.ingress.tls.secretName | default (printf "%s-tls" (include "schnappy.fullname" $root)) }}
   {{- end }}
+{{- end }}
 {{- end }}

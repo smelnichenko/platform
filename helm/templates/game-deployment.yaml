@@ -1,24 +1,29 @@
-{{- if .Values.game.enabled -}}
+{{- $root := . -}}
+{{- range .Values.games }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "schnappy.game-scp.serviceName" . }}
+  name: {{ include "schnappy.fullname" $root }}-{{ .name }}
   labels:
-    {{- include "schnappy.game-scp.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ .name }}
 spec:
-  replicas: {{ .Values.game.replicas }}
+  replicas: {{ .replicas | default $root.Values.gameDefaults.replicas }}
   selector:
     matchLabels:
-      {{- include "schnappy.game-scp.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.selectorLabels" $root | nindent 6 }}
+      app.kubernetes.io/component: {{ .name }}
   template:
     metadata:
       labels:
-        {{- include "schnappy.game-scp.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.selectorLabels" $root | nindent 8 }}
+        app.kubernetes.io/component: {{ .name }}
     spec:
       containers:
         - name: game
-          image: "{{ .Values.game.image.repository }}:{{ .Values.game.image.tag }}"
-          imagePullPolicy: {{ .Values.game.image.pullPolicy }}
+          image: "{{ .image.repository }}:{{ .image.tag }}"
+          imagePullPolicy: {{ .image.pullPolicy | default $root.Values.gameDefaults.pullPolicy }}
           ports:
             - containerPort: 8080
           readinessProbe:
@@ -34,7 +39,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
-            {{- toYaml .Values.game.resources | nindent 12 }}
+            {{- toYaml .resources | nindent 12 }}
           securityContext:
             readOnlyRootFilesystem: true
             runAsNonRoot: true

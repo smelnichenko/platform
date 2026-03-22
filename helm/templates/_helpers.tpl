@@ -657,25 +657,4 @@ kube-state-metrics service name
 {{- printf "%s-kube-state-metrics" (include "schnappy.fullname" .) }}
 {{- end }}
 
-{{/*
-Game labels
-*/}}
-{{- define "schnappy.game-scp.labels" -}}
-{{ include "schnappy.labels" . }}
-app.kubernetes.io/component: game
-{{- end }}
-
-{{/*
-Game selector labels
-*/}}
-{{- define "schnappy.game-scp.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: game
-{{- end }}
-
-{{/*
-Game service name
-*/}}
-{{- define "schnappy.game-scp.serviceName" -}}
-{{- printf "%s-game-scp" (include "schnappy.fullname" .) }}
-{{- end }}
+{{/* Game helpers removed — games are now data-driven via .Values.games list */}}

@@ -1,17 +1,21 @@
-{{- if .Values.game.enabled -}}
+{{- $root := . -}}
+{{- range .Values.games }}
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "schnappy.game-scp.serviceName" . }}
+  name: {{ include "schnappy.fullname" $root }}-{{ .name }}
   labels:
-    {{- include "schnappy.game-scp.labels" . | nindent 4 }}
+    {{- include "schnappy.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ .name }}
 spec:
-  type: {{ .Values.game.service.type }}
+  type: ClusterIP
   ports:
-    - port: {{ .Values.game.service.port }}
+    - port: {{ .port | default $root.Values.gameDefaults.port }}
       targetPort: 8080
       protocol: TCP
       name: http
   selector:
-    {{- include "schnappy.game-scp.selectorLabels" . | nindent 4 }}
+    {{- include "schnappy.selectorLabels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ .name }}
 {{- end }}
