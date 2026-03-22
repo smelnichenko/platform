@@ -30,8 +30,7 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              /opt/keycloak/bin/kc.sh import --dir /opt/keycloak/data/import --override true --db postgres --db-url "jdbc:postgresql://{{ include "schnappy.postgres.serviceName" . }}:5432/keycloak"
-              exec /opt/keycloak/bin/kc.sh start
+              exec /opt/keycloak/bin/kc.sh start --import-realm
           env:
             - name: KC_DB
               value: postgres

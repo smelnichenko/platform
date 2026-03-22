@@ -30,6 +30,7 @@ data:
   master-realm.json: |
     {
       "realm": "master",
+      "enabled": true,
       "loginTheme": "schnappy",
       "displayName": "schnappy",
       "displayNameHtml": "<span style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:300;letter-spacing:0.15em;text-transform:uppercase;color:#a0a0a0;font-size:1.8rem\">schnappy</span>"
