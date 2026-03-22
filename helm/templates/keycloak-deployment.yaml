@@ -84,18 +84,8 @@ spec:
             {{- toYaml .Values.keycloak.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-            - name: data
-              mountPath: /opt/keycloak/data
-      volumes:
-        - name: tmp
-          emptyDir: {}
-        - name: data
-          emptyDir: {}
 {{- end }}
