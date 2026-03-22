@@ -118,6 +118,14 @@ spec:
             - name: CAPTCHA_ENABLED
               value: "true"
             {{- end }}
+            {{- if eq (.Values.keycloak.enabled | toString) "true" }}
+            - name: KEYCLOAK_ENABLED
+              value: "true"
+            - name: KEYCLOAK_TOKEN_URL
+              value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080/realms/schnappy/protocol/openid-connect/token"
+            - name: KEYCLOAK_CLIENT_ID
+              value: "app"
+            {{- end }}
           resources:
             {{- toYaml .Values.admin.resources | nindent 12 }}
           livenessProbe:

@@ -337,6 +337,16 @@ spec:
           port: 443
         - protocol: TCP
           port: 587
+    {{- if eq (.Values.keycloak.enabled | toString) "true" }}
+    # Admin → Keycloak (OIDC token exchange)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
 {{- end }}
 ---
 {{- if eq (.Values.chessService.enabled | toString) "true" }}
