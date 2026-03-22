@@ -1377,7 +1377,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      {{- include "schnappy.sonarqube.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: sonarqube-setup
   policyTypes:
     - Ingress
