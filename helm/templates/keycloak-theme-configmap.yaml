@@ -13,12 +13,16 @@ data:
     locales=en
   schnappy.css: |
     /* Schnappy Keycloak Theme */
-    body.login-pf {
+    html body.login-pf {
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+      background-image: none !important;
       background-size: cover !important;
+      min-height: 100vh;
     }
-    .login-pf-page {
-      background: transparent !important;
+    .login-pf-page,
+    .login-pf body {
+      background: none !important;
+      background-image: none !important;
     }
     .card-pf {
       border-radius: 12px !important;
