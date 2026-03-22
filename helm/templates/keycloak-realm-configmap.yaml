@@ -42,7 +42,7 @@ data:
           "credentials": [
             {
               "type": "password",
-              "value": "${env.KC_BOOTSTRAP_ADMIN_PASSWORD}",
+              "value": "${env.KC_ADMIN_PASSWORD}",
               "temporary": false
             }
           ],
