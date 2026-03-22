@@ -1,0 +1,81 @@
+{{- if and .Values.networkPolicies.enabled (eq (.Values.keycloak.enabled | toString) "true") }}
+# Keycloak network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-keycloak
+  labels:
+    {{- include "schnappy.keycloak.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.keycloak.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller (Traefik)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from app pods (token exchange / validation)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    # Allow from API gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    {{- if eq (.Values.admin.enabled | toString) "true" }}
+    # Allow from admin service
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Keycloak → PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # External HTTPS (SMTP for emails, OIDC providers)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 587
+{{- end }}

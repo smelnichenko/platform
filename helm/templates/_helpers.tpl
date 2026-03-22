@@ -657,4 +657,38 @@ kube-state-metrics service name
 {{- printf "%s-kube-state-metrics" (include "schnappy.fullname" .) }}
 {{- end }}
 
+{{/*
+Keycloak labels
+*/}}
+{{- define "schnappy.keycloak.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: keycloak
+{{- end }}
+
+{{/*
+Keycloak selector labels
+*/}}
+{{- define "schnappy.keycloak.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: keycloak
+{{- end }}
+
+{{/*
+Keycloak service name
+*/}}
+{{- define "schnappy.keycloak.serviceName" -}}
+{{- printf "%s-keycloak" (include "schnappy.fullname" .) }}
+{{- end }}
+
+{{/*
+Keycloak secret name
+*/}}
+{{- define "schnappy.keycloak.secretName" -}}
+{{- if .Values.keycloak.existingSecret }}
+{{- .Values.keycloak.existingSecret }}
+{{- else }}
+{{- printf "%s-keycloak" (include "schnappy.fullname" .) }}
+{{- end }}
+{{- end }}
+
 {{/* Game helpers removed — games are now data-driven via .Values.games list */}}

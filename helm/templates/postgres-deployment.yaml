@@ -56,6 +56,10 @@ spec:
                 psql -U "$POSTGRES_USER" -d template1 -c "SELECT 1 FROM pg_database WHERE datname = 'monitor_chess'" | grep -q 1 || \
                   psql -U "$POSTGRES_USER" -d template1 -c "CREATE DATABASE monitor_chess;"
                 {{- end }}
+                {{- if eq (.Values.keycloak.enabled | toString) "true" }}
+                psql -U "$POSTGRES_USER" -d template1 -c "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1 || \
+                  psql -U "$POSTGRES_USER" -d template1 -c "CREATE DATABASE keycloak;"
+                {{- end }}
                 pg_ctl -D /var/lib/postgresql/data/pgdata -w stop
               else
                 echo "Database already initialized"

@@ -505,6 +505,31 @@ sonarqube:
     enabled: true                # Auto-configure SQ on deploy
     projects: []                 # List of {key, name, gate} — populated in helmrelease
 
+# Keycloak (Identity and Access Management)
+keycloak:
+  enabled: false
+  image: quay.io/keycloak/keycloak:26.5.6
+  adminUser: admin
+  adminPassword: ""
+  dbPassword: ""
+  existingSecret: ""
+  hostname: auth.pmon.dev
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "1Gi"
+  ingress:
+    enabled: false
+    className: traefik
+    host: auth.pmon.dev
+    tls:
+      enabled: false
+      clusterIssuer: letsencrypt-dns
+      secretName: auth-pmon-dev-tls
+
 # ELK Stack (Elasticsearch + Kibana + Fluent-bit)
 elk:
   enabled: false
