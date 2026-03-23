@@ -243,6 +243,16 @@ spec:
         - protocol: TCP
           port: 8080
     {{- end }}
+    # Gateway → Keycloak (JWKS token validation + ensure-user)
+    {{- if eq (.Values.keycloak.enabled | toString) "true" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
     # Gateway → Redis (rate limiting)
     {{- if .Values.redis.enabled }}
     - to:
