@@ -62,13 +62,6 @@ spec:
               value: {{ .Values.app.gitHash | default "unknown" | quote }}
             - name: BUILD_TIME
               value: {{ .Values.app.buildTime | default "" | quote }}
-            {{- if or .Values.auth.jwtSecret .Values.auth.existingSecret }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.auth.secretName" . }}
-                  key: JWT_SECRET
-            {{- end }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}
             - name: REDIS_PASSWORD
               valueFrom:

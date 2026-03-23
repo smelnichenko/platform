@@ -156,17 +156,6 @@ Grafana secret name
 {{- end }}
 
 {{/*
-Auth secret name
-*/}}
-{{- define "schnappy.auth.secretName" -}}
-{{- if .Values.auth.existingSecret }}
-{{- .Values.auth.existingSecret }}
-{{- else }}
-{{- printf "%s-auth" (include "schnappy.fullname" .) }}
-{{- end }}
-{{- end }}
-
-{{/*
 Mail secret name
 */}}
 {{- define "schnappy.mail.secretName" -}}

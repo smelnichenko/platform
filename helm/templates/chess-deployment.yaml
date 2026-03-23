@@ -65,15 +65,6 @@ spec:
                   name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.auth.secretName" . }}
-                  key: JWT_SECRET
-            - name: TOKEN_EXPIRATION
-              value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
-            - name: SECURE_COOKIES
-              value: {{ .Values.auth.secureCookies | default true | toString | quote }}
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
           resources:

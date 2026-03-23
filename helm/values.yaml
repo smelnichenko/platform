@@ -87,11 +87,9 @@ app:
 
 # Authentication
 auth:
-  jwtSecret: ""  # Required. Set via --set auth.jwtSecret=XXX
   existingSecret: ""  # Use existing secret instead of creating one
   tokenExpiration: 1h
   registrationEnabled: true
-  secureCookies: true
   registrationApproval:
     mode: ai            # ai, admin, or skip
     criteria: ""        # AI evaluation criteria (empty = default)

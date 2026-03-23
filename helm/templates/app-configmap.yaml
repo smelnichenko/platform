@@ -81,11 +81,6 @@ data:
       build-time: ${BUILD_TIME:}
 
     monitor:
-      auth:
-        jwt-secret: ${JWT_SECRET}
-        token-expiration: {{ .Values.auth.tokenExpiration | default "24h" }}
-        registration-enabled: {{ .Values.auth.registrationEnabled | default true }}
-        secure-cookies: {{ .Values.auth.secureCookies | default false }}
       enabled: {{ .Values.monitor.enabled }}
       http:
         connect-timeout: {{ .Values.monitor.http.connectTimeout }}

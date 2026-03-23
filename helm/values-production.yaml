@@ -46,9 +46,7 @@ aptCache:
     storageClass: local-path
 
 auth:
-  existingSecret: monitor-auth
   registrationEnabled: true
-  secureCookies: true
   tokenExpiration: 1h
   registrationApproval:
     mode: ai

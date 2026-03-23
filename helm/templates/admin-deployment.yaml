@@ -65,17 +65,6 @@ spec:
                   name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.auth.secretName" . }}
-                  key: JWT_SECRET
-            - name: TOKEN_EXPIRATION
-              value: {{ .Values.auth.tokenExpiration | default "1h" | quote }}
-            - name: REGISTRATION_ENABLED
-              value: {{ .Values.auth.registrationEnabled | default true | toString | quote }}
-            - name: SECURE_COOKIES
-              value: {{ .Values.auth.secureCookies | default true | toString | quote }}
             - name: REGISTRATION_APPROVAL_MODE
               value: {{ .Values.auth.registrationApproval.mode | default "ai" | quote }}
             - name: REGISTRATION_APPROVAL_CRITERIA
@@ -117,14 +106,6 @@ spec:
             {{- if eq (.Values.captcha.enabled | toString) "true" }}
             - name: CAPTCHA_ENABLED
               value: "true"
-            {{- end }}
-            {{- if eq (.Values.keycloak.enabled | toString) "true" }}
-            - name: KEYCLOAK_ENABLED
-              value: "true"
-            - name: KEYCLOAK_TOKEN_URL
-              value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080/realms/schnappy/protocol/openid-connect/token"
-            - name: KEYCLOAK_CLIENT_ID
-              value: "app"
             {{- end }}
           resources:
             {{- toYaml .Values.admin.resources | nindent 12 }}
