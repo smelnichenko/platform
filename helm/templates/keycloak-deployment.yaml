@@ -100,12 +100,38 @@ spec:
             - name: KC_METRICS_ENABLED
               value: "true"
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
-              value: {{ .Values.keycloak.adminUser | quote }}
+              value: temp-admin
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.keycloak.secretName" . }}
                   key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: KEYCLOAK_ADMIN_PASSWORD
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    # Wait for Keycloak to be ready, then replace temp admin with permanent one
+                    (for i in $(seq 1 60); do
+                      if /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user temp-admin --password "$KC_ADMIN_PASSWORD" 2>/dev/null; then
+                        # temp-admin exists and works — create permanent admin
+                        /opt/keycloak/bin/kcadm.sh create users -r master -s username={{ .Values.keycloak.adminUser }} -s enabled=true -s emailVerified=true 2>/dev/null
+                        /opt/keycloak/bin/kcadm.sh set-password -r master --username {{ .Values.keycloak.adminUser }} --new-password "$KC_ADMIN_PASSWORD" 2>/dev/null
+                        /opt/keycloak/bin/kcadm.sh add-roles -r master --uusername {{ .Values.keycloak.adminUser }} --rolename admin 2>/dev/null
+                        # Delete temp admin
+                        TEMP_ID=$(/opt/keycloak/bin/kcadm.sh get users -r master -q username=temp-admin --fields id 2>/dev/null | grep '"id"' | sed 's/.*"\([^"]*\)".*/\1/' | head -1)
+                        [ -n "$TEMP_ID" ] && /opt/keycloak/bin/kcadm.sh delete "users/$TEMP_ID" -r master 2>/dev/null
+                        exit 0
+                      fi
+                      sleep 5
+                    done) &
           ports:
             - containerPort: 8080
               name: http
