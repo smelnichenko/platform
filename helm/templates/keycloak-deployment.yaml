@@ -56,9 +56,9 @@ spec:
               value: "true"
             - name: KC_METRICS_ENABLED
               value: "true"
-            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+            - name: KEYCLOAK_ADMIN
               value: {{ .Values.keycloak.adminUser | quote }}
-            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+            - name: KEYCLOAK_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.keycloak.secretName" . }}
