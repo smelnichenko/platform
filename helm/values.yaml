@@ -517,6 +517,13 @@ keycloak:
   mail:
     from: ""
     fromDisplayName: schnappy
+  clients:
+    forgejo:
+      enabled: false
+      redirectUri: ""
+    grafana:
+      enabled: false
+      redirectUri: ""
   resources:
     requests:
       cpu: "500m"

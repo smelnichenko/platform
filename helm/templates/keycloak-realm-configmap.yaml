@@ -25,6 +25,37 @@ data:
         "password": "SMTP_PASSWORD_PLACEHOLDER",
         "ssl": "false",
         "starttls": "true"
-      }
+      },
+      "clients": [
+        {{- $clients := list }}
+        {{- if eq (.Values.keycloak.clients.forgejo.enabled | toString) "true" }}
+        {{- $clients = append $clients "forgejo" }}
+        {
+          "clientId": "forgejo",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "FORGEJO_CLIENT_SECRET_PLACEHOLDER",
+          "redirectUris": [{{ .Values.keycloak.clients.forgejo.redirectUri | quote }}],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": true,
+          "protocol": "openid-connect"
+        }
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.grafana.enabled | toString) "true" }}
+        {{- if eq (.Values.keycloak.clients.forgejo.enabled | toString) "true" }},{{ end }}
+        {
+          "clientId": "grafana",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "GRAFANA_CLIENT_SECRET_PLACEHOLDER",
+          "redirectUris": [{{ .Values.keycloak.clients.grafana.redirectUri | quote }}],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect"
+        }
+        {{- end }}
+      ]
     }
 {{- end }}

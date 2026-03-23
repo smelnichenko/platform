@@ -32,6 +32,8 @@ spec:
             - |
               for f in /realm-templates/*.json; do
                 sed -e "s|SMTP_PASSWORD_PLACEHOLDER|$KC_SMTP_PASSWORD|g" \
+                    -e "s|FORGEJO_CLIENT_SECRET_PLACEHOLDER|$FORGEJO_CLIENT_SECRET|g" \
+                    -e "s|GRAFANA_CLIENT_SECRET_PLACEHOLDER|$GRAFANA_CLIENT_SECRET|g" \
                     "$f" > "/opt/keycloak/data/import/$(basename $f)"
               done
           env:
@@ -40,6 +42,20 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.mail.secretName" . }}
                   key: MAIL_PASSWORD
+            {{- if eq (.Values.keycloak.clients.forgejo.enabled | toString) "true" }}
+            - name: FORGEJO_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: FORGEJO_CLIENT_SECRET
+            {{- end }}
+            {{- if eq (.Values.keycloak.clients.grafana.enabled | toString) "true" }}
+            - name: GRAFANA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.grafana.secretName" . }}
+                  key: oauth-client-secret
+            {{- end }}
           volumeMounts:
             - name: realm-templates
               mountPath: /realm-templates
