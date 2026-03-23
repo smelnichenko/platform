@@ -518,6 +518,9 @@ keycloak:
     from: ""
     fromDisplayName: schnappy
   clients:
+    app:
+      enabled: false
+      redirectUri: ""
     forgejo:
       enabled: false
       redirectUri: ""

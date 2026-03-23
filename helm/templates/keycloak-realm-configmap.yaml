@@ -28,9 +28,22 @@ data:
         "starttls": "true"
       },
       "clients": [
-        {{- $clients := list }}
+        {{- $comma := false }}
+        {{- if eq (.Values.keycloak.clients.app.enabled | toString) "true" }}
+        {
+          "clientId": "app",
+          "enabled": true,
+          "publicClient": true,
+          "redirectUris": [{{ .Values.keycloak.clients.app.redirectUri | quote }}],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect"
+        }
+        {{- $comma = true }}
+        {{- end }}
         {{- if eq (.Values.keycloak.clients.forgejo.enabled | toString) "true" }}
-        {{- $clients = append $clients "forgejo" }}
+        {{- if $comma }},{{ end }}
         {
           "clientId": "forgejo",
           "enabled": true,
@@ -42,9 +55,10 @@ data:
           "directAccessGrantsEnabled": true,
           "protocol": "openid-connect"
         }
+        {{- $comma = true }}
         {{- end }}
         {{- if eq (.Values.keycloak.clients.grafana.enabled | toString) "true" }}
-        {{- if eq (.Values.keycloak.clients.forgejo.enabled | toString) "true" }},{{ end }}
+        {{- if $comma }},{{ end }}
         {
           "clientId": "grafana",
           "enabled": true,
