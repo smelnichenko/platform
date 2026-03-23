@@ -15,6 +15,9 @@ data:
       "loginTheme": "schnappy",
       "displayName": "schnappy",
       "displayNameHtml": "<span style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:300;letter-spacing:0.15em;text-transform:uppercase;color:#a0a0a0;font-size:1.8rem\">schnappy</span>",
+      "accessTokenLifespan": 300,
+      "ssoSessionIdleTimeout": 1800,
+      "ssoSessionMaxLifespan": 36000,
       "smtpServer": {
         "host": {{ .Values.mail.host | quote }},
         "port": {{ .Values.mail.port | default "587" | quote }},
@@ -27,6 +30,28 @@ data:
         "ssl": "false",
         "starttls": "true"
       },
+      "roles": {
+        "realm": [
+          { "name": "PLAY", "description": "Play games" },
+          { "name": "CHAT", "description": "Chat messaging" },
+          { "name": "EMAIL", "description": "Email inbox" },
+          { "name": "METRICS", "description": "View monitors and metrics" },
+          { "name": "MANAGE_USERS", "description": "User administration" },
+          {
+            "name": "Users",
+            "description": "Default user group",
+            "composite": true,
+            "composites": { "realm": ["METRICS", "PLAY"] }
+          },
+          {
+            "name": "Admins",
+            "description": "Admin group with all permissions",
+            "composite": true,
+            "composites": { "realm": ["PLAY", "CHAT", "EMAIL", "METRICS", "MANAGE_USERS"] }
+          }
+        ]
+      },
+      "defaultRoles": ["Users"],
       "clients": [
         {{- $comma := false }}
         {{- if eq (.Values.keycloak.clients.app.enabled | toString) "true" }}
@@ -37,8 +62,11 @@ data:
           "redirectUris": [{{ .Values.keycloak.clients.app.redirectUri | quote }}],
           "webOrigins": ["+"],
           "standardFlowEnabled": true,
-          "directAccessGrantsEnabled": false,
-          "protocol": "openid-connect"
+          "directAccessGrantsEnabled": true,
+          "protocol": "openid-connect",
+          "attributes": {
+            "pkce.code.challenge.method": "S256"
+          }
         }
         {{- $comma = true }}
         {{- end }}
