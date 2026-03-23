@@ -24,13 +24,46 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      containers:
-        - name: keycloak
+      initContainers:
+        - name: realm-init
           image: {{ .Values.keycloak.image }}
           command: ["/bin/sh", "-c"]
           args:
             - |
-              exec /opt/keycloak/bin/kc.sh start --import-realm
+              for f in /realm-templates/*.json; do
+                sed -e "s|ADMIN_PASSWORD_PLACEHOLDER|$KC_ADMIN_PASSWORD|g" \
+                    -e "s|SMTP_PASSWORD_PLACEHOLDER|$KC_SMTP_PASSWORD|g" \
+                    "$f" > "/opt/keycloak/data/import/$(basename $f)"
+              done
+          env:
+            - name: KC_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.mail.secretName" . }}
+                  key: MAIL_PASSWORD
+          volumeMounts:
+            - name: realm-templates
+              mountPath: /realm-templates
+              readOnly: true
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+      containers:
+        - name: keycloak
+          image: {{ .Values.keycloak.image }}
+          args:
+            - start
+            - --import-realm
           env:
             - name: KC_DB
               value: postgres
@@ -56,20 +89,10 @@ spec:
               value: "true"
             - name: KC_METRICS_ENABLED
               value: "true"
-            - name: KC_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.keycloak.secretName" . }}
-                  key: KEYCLOAK_ADMIN_PASSWORD
             - name: KC_SPI_THEME_WELCOME_THEME
               value: keycloak
             - name: KC_SPI_THEME_DEFAULT
               value: schnappy
-            - name: KC_SMTP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.mail.secretName" . }}
-                  key: MAIL_PASSWORD
           ports:
             - containerPort: 8080
               name: http
@@ -98,11 +121,13 @@ spec:
               drop:
                 - ALL
           volumeMounts:
-            - name: realm-config
+            - name: realm-import
               mountPath: /opt/keycloak/data/import
               readOnly: true
       volumes:
-        - name: realm-config
+        - name: realm-templates
           configMap:
             name: {{ include "schnappy.keycloak.serviceName" . }}-realm
+        - name: realm-import
+          emptyDir: {}
 {{- end }}

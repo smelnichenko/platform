@@ -22,7 +22,7 @@ data:
         "replyTo": "",
         "auth": "true",
         "user": {{ .Values.mail.username | default "resend" | quote }},
-        "password": "${env.KC_SMTP_PASSWORD}",
+        "password": "SMTP_PASSWORD_PLACEHOLDER",
         "ssl": "false",
         "starttls": "true"
       }
@@ -42,7 +42,7 @@ data:
           "credentials": [
             {
               "type": "password",
-              "value": "${env.KC_ADMIN_PASSWORD}",
+              "value": "ADMIN_PASSWORD_PLACEHOLDER",
               "temporary": false
             }
           ],
