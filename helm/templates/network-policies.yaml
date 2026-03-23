@@ -188,6 +188,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    # Allow from site (nginx proxy_pass)
+    {{- if .Values.site.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.site.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
   egress:
     # DNS
     - ports:
