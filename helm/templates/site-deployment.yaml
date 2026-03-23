@@ -37,7 +37,7 @@ spec:
               name: http
           env:
             - name: API_BACKEND_HOST
-              value: "{{ include "schnappy.monitor.serviceName" . }}"
+              value: "{{ include "schnappy.gateway.serviceName" . }}"
           volumeMounts:
             - name: nginx-cache
               mountPath: /var/cache/nginx
