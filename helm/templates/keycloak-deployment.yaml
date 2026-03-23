@@ -31,16 +31,10 @@ spec:
           args:
             - |
               for f in /realm-templates/*.json; do
-                sed -e "s|ADMIN_PASSWORD_PLACEHOLDER|$KC_ADMIN_PASSWORD|g" \
-                    -e "s|SMTP_PASSWORD_PLACEHOLDER|$KC_SMTP_PASSWORD|g" \
+                sed -e "s|SMTP_PASSWORD_PLACEHOLDER|$KC_SMTP_PASSWORD|g" \
                     "$f" > "/opt/keycloak/data/import/$(basename $f)"
               done
           env:
-            - name: KC_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.keycloak.secretName" . }}
-                  key: KEYCLOAK_ADMIN_PASSWORD
             - name: KC_SMTP_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -89,6 +83,13 @@ spec:
               value: "true"
             - name: KC_METRICS_ENABLED
               value: "true"
+            - name: KEYCLOAK_ADMIN
+              value: {{ .Values.keycloak.adminUser | quote }}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: KEYCLOAK_ADMIN_PASSWORD
             - name: KC_SPI_THEME_WELCOME_THEME
               value: keycloak
             - name: KC_SPI_THEME_DEFAULT
