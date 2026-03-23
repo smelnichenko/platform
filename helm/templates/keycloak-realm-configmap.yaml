@@ -10,6 +10,7 @@ data:
     {
       "realm": "schnappy",
       "enabled": true,
+      "registrationAllowed": true,
       "resetPasswordAllowed": true,
       "loginTheme": "schnappy",
       "displayName": "schnappy",
