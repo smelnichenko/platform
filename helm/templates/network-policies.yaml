@@ -550,11 +550,11 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Frontend → App (nginx proxy_pass)
+    # Frontend → Gateway (nginx proxy_pass)
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
