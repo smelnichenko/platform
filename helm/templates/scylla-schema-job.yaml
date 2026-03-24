@@ -40,26 +40,28 @@ spec:
                   channel_id bigint,
                   bucket text,
                   message_id timeuuid,
-                  user_id bigint,
+                  user_uuid uuid,
                   username text,
                   content text,
-                  parent_message_id timeuuid,
+                  parent_message_id text,
                   edited boolean,
                   deleted boolean,
                   hash text,
                   prev_hash text,
                   key_version int,
+                  message_type text,
+                  metadata text,
                   PRIMARY KEY ((channel_id, bucket), message_id)
               ) WITH CLUSTERING ORDER BY (message_id DESC)
                 AND gc_grace_seconds = 864000;
 
-              CREATE TABLE IF NOT EXISTS chat.messages_by_user (
-                  user_id bigint,
+              CREATE TABLE IF NOT EXISTS chat.messages_by_user_v2 (
+                  user_uuid uuid,
                   message_id timeuuid,
                   channel_id bigint,
                   bucket text,
                   content text,
-                  PRIMARY KEY (user_id, message_id)
+                  PRIMARY KEY (user_uuid, message_id)
               ) WITH CLUSTERING ORDER BY (message_id DESC);
 
               CREATE TABLE IF NOT EXISTS chat.message_edits (
@@ -67,7 +69,7 @@ spec:
                   bucket text,
                   message_id timeuuid,
                   edit_id timeuuid,
-                  user_id bigint,
+                  user_uuid uuid,
                   content text,
                   hash text,
                   key_version int,
@@ -86,9 +88,9 @@ spec:
                   bucket text,
                   message_id timeuuid,
                   emoji text,
-                  user_id bigint,
+                  user_uuid uuid,
                   username text,
-                  PRIMARY KEY ((channel_id, bucket, message_id), emoji, user_id)
+                  PRIMARY KEY ((channel_id, bucket, message_id), emoji, user_uuid)
               );
 
               CREATE TABLE IF NOT EXISTS chat.attachments_by_message (
@@ -103,14 +105,9 @@ spec:
                   PRIMARY KEY ((channel_id, bucket, message_id), attachment_id)
               );
               EOF
-              echo "Adding columns if missing..."
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD hash text;" 2>/dev/null || true
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD prev_hash text;" 2>/dev/null || true
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD key_version int;" 2>/dev/null || true
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD message_type text;" 2>/dev/null || true
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD metadata text;" 2>/dev/null || true
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD hash text;" 2>/dev/null || true
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD key_version int;" 2>/dev/null || true
+              echo "Migrating user_id to user_uuid if needed..."
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD user_uuid uuid;" 2>/dev/null || true
+              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD user_uuid uuid;" 2>/dev/null || true
               echo "Schema applied successfully."
       restartPolicy: OnFailure
 {{- end }}
