@@ -37,11 +37,13 @@ spec:
                     "$f" > "/opt/keycloak/data/import/$(basename $f)"
               done
           env:
+            {{- if eq (.Values.mail.enabled | toString) "true" }}
             - name: KC_SMTP_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.mail.secretName" . }}
                   key: MAIL_PASSWORD
+            {{- end }}
             {{- if eq (.Values.keycloak.clients.forgejo.enabled | toString) "true" }}
             - name: FORGEJO_CLIENT_SECRET
               valueFrom:
