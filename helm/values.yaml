@@ -17,6 +17,7 @@ networkPolicies:
 # Frontend configuration
 site:
   enabled: true
+  dnsResolver: ""  # Required — k3s kube-dns ClusterIP (e.g., 10.43.0.10)
   image:
     repository: git.pmon.dev/schnappy/site
     tag: latest

@@ -41,7 +41,7 @@ spec:
             - name: GAME_BACKEND_HOST
               value: "{{ include "schnappy.fullname" . }}-game-scp"
             - name: DNS_RESOLVER
-              value: "{{ .Values.site.dnsResolver | default "10.43.0.10" }}"
+              value: "{{ required "site.dnsResolver is required" .Values.site.dnsResolver }}"
           volumeMounts:
             - name: nginx-cache
               mountPath: /var/cache/nginx
