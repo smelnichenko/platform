@@ -578,6 +578,20 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    {{- if .Values.games }}
+    # Frontend → Game pods (nginx proxy for /game/)
+    {{- range .Values.games }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: {{ .name }}
+              app.kubernetes.io/instance: {{ $.Release.Name }}
+              app.kubernetes.io/name: {{ include "schnappy.name" $ }}
+      ports:
+        - protocol: TCP
+          port: {{ .port | default $.Values.gameDefaults.port }}
+    {{- end }}
+    {{- end }}
 ---
 {{- end }}
 {{- range .Values.games }}
