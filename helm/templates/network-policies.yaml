@@ -612,11 +612,11 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from ingress controller (Traefik)
+    # Allow from site (nginx proxy for /game/)
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              {{- include "schnappy.site.selectorLabels" $ | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
