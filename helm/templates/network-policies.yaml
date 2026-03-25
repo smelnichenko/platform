@@ -589,7 +589,7 @@ spec:
               app.kubernetes.io/name: {{ include "schnappy.name" $ }}
       ports:
         - protocol: TCP
-          port: {{ .port | default $.Values.gameDefaults.port }}
+          port: 8080
     {{- end }}
     {{- end }}
 ---
