@@ -38,8 +38,6 @@ spec:
           env:
             - name: API_BACKEND_HOST
               value: "{{ include "schnappy.gateway.serviceName" . }}"
-            - name: GAME_BACKEND_HOST
-              value: "{{ include "schnappy.fullname" . }}-game-scp"
             - name: DNS_RESOLVER
               value: "{{ required "site.dnsResolver is required" .Values.site.dnsResolver }}"
           volumeMounts:
@@ -49,6 +47,10 @@ spec:
               mountPath: /var/run
             - name: nginx-conf
               mountPath: /etc/nginx/conf.d
+            - name: games-conf
+              mountPath: /etc/nginx/games.conf
+              subPath: games.conf
+              readOnly: true
           resources:
             {{- toYaml .Values.site.resources | nindent 12 }}
           livenessProbe:
@@ -72,4 +74,7 @@ spec:
           emptyDir: {}
         - name: nginx-conf
           emptyDir: {}
+        - name: games-conf
+          configMap:
+            name: {{ include "schnappy.fullname" . }}-site-games
 {{- end }}
