@@ -526,6 +526,11 @@ keycloak:
     grafana:
       enabled: false
       redirectUri: ""
+    adminService:
+      enabled: false
+    argocd:
+      enabled: false
+      host: cd.pmon.dev
   resources:
     requests:
       cpu: "500m"

@@ -107,6 +107,21 @@ spec:
             - name: CAPTCHA_ENABLED
               value: "true"
             {{- end }}
+            {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
+            - name: KEYCLOAK_ADMIN_ENABLED
+              value: "true"
+            - name: KEYCLOAK_SERVER_URL
+              value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
+            - name: KEYCLOAK_REALM
+              value: "schnappy"
+            - name: KEYCLOAK_CLIENT_ID
+              value: "admin-service"
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: ADMIN_SERVICE_CLIENT_SECRET
+            {{- end }}
           resources:
             {{- toYaml .Values.admin.resources | nindent 12 }}
           livenessProbe:

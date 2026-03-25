@@ -34,6 +34,8 @@ spec:
                 sed -e "s|SMTP_PASSWORD_PLACEHOLDER|$KC_SMTP_PASSWORD|g" \
                     -e "s|FORGEJO_CLIENT_SECRET_PLACEHOLDER|$FORGEJO_CLIENT_SECRET|g" \
                     -e "s|GRAFANA_CLIENT_SECRET_PLACEHOLDER|$GRAFANA_CLIENT_SECRET|g" \
+                    -e "s|ADMIN_SERVICE_CLIENT_SECRET_PLACEHOLDER|$ADMIN_SERVICE_CLIENT_SECRET|g" \
+                    -e "s|ARGOCD_CLIENT_SECRET_PLACEHOLDER|$ARGOCD_CLIENT_SECRET|g" \
                     "$f" > "/opt/keycloak/data/import/$(basename $f)"
               done
           env:
@@ -57,6 +59,20 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.grafana.secretName" . }}
                   key: oauth-client-secret
+            {{- end }}
+            {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
+            - name: ADMIN_SERVICE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: ADMIN_SERVICE_CLIENT_SECRET
+            {{- end }}
+            {{- if eq (.Values.keycloak.clients.argocd.enabled | toString) "true" }}
+            - name: ARGOCD_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: ARGOCD_CLIENT_SECRET
             {{- end }}
           volumeMounts:
             - name: realm-templates

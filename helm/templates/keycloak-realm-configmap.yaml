@@ -99,7 +99,53 @@ data:
           "directAccessGrantsEnabled": false,
           "protocol": "openid-connect"
         }
+        {{- $comma = true }}
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.argocd.enabled | toString) "true" }}
+        {{- if $comma }},{{ end }}
+        {
+          "clientId": "argocd",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "ARGOCD_CLIENT_SECRET_PLACEHOLDER",
+          "redirectUris": ["https://{{ .Values.keycloak.clients.argocd.host | default "cd.pmon.dev" }}/auth/callback"],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "pkce.code.challenge.method": "S256"
+          }
+        }
+        {{- $comma = true }}
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
+        {{- if $comma }},{{ end }}
+        {
+          "clientId": "admin-service",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "ADMIN_SERVICE_CLIENT_SECRET_PLACEHOLDER",
+          "publicClient": false,
+          "serviceAccountsEnabled": true,
+          "standardFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect"
+        }
         {{- end }}
       ]
+      {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
+      ,
+      "users": [
+        {
+          "username": "service-account-admin-service",
+          "enabled": true,
+          "serviceAccountClientId": "admin-service",
+          "clientRoles": {
+            "realm-management": ["manage-users", "view-users", "manage-realm", "view-realm"]
+          }
+        }
+      ]
+      {{- end }}
     }
 {{- end }}
