@@ -1,5 +1,6 @@
 {{- $root := . -}}
-{{- if and .Values.games .Values.app.ingress.enabled -}}
+{{- if and false .Values.games .Values.app.ingress.enabled -}}
+{{/* Game ingress disabled — game files served via site nginx proxy */}}
 {{- range .Values.games }}
 ---
 apiVersion: networking.k8s.io/v1

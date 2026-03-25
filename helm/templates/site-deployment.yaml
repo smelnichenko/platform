@@ -38,6 +38,8 @@ spec:
           env:
             - name: API_BACKEND_HOST
               value: "{{ include "schnappy.gateway.serviceName" . }}"
+            - name: GAME_BACKEND_HOST
+              value: "{{ include "schnappy.fullname" . }}-game-scp"
           volumeMounts:
             - name: nginx-cache
               mountPath: /var/cache/nginx
