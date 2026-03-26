@@ -91,8 +91,8 @@
         "reduceOptions": { "calcs": ["lastNotNull"] }
       },
       "targets": [{
-        "expr": "last_over_time(k6_http_req_duration_seconds{quantile=\"0.95\"}[1d]) * 1000",
-        "legendFormat": "{{group}} p95"
+        "expr": "histogram_avg(last_over_time(k6_http_req_duration_seconds[1d])) * 1000",
+        "legendFormat": "{{group}}"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
@@ -154,8 +154,8 @@
       },
       "options": { "tooltip": { "mode": "multi" } },
       "targets": [{
-        "expr": "k6_http_req_duration_seconds{quantile=\"0.95\"} * 1000 or last_over_time(k6_http_req_duration_seconds{quantile=\"0.95\"}[6h]) * 1000",
-        "legendFormat": "{{group}} p95"
+        "expr": "histogram_avg(k6_http_req_duration_seconds) * 1000 or histogram_avg(last_over_time(k6_http_req_duration_seconds[6h])) * 1000",
+        "legendFormat": "{{group}}"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     }
