@@ -262,4 +262,16 @@ data:
             annotations:
               summary: "Kibana {{ "{{" }} $labels.pod {{ "}}" }} is down"
               description: "Kibana pod has been not ready for more than 10 minutes."
+  smoke-tests.yml: |
+    groups:
+      - name: smoke-tests
+        rules:
+          - alert: K6SmokeTestFailing
+            expr: k6_checks{check=~".*"} < 1
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "k6 smoke test check failing"
+              description: "Smoke test check {{ "{{" }} $labels.check {{ "}}" }} is failing (value: {{ "{{" }} $value {{ "}}" }})"
 {{- end }}

@@ -47,6 +47,7 @@ spec:
                     -e "s|GRAFANA_CLIENT_SECRET_PLACEHOLDER|$GRAFANA_CLIENT_SECRET|g" \
                     -e "s|ADMIN_SERVICE_CLIENT_SECRET_PLACEHOLDER|$ADMIN_SERVICE_CLIENT_SECRET|g" \
                     -e "s|ARGOCD_CLIENT_SECRET_PLACEHOLDER|$ARGOCD_CLIENT_SECRET|g" \
+                    -e "s|K6_SMOKE_CLIENT_SECRET_PLACEHOLDER|$K6_SMOKE_CLIENT_SECRET|g" \
                     "$f" > "/opt/keycloak/data/import/$(basename $f)"
               done
           env:
@@ -84,6 +85,13 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.keycloak.secretName" . }}
                   key: ARGOCD_CLIENT_SECRET
+            {{- end }}
+            {{- if eq (.Values.keycloak.clients.k6Smoke.enabled | toString) "true" }}
+            - name: K6_SMOKE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.keycloak.secretName" . }}
+                  key: K6_SMOKE_CLIENT_SECRET
             {{- end }}
           volumeMounts:
             - name: realm-templates

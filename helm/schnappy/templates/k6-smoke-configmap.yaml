@@ -1,0 +1,122 @@
+{{- if eq (.Values.smokeTest.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-k6-smoke
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+data:
+  smoke-test.js: |
+    import http from 'k6/http';
+    import { check, group } from 'k6';
+
+    export const options = {
+      vus: 1,
+      iterations: 1,
+      thresholds: {
+        checks: ['rate==1.0'],
+        http_req_duration: ['p(95)<2000'],
+      },
+    };
+
+    const BASE_URL = __ENV.BASE_URL || 'https://pmon.dev';
+    const KEYCLOAK_URL = __ENV.KEYCLOAK_URL || 'https://auth.pmon.dev';
+
+    function getToken() {
+      const clientSecret = __ENV.K6_CLIENT_SECRET;
+      if (!clientSecret) {
+        console.log('K6_CLIENT_SECRET not set, skipping authenticated tests');
+        return null;
+      }
+      const res = http.post(`${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token`, {
+        client_id: 'k6-smoke',
+        client_secret: clientSecret,
+        grant_type: 'client_credentials',
+      });
+      if (res.status !== 200) {
+        console.error(`Token request failed: ${res.status} ${res.body}`);
+        return null;
+      }
+      return res.json('access_token');
+    }
+
+    export default function () {
+      // ===== Public endpoints =====
+
+      group('health', () => {
+        const r = http.get(`${BASE_URL}/api/health`);
+        check(r, {
+          'health 200': (r) => r.status === 200,
+          'status UP': (r) => r.json('status') === 'UP',
+        });
+      });
+
+      group('build-info', () => {
+        const r = http.get(`${BASE_URL}/api/build-info`);
+        check(r, {
+          'build-info 200': (r) => r.status === 200,
+          'has gitHash': (r) => r.json('gitHash') !== undefined,
+        });
+      });
+
+      group('approval-mode', () => {
+        const r = http.get(`${BASE_URL}/api/auth/approval-mode`);
+        check(r, { 'approval-mode 200': (r) => r.status === 200 });
+      });
+
+      group('permissions', () => {
+        const r = http.get(`${BASE_URL}/api/permissions/required`);
+        check(r, { 'permissions 200': (r) => r.status === 200 });
+      });
+
+      group('keycloak', () => {
+        const r = http.get(`${KEYCLOAK_URL}/realms/schnappy/.well-known/openid-configuration`);
+        check(r, {
+          'keycloak 200': (r) => r.status === 200,
+          'has issuer': (r) => r.json('issuer') !== undefined,
+        });
+      });
+
+      group('frontend', () => {
+        const r = http.get(`${BASE_URL}/`);
+        check(r, { 'frontend 200': (r) => r.status === 200 });
+      });
+
+      group('actuator', () => {
+        const r = http.get(`${BASE_URL}/api/actuator/health`);
+        check(r, { 'actuator 200': (r) => r.status === 200 });
+      });
+
+      // ===== Authenticated endpoints =====
+
+      const token = getToken();
+      if (!token) return;
+
+      const auth = { headers: { Authorization: `Bearer ${token}` } };
+
+      group('monitors', () => {
+        const r = http.get(`${BASE_URL}/api/monitor/pages`, auth);
+        check(r, { 'pages 200': (r) => r.status === 200 });
+      });
+
+      group('rss', () => {
+        const r = http.get(`${BASE_URL}/api/rss/feeds`, auth);
+        check(r, { 'feeds 200': (r) => r.status === 200 });
+      });
+
+      group('inbox', () => {
+        const r = http.get(`${BASE_URL}/api/inbox/emails`, auth);
+        check(r, { 'inbox 200': (r) => r.status === 200 });
+      });
+
+      group('chat', () => {
+        const r = http.get(`${BASE_URL}/api/chat/channels`, auth);
+        check(r, { 'channels 200': (r) => r.status === 200 });
+      });
+
+      group('admin', () => {
+        const r = http.get(`${BASE_URL}/api/admin/users`, auth);
+        check(r, { 'admin-users 200': (r) => r.status === 200 });
+      });
+    }
+{{- end }}

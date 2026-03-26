@@ -195,6 +195,14 @@ keycloak:
   clients:
     adminService:
       enabled: false
+# k6 smoke tests (PostSync hook + daily CronJob)
+smokeTest:
+  enabled: false
+  image: grafana/k6:latest
+  schedule: "0 6 * * *"
+  baseUrl: ""                # Defaults to https://<app.ingress.host>
+  clientSecretName: ""       # k8s Secret with CLIENT_SECRET key (for authenticated tests)
+
 scylla:
   datacenter: datacenter1
   keyspace: chat

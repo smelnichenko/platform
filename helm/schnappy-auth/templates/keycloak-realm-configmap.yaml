@@ -130,10 +130,25 @@ data:
           "protocol": "openid-connect"
         }
         {{- end }}
+        {{- if eq (.Values.keycloak.clients.k6Smoke.enabled | toString) "true" }}
+        {{- if $comma }},{{ end }}
+        {
+          "clientId": "k6-smoke",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "K6_SMOKE_CLIENT_SECRET_PLACEHOLDER",
+          "publicClient": false,
+          "serviceAccountsEnabled": true,
+          "standardFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect"
+        }
+        {{- end }}
       ]
-      {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
       ,
       "users": [
+        {{- $userComma := false }}
+        {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
         {
           "username": "service-account-admin-service",
           "enabled": true,
@@ -142,7 +157,17 @@ data:
             "realm-management": ["manage-users", "view-users", "manage-realm", "view-realm"]
           }
         }
+        {{- $userComma = true }}
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.k6Smoke.enabled | toString) "true" }}
+        {{- if $userComma }},{{ end }}
+        {
+          "username": "service-account-k6-smoke",
+          "enabled": true,
+          "serviceAccountClientId": "k6-smoke",
+          "realmRoles": ["METRICS", "PLAY", "CHAT", "EMAIL", "MANAGE_USERS"]
+        }
+        {{- end }}
       ]
-      {{- end }}
     }
 {{- end }}

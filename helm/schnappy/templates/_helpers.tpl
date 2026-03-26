@@ -229,6 +229,10 @@ app.kubernetes.io/component: gateway
 {{- printf "%s-keycloak" (include "schnappy.fullname" .) }}
 {{- end }}
 
+{{- define "schnappy.prometheus.serviceName" -}}
+{{- printf "%s-prometheus" (include "schnappy.fullname" .) }}
+{{- end }}
+
 {{- define "schnappy.keycloak.secretName" -}}
 {{- if .Values.keycloak }}
 {{- if .Values.keycloak.existingSecret }}

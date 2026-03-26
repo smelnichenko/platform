@@ -30,6 +30,8 @@ keycloak:
       redirectUri: ""
     adminService:
       enabled: false
+    k6Smoke:
+      enabled: false
     argocd:
       enabled: false
       host: cd.pmon.dev

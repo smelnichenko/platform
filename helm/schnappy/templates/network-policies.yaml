@@ -558,4 +558,57 @@ spec:
         - protocol: TCP
           port: 53
 {{- end }}
+{{- if eq (.Values.smokeTest.enabled | toString) "true" }}
+---
+# k6 smoke test network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-k6-smoke
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: k6-smoke
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # k6 → Prometheus (remote write)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9090
+    # k6 → Keycloak (token exchange)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # k6 → external HTTPS (pmon.dev, auth.pmon.dev via Traefik)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}
 {{- end }}
