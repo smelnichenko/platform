@@ -15,7 +15,11 @@ steps:
   - name: helm-lint
     image: alpine/helm:latest
     commands:
-      - helm lint helm/ --set postgres.password=test
+      - helm lint helm/schnappy/ --set site.dnsResolver=10.43.0.10
+      - helm lint helm/schnappy-data/ --set postgres.password=test
+      - helm lint helm/schnappy-auth/
+      - helm lint helm/schnappy-observability/
+      - helm lint helm/schnappy-sonarqube/
 
   - name: sonar
     image: node:22-bookworm-slim
