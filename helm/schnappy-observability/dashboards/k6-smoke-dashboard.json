@@ -22,9 +22,10 @@
           "unit": "percentunit"
         }
       },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [{
-        "expr": "k6_checks{check=~\".+\"}",
-        "legendFormat": "{{check}}"
+        "expr": "last_over_time(k6_checks_rate[1d])",
+        "legendFormat": "pass rate"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
@@ -42,9 +43,10 @@
           }
         }
       },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [{
-        "expr": "k6_checks_total",
-        "legendFormat": "total checks"
+        "expr": "last_over_time(k6_iterations_total[1d])",
+        "legendFormat": "iterations"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
@@ -61,15 +63,16 @@
           }
         }
       },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [{
-        "expr": "k6_http_reqs_total",
+        "expr": "last_over_time(k6_http_reqs_total[1d])",
         "legendFormat": "{{group}}"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
-      "title": "HTTP Request Duration (p95)",
-      "type": "timeseries",
+      "title": "HTTP Request Duration (ms)",
+      "type": "bargauge",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
       "fieldConfig": {
         "defaults": {
@@ -83,18 +86,19 @@
           }
         }
       },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
       "targets": [{
-        "expr": "histogram_quantile(0.95, rate(k6_http_req_duration_seconds_bucket[5m])) * 1000",
-        "legendFormat": "p95"
-      }, {
-        "expr": "histogram_quantile(0.50, rate(k6_http_req_duration_seconds_bucket[5m])) * 1000",
-        "legendFormat": "p50"
+        "expr": "last_over_time(k6_http_req_duration_seconds{quantile=\"0.95\"}[1d]) * 1000",
+        "legendFormat": "{{group}} p95"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
       "title": "HTTP Error Rate",
-      "type": "timeseries",
+      "type": "stat",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
       "fieldConfig": {
         "defaults": {
@@ -107,29 +111,51 @@
           }
         }
       },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [{
-        "expr": "k6_http_req_failed_rate",
+        "expr": "last_over_time(k6_http_req_failed_rate[1d])",
         "legendFormat": "error rate"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
       "title": "Check Results History",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "type": "state-timeline",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null }
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
             ]
-          }
+          },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "PASS", "color": "green" } } },
+            { "type": "range", "options": { "from": 0, "to": 0.99, "result": { "text": "FAIL", "color": "red" } } }
+          ]
         }
       },
       "targets": [{
-        "expr": "k6_checks{check=~\".+\"}",
-        "legendFormat": "{{check}}"
+        "expr": "k6_checks_rate or last_over_time(k6_checks_rate[6h])",
+        "legendFormat": "smoke test",
+        "intervalFactor": 1
+      }],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "title": "Request Duration History",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [{
+        "expr": "k6_http_req_duration_seconds{quantile=\"0.95\"} * 1000 or last_over_time(k6_http_req_duration_seconds{quantile=\"0.95\"}[6h]) * 1000",
+        "legendFormat": "{{group}} p95"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     }
