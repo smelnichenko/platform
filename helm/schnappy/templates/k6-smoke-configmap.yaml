@@ -8,7 +8,7 @@ metadata:
 data:
   smoke-test.js: |
     import http from 'k6/http';
-    import { check, group } from 'k6';
+    import { check, group, sleep } from 'k6';
 
     export const options = {
       vus: 1,
@@ -109,6 +109,9 @@ data:
         const r = http.get(`${BASE_URL}/api/inbox/emails`, auth);
         check(r, { 'inbox 200': (r) => r.status === 200 });
       });
+
+      // Brief pause for Kafka user.events propagation to chat service
+      sleep(1);
 
       group('chat', () => {
         const r = http.get(`${BASE_URL}/api/chat/channels`, auth);
