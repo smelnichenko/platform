@@ -95,12 +95,6 @@ data:
 
       const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-      // Bootstrap: ensure user is provisioned in all services
-      group('ensure-user', () => {
-        const r = http.post(`${BASE_URL}/api/auth/ensure-user`, null, auth);
-        check(r, { 'ensure-user ok': (r) => r.status >= 200 && r.status < 300 });
-      });
-
       group('monitors', () => {
         const r = http.get(`${BASE_URL}/api/monitor/pages`, auth);
         check(r, { 'pages 200': (r) => r.status === 200 });
