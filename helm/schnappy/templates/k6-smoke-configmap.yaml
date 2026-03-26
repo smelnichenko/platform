@@ -70,7 +70,8 @@ data:
       });
 
       group('keycloak', () => {
-        const r = http.get(`${KEYCLOAK_URL}/realms/schnappy/.well-known/openid-configuration`);
+        const kcPublicUrl = __ENV.KEYCLOAK_PUBLIC_URL || KEYCLOAK_URL;
+        const r = http.get(`${kcPublicUrl}/realms/schnappy/.well-known/openid-configuration`);
         check(r, {
           'keycloak 200': (r) => r.status === 200,
           'has issuer': (r) => r.json('issuer') !== undefined,

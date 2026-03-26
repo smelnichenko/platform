@@ -40,6 +40,8 @@ spec:
               value: {{ .Values.smokeTest.baseUrl | default (printf "https://%s" .Values.app.ingress.host) | quote }}
             - name: KEYCLOAK_URL
               value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
+            - name: KEYCLOAK_PUBLIC_URL
+              value: "https://{{ .Values.keycloak.hostname | default "auth.pmon.dev" }}"
             - name: K6_PROMETHEUS_RW_SERVER_URL
               value: "http://{{ include "schnappy.prometheus.serviceName" . }}:9090/api/v1/write"
             - name: K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM
