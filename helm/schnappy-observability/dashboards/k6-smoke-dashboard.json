@@ -1,5 +1,6 @@
 {
   "annotations": { "list": [] },
+  "description": "k6 smoke test results — runs after every Argo CD sync (PostSync) and daily at 6 AM UTC",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -7,6 +8,7 @@
   "panels": [
     {
       "title": "Check Pass Rate",
+      "description": "Percentage of all k6 checks that passed in the last run. 100% = all endpoints healthy.",
       "type": "gauge",
       "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
       "fieldConfig": {
@@ -31,6 +33,7 @@
     },
     {
       "title": "Total Checks (Last Run)",
+      "description": "Number of k6 iterations completed. Should always be 1 (single smoke test run).",
       "type": "stat",
       "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
       "fieldConfig": {
@@ -52,6 +55,7 @@
     },
     {
       "title": "HTTP Requests by Group",
+      "description": "Number of HTTP requests per endpoint group.\n\nactuator = /api/actuator/health (Spring Boot)\napproval-mode = /api/auth/approval-mode\nbuild-info = /api/build-info (git hash + build time)\nfrontend = / (React SPA via nginx)\nhealth = /api/health (app health)\nkeycloak = auth.pmon.dev OIDC discovery\npermissions = /api/permissions/required",
       "type": "stat",
       "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 },
       "fieldConfig": {
@@ -72,6 +76,7 @@
     },
     {
       "title": "HTTP Request Duration (ms)",
+      "description": "Average response time per endpoint group. Yellow > 500ms, red > 2s.\n\nactuator is typically slow (~1s) on first call due to Spring Boot health check (DB, disk).",
       "type": "bargauge",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
       "fieldConfig": {
@@ -98,6 +103,7 @@
     },
     {
       "title": "HTTP Error Rate",
+      "description": "Percentage of HTTP requests that returned non-2xx status. Should be 0%.",
       "type": "stat",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
       "fieldConfig": {
@@ -120,6 +126,7 @@
     },
     {
       "title": "Check Results History",
+      "description": "Pass/fail timeline over time. Green = all checks passed, red = one or more failed. Runs daily at 6 AM + after every Argo CD sync.",
       "type": "state-timeline",
       "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
       "fieldConfig": {
@@ -144,6 +151,7 @@
     },
     {
       "title": "Request Duration History",
+      "description": "Response time trend per endpoint group over time. Each dot is one smoke test run. Useful for spotting performance regressions.",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
       "fieldConfig": {
