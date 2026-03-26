@@ -112,10 +112,7 @@ data:
           "webOrigins": ["+"],
           "standardFlowEnabled": true,
           "directAccessGrantsEnabled": false,
-          "protocol": "openid-connect",
-          "attributes": {
-            "pkce.code.challenge.method": "S256"
-          }
+          "protocol": "openid-connect"
         }
         {{- $comma = true }}
         {{- end }}

@@ -26,6 +26,16 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ['sh', '-c', 'until nc -z {{ include "schnappy.postgres.serviceName" . }} 5432; do echo "Waiting for postgres..."; sleep 2; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
         - name: realm-init
           image: {{ .Values.keycloak.image }}
           command: ["/bin/sh", "-c"]
