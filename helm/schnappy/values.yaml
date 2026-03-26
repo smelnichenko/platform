@@ -1,0 +1,200 @@
+# Core application services chart
+nameOverride: schnappy
+
+vault:
+  secretsEnabled: false
+
+networkPolicies:
+  enabled: true
+
+# Frontend
+site:
+  enabled: true
+  dnsResolver: ""
+  image:
+    repository: git.pmon.dev/schnappy/site
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests: { memory: "64Mi", cpu: "50m" }
+    limits: { memory: "128Mi", cpu: "200m" }
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Game (Godot web export)
+games: []
+gameDefaults:
+  pullPolicy: IfNotPresent
+  replicas: 1
+  port: 80
+
+# Backend API
+app:
+  image:
+    repository: git.pmon.dev/schnappy/monitor
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx1536m"
+  hikari:
+    minimumIdle: 2
+    maximumPoolSize: 25
+    idleTimeout: 300000
+    maxLifetime: 1200000
+    connectionTimeout: 20000
+  resources:
+    requests: { memory: "512Mi", cpu: "250m" }
+    limits: { memory: "2Gi", cpu: "2500m" }
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: true
+    className: traefik
+    host: monitor.local
+    annotations: {}
+    tls:
+      enabled: false
+      secretName: ""
+      clusterIssuer: "letsencrypt-prod"
+
+# Authentication
+auth:
+  existingSecret: ""
+  tokenExpiration: 1h
+  registrationEnabled: true
+  registrationApproval:
+    mode: ai
+    criteria: ""
+    defaultGroup: Users
+
+# Monitor configuration
+monitor:
+  enabled: true
+  http:
+    connectTimeout: 10s
+    readTimeout: 30s
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0"
+
+# Mail (optional)
+mail:
+  enabled: false
+  host: smtp.gmail.com
+  port: 587
+  username: ""
+  password: ""
+  existingSecret: ""
+  fromAddress: "noreply@example.com"
+  appUrl: "http://localhost:3000"
+
+# AI (optional)
+ai:
+  enabled: false
+  apiKey: ""
+  existingSecret: ""
+  model: "claude-sonnet-4-5-20250929"
+
+# Webhook (Resend inbound email)
+webhook:
+  enabled: false
+  signingSecret: ""
+  apiKey: ""
+  existingSecret: ""
+
+# API Gateway
+gateway:
+  enabled: false
+  image:
+    repository: git.pmon.dev/schnappy/api-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx256m"
+  resources:
+    requests: { memory: "256Mi", cpu: "100m" }
+    limits: { memory: "512Mi", cpu: "1000m" }
+  service:
+    type: ClusterIP
+    port: 8080
+  cors:
+    allowedOrigins: "*"
+
+# Admin / User Service
+admin:
+  enabled: false
+  image:
+    repository: git.pmon.dev/schnappy/admin
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx512m"
+  resources:
+    requests: { memory: "256Mi", cpu: "100m" }
+    limits: { memory: "1Gi", cpu: "2000m" }
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Chat microservice
+chatService:
+  enabled: false
+  image:
+    repository: git.pmon.dev/schnappy/chat
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx512m"
+  resources:
+    requests: { memory: "256Mi", cpu: "100m" }
+    limits: { memory: "1Gi", cpu: "2000m" }
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Chess microservice
+chessService:
+  enabled: false
+  image:
+    repository: git.pmon.dev/schnappy/chess
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx512m"
+  resources:
+    requests: { memory: "256Mi", cpu: "100m" }
+    limits: { memory: "1Gi", cpu: "2000m" }
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Linkerd
+linkerd:
+  enabled: false
+  authorizationPolicy: false
+
+chat:
+  e2eEnabled: false
+
+captcha:
+  enabled: true
+
+chess:
+  enabled: false
+
+# Cross-chart references (for secret/service name resolution and configmap)
+postgres:
+  database: monitor
+redis: {}
+minio: {}
+alertmanager: {}
+keycloak:
+  enabled: false
+  hostname: auth.pmon.dev
+  clients:
+    adminService:
+      enabled: false
+scylla:
+  datacenter: datacenter1
+  keyspace: chat

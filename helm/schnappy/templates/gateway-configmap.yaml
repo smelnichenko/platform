@@ -1,0 +1,48 @@
+{{- if eq (.Values.gateway.enabled | toString) "true" -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-gateway-config
+  labels:
+    {{- include "schnappy.gateway.labels" . | nindent 4 }}
+data:
+  application.yml: |
+    server:
+      port: 8080
+
+    spring:
+      application:
+        name: api-gateway
+      cloud:
+        gateway:
+          forwarded:
+            enabled: true
+          websocket:
+            max-frame-payload-length: 65536
+      data:
+        redis:
+          host: ${REDIS_HOST:{{ include "schnappy.redis.serviceName" . }}}
+          port: 6379
+
+    gateway:
+      routes:
+        core-url: ${CORE_URL:http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}}
+        admin-url: ${ADMIN_URL:http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}}
+        chat-url: ${CHAT_URL:http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}}
+        chess-url: ${CHESS_URL:http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}}
+      cors:
+        allowed-origins: ${CORS_ALLOWED_ORIGINS:{{ .Values.gateway.cors.allowedOrigins | default "*" }}}
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,prometheus
+      endpoint:
+        health:
+          show-details: never
+
+    logging:
+      level:
+        org.springframework.cloud.gateway: INFO
+{{- end }}

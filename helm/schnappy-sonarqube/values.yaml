@@ -1,0 +1,45 @@
+# Code quality analysis chart
+nameOverride: schnappy
+
+vault:
+  secretsEnabled: false
+
+networkPolicies:
+  enabled: true
+
+sonarqube:
+  enabled: false
+  image: sonarqube:26.3.0.120487-community
+  javaOpts: "-Xms512m -Xmx512m"
+  adminPassword: ""
+  token: ""
+  existingSecret: ""
+  postgres:
+    image: postgres:17-alpine
+    password: ""
+  postgresStorage:
+    size: 5Gi
+    storageClass: ""
+  postgresResources:
+    requests: { memory: "256Mi", cpu: "100m" }
+    limits: { memory: "512Mi", cpu: "1000m" }
+  resources:
+    requests: { memory: "2Gi", cpu: "500m" }
+    limits: { memory: "4Gi", cpu: "4000m" }
+  storage:
+    size: 5Gi
+    storageClass: ""
+  service:
+    type: ClusterIP
+    port: 9000
+  ingress:
+    enabled: false
+    className: traefik
+    host: "sonar.pmon.dev"
+    tls:
+      enabled: false
+      secretName: ""
+      clusterIssuer: "letsencrypt-prod"
+  setup:
+    enabled: true
+    projects: []

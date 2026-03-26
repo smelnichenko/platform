@@ -1,0 +1,12 @@
+apiVersion: v2
+name: schnappy-auth
+description: Authentication (Keycloak SSO)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - authentication
+  - keycloak
+icon: https://pmon.dev/favicon.ico
+maintainers:
+  - name: schnappy

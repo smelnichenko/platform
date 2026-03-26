@@ -1,0 +1,107 @@
+{{- if eq (.Values.gateway.enabled | toString) "true" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.gateway.serviceName" . }}
+  labels:
+    {{- include "schnappy.gateway.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      {{- include "schnappy.gateway.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.gateway.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gateway
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: SPRING_CONFIG_LOCATION
+              value: "classpath:/,file:/app/config/"
+            - name: JAVA_OPTS
+              value: {{ .Values.gateway.javaOpts | default "-Xmx256m" | quote }}
+            - name: CORE_URL
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
+            {{- if eq (.Values.admin.enabled | toString) "true" }}
+            - name: ADMIN_URL
+              value: "http://{{ include "schnappy.admin.serviceName" . }}:{{ .Values.admin.service.port }}"
+            {{- else }}
+            - name: ADMIN_URL
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
+            {{- end }}
+            {{- if eq (.Values.chatService.enabled | toString) "true" }}
+            - name: CHAT_URL
+              value: "http://{{ include "schnappy.chat.serviceName" . }}:{{ .Values.chatService.service.port }}"
+            {{- else }}
+            - name: CHAT_URL
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
+            {{- end }}
+            {{- if eq (.Values.chessService.enabled | toString) "true" }}
+            - name: CHESS_URL
+              value: "http://{{ include "schnappy.chess.serviceName" . }}:{{ .Values.chessService.service.port }}"
+            {{- else }}
+            - name: CHESS_URL
+              value: "http://{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}"
+            {{- end }}
+            - name: REDIS_HOST
+              value: {{ include "schnappy.redis.serviceName" . }}
+            {{- if or .Values.redis.password .Values.redis.existingSecret }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.redis.secretName" . }}
+                  key: REDIS_PASSWORD
+            {{- end }}
+            - name: JWKS_URI
+              value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080/realms/schnappy/protocol/openid-connect/certs"
+            - name: CORS_ALLOWED_ORIGINS
+              value: {{ .Values.gateway.cors.allowedOrigins | default "*" | quote }}
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "schnappy.fullname" . }}-gateway-config
+        - name: tmp
+          emptyDir: {}
+{{- end }}

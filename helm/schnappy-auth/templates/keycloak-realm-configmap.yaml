@@ -1,0 +1,151 @@
+{{- if eq (.Values.keycloak.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.keycloak.serviceName" . }}-realm
+  labels:
+    {{- include "schnappy.keycloak.labels" . | nindent 4 }}
+data:
+  schnappy-realm.json: |
+    {
+      "realm": "schnappy",
+      "enabled": true,
+      "registrationAllowed": true,
+      "resetPasswordAllowed": true,
+      "loginTheme": "schnappy",
+      "displayName": "schnappy",
+      "displayNameHtml": "<span style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:300;letter-spacing:0.15em;text-transform:uppercase;color:#a0a0a0;font-size:1.8rem\">schnappy</span>",
+      "accessTokenLifespan": 300,
+      "ssoSessionIdleTimeout": 1800,
+      "ssoSessionMaxLifespan": 36000,
+      "smtpServer": {
+        "host": {{ .Values.mail.host | quote }},
+        "port": {{ .Values.mail.port | default "587" | quote }},
+        "from": {{ .Values.keycloak.mail.from | default .Values.mail.fromAddress | quote }},
+        "fromDisplayName": {{ .Values.keycloak.mail.fromDisplayName | default "schnappy" | quote }},
+        "replyTo": "",
+        "auth": "true",
+        "user": {{ .Values.mail.username | default "resend" | quote }},
+        "password": "SMTP_PASSWORD_PLACEHOLDER",
+        "ssl": "false",
+        "starttls": "true"
+      },
+      "roles": {
+        "realm": [
+          { "name": "PLAY", "description": "Play games" },
+          { "name": "CHAT", "description": "Chat messaging" },
+          { "name": "EMAIL", "description": "Email inbox" },
+          { "name": "METRICS", "description": "View monitors and metrics" },
+          { "name": "MANAGE_USERS", "description": "User administration" },
+          {
+            "name": "Users",
+            "description": "Default user group",
+            "composite": true,
+            "composites": { "realm": ["METRICS", "PLAY"] }
+          },
+          {
+            "name": "Admins",
+            "description": "Admin group with all permissions",
+            "composite": true,
+            "composites": { "realm": ["PLAY", "CHAT", "EMAIL", "METRICS", "MANAGE_USERS"] }
+          }
+        ]
+      },
+      "defaultRoles": ["Users"],
+      "clients": [
+        {{- $comma := false }}
+        {{- if eq (.Values.keycloak.clients.app.enabled | toString) "true" }}
+        {
+          "clientId": "app",
+          "enabled": true,
+          "publicClient": true,
+          "redirectUris": [{{ .Values.keycloak.clients.app.redirectUri | quote }}],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": true,
+          "protocol": "openid-connect",
+          "attributes": {
+            "pkce.code.challenge.method": "S256",
+            "post.logout.redirect.uris": "https://pmon.dev"
+          }
+        }
+        {{- $comma = true }}
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.forgejo.enabled | toString) "true" }}
+        {{- if $comma }},{{ end }}
+        {
+          "clientId": "forgejo",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "FORGEJO_CLIENT_SECRET_PLACEHOLDER",
+          "redirectUris": [{{ .Values.keycloak.clients.forgejo.redirectUri | quote }}],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": true,
+          "protocol": "openid-connect"
+        }
+        {{- $comma = true }}
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.grafana.enabled | toString) "true" }}
+        {{- if $comma }},{{ end }}
+        {
+          "clientId": "grafana",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "GRAFANA_CLIENT_SECRET_PLACEHOLDER",
+          "redirectUris": [{{ .Values.keycloak.clients.grafana.redirectUri | quote }}],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect"
+        }
+        {{- $comma = true }}
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.argocd.enabled | toString) "true" }}
+        {{- if $comma }},{{ end }}
+        {
+          "clientId": "argocd",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "ARGOCD_CLIENT_SECRET_PLACEHOLDER",
+          "redirectUris": ["https://{{ .Values.keycloak.clients.argocd.host | default "cd.pmon.dev" }}/auth/callback"],
+          "webOrigins": ["+"],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "pkce.code.challenge.method": "S256"
+          }
+        }
+        {{- $comma = true }}
+        {{- end }}
+        {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
+        {{- if $comma }},{{ end }}
+        {
+          "clientId": "admin-service",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "ADMIN_SERVICE_CLIENT_SECRET_PLACEHOLDER",
+          "publicClient": false,
+          "serviceAccountsEnabled": true,
+          "standardFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "protocol": "openid-connect"
+        }
+        {{- end }}
+      ]
+      {{- if eq (.Values.keycloak.clients.adminService.enabled | toString) "true" }}
+      ,
+      "users": [
+        {
+          "username": "service-account-admin-service",
+          "enabled": true,
+          "serviceAccountClientId": "admin-service",
+          "clientRoles": {
+            "realm-management": ["manage-users", "view-users", "manage-realm", "view-realm"]
+          }
+        }
+      ]
+      {{- end }}
+    }
+{{- end }}

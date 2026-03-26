@@ -1,0 +1,387 @@
+{{- if .Values.networkPolicies.enabled -}}
+{{- if .Values.prometheus.enabled }}
+# Prometheus network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-prometheus
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.prometheus.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    {{- if .Values.grafana.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.grafana.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9090
+    {{- end }}
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Prometheus → App (scrape)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Prometheus → Vault (scrape via service DNS)
+    {{- if .Values.prometheus.vault.enabled }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vault
+      ports:
+        - protocol: TCP
+          port: 8200
+    {{- end }}
+    # Prometheus → Woodpecker (scrape)
+    {{- if eq (.Values.prometheus.woodpecker.enabled | toString) "true" }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: woodpecker
+      ports:
+        - protocol: TCP
+          port: 80
+    {{- end }}
+    # Prometheus → Forgejo (scrape)
+    {{- if eq (.Values.prometheus.forgejo.enabled | toString) "true" }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: forgejo
+      ports:
+        - protocol: TCP
+          port: 3000
+    {{- end }}
+    # Prometheus → Alertmanager
+    {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.alertmanager.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9093
+    {{- end }}
+    # Prometheus → kube-state-metrics (scrape)
+    {{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+---
+{{- end }}
+{{- if and .Values.prometheus.enabled (eq (.Values.alertmanager.enabled | toString) "true") }}
+# Alertmanager network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-alertmanager
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.alertmanager.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus + kubelet probes
+    - ports:
+        - protocol: TCP
+          port: 9093
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Alertmanager → App (webhook)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+{{- end }}
+{{- if and .Values.prometheus.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") }}
+# kube-state-metrics network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-kube-state-metrics
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scraping + kubelet probes
+    - ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # kube-state-metrics → Kubernetes API
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+---
+{{- end }}
+{{- if .Values.grafana.enabled }}
+# Grafana network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-grafana
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.grafana.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Grafana → Prometheus (datasource)
+    {{- if .Values.prometheus.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9090
+    {{- end }}
+    # Grafana → Keycloak (OAuth2 SSO)
+    {{- if eq (.Values.grafana.oauth.enabled | toString) "true" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+{{- end }}
+{{- if eq (.Values.elk.enabled | toString) "true" }}
+---
+# Elasticsearch network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-elasticsearch
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from app
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Allow from Kibana
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kibana.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Allow from Fluent-bit
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.fluentbit.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Allow from ES ILM job
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+  egress:
+    # DNS only — Elasticsearch doesn't initiate external connections
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Kibana network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-kibana
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.kibana.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 5601
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Kibana → Elasticsearch
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+---
+# Fluent-bit network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-fluentbit
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.fluentbit.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Fluent-bit → Elasticsearch
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Fluent-bit → Kubernetes API (metadata enrichment)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+{{- end }}
+---
+# ES ILM job network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-es-ilm-job
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # ILM job → Elasticsearch
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+---
+{{- end }}

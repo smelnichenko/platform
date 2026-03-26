@@ -1,0 +1,561 @@
+{{- if .Values.networkPolicies.enabled -}}
+# App (API backend) network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-app
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.monitor.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from gateway
+    {{- if eq (.Values.gateway.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Allow from site (nginx proxy to API)
+    {{- if .Values.site.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.site.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    # Allow Prometheus scraping
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Alertmanager webhook
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.alertmanager.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # App → PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # App → Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    # App → MinIO
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.minio.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
+    # App → Elasticsearch
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+    # App → Kafka
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+    # App → ScyllaDB
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.scylla.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9042
+    # App → external HTTPS (SMTP, AI API, URL monitoring, webhooks)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 587
+        - protocol: TCP
+          port: 80
+---
+{{- if eq (.Values.gateway.enabled | toString) "true" }}
+---
+# Gateway network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-gateway
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.gateway.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller (Traefik)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from site (nginx proxy_pass)
+    {{- if .Values.site.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.site.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Gateway → App (core backend)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Gateway → Admin (user service)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Gateway → Chat microservice
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Gateway → Chess microservice
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Gateway → Keycloak (JWKS token validation + ensure-user)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Gateway → Redis (rate limiting)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+{{- end }}
+{{- if eq (.Values.admin.enabled | toString) "true" }}
+---
+# Admin (user service) network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-admin
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.admin.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from ingress controller (when gateway disabled, direct routing)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Admin → PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Admin → Redis (session, captcha, permission version)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Admin → Kafka (user.events producer)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Admin → external HTTPS (SMTP, AI API)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 587
+    # Admin → Keycloak (OIDC token exchange)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+{{- end }}
+---
+{{- if eq (.Values.chessService.enabled | toString) "true" }}
+# Chess microservice network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-chess-service
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.chess.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from ingress controller (when gateway disabled, direct routing)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Chess → PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Chess → Redis (game cache)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Chess → Kafka (chess.moves producer/consumer)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+---
+{{- end }}
+{{- if eq (.Values.chatService.enabled | toString) "true" }}
+# Chat microservice network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-chat-service
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.chat.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from ingress controller (when gateway disabled, direct routing)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Chat → PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Chat → Redis (presence, user cache)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Chat → Kafka (chat.messages producer/consumer, user.events consumer)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Chat → ScyllaDB (message persistence)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.scylla.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9042
+{{- end }}
+---
+{{- if .Values.site.enabled }}
+# Frontend network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-site
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.site.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Frontend → Gateway (nginx proxy_pass)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- if .Values.games }}
+    # Frontend → Game pods (nginx proxy for /game/)
+    {{- range .Values.games }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: {{ .name }}
+              app.kubernetes.io/instance: {{ $.Release.Name }}
+              app.kubernetes.io/name: {{ include "schnappy.name" $ }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    {{- end }}
+---
+{{- end }}
+{{- range .Values.games }}
+---
+# {{ .name }} network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" $ }}-{{ .name }}
+  labels:
+    {{- include "schnappy.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ .name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from site (nginx proxy for /game/)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.site.selectorLabels" $ | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS only (static files, no outbound needed)
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}
+{{- end }}

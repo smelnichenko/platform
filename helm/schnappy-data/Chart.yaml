@@ -1,0 +1,12 @@
+apiVersion: v2
+name: schnappy-data
+description: Stateful data stores (PostgreSQL, Redis, Kafka, ScyllaDB, MinIO, apt-cache)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - database
+  - storage
+icon: https://pmon.dev/favicon.ico
+maintainers:
+  - name: schnappy

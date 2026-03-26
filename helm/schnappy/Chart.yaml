@@ -1,0 +1,12 @@
+apiVersion: v2
+name: schnappy
+description: Core application services (app, admin, chat, chess, gateway, site, game)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+icon: https://pmon.dev/favicon.ico
+keywords:
+  - monitoring
+  - web
+maintainers:
+  - name: schnappy

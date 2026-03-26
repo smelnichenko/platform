@@ -1,0 +1,17 @@
+{{- if eq (.Values.minio.enabled | toString) "true" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.fullname" . }}-minio
+  labels:
+    {{- include "schnappy.minio.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: s3
+  selector:
+    {{- include "schnappy.minio.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,15 @@
+{{- if .Values.grafana.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-grafana-dashboards
+  labels:
+    {{- include "schnappy.grafana.labels" . | nindent 4 }}
+data:
+  application-dashboard.json: |-
+{{ .Files.Get "dashboards/application-dashboard.json" | indent 4 }}
+  monitors-dashboard.json: |-
+{{ .Files.Get "dashboards/monitors-dashboard.json" | indent 4 }}
+  infrastructure-dashboard.json: |-
+{{ .Files.Get "dashboards/infrastructure-dashboard.json" | indent 4 }}
+{{- end }}

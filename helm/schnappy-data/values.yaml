@@ -1,0 +1,123 @@
+# Stateful data stores chart
+nameOverride: schnappy
+
+vault:
+  secretsEnabled: false
+
+networkPolicies:
+  enabled: true
+
+# PostgreSQL
+postgres:
+  enabled: true
+  image: postgres:17-alpine
+  database: monitor
+  username: postgres
+  password: ""
+  existingSecret: ""
+  # Extra databases to create on init (unconditional)
+  extraDatabases:
+    - monitor_admin
+    - monitor_chat
+    - monitor_chess
+    - keycloak
+  sharedBuffers: "512MB"
+  effectiveCacheSize: "1536MB"
+  workMem: "16MB"
+  maintenanceWorkMem: "128MB"
+  maxParallelWorkersPerGather: 2
+  maxParallelWorkers: 8
+  maxWorkerProcesses: 8
+  effectiveIoConcurrency: 1
+  randomPageCost: "4.0"
+  resources:
+    requests: { memory: "512Mi", cpu: "100m" }
+    limits: { memory: "2Gi", cpu: "1000m" }
+  storage:
+    size: 1Gi
+    storageClass: ""
+
+# Redis (volatile cache)
+redis:
+  enabled: true
+  image: redis:7-alpine
+  password: ""
+  existingSecret: ""
+  resources:
+    requests: { memory: "64Mi", cpu: "25m" }
+    limits: { memory: "256Mi", cpu: "200m" }
+
+# Kafka (KRaft mode)
+kafka:
+  image: apache/kafka:4.2.0
+  replicas: 1
+  clusterId: ""
+  existingSecret: ""
+  javaOpts: "-Xmx1g -Xms1g"
+  retention:
+    hours: 168
+    bytes: "10737418240"
+  topics:
+    - name: chat.messages
+      partitions: 12
+      replicationFactor: 1
+    - name: chat.events
+      partitions: 6
+      replicationFactor: 1
+    - name: chat.notifications
+      partitions: 3
+      replicationFactor: 1
+    - name: chess.moves
+      partitions: 6
+      replicationFactor: 1
+    - name: user.events
+      partitions: 3
+      replicationFactor: 1
+  resources:
+    requests: { memory: "1Gi", cpu: "250m" }
+    limits: { memory: "2Gi", cpu: "2000m" }
+  storage:
+    size: 10Gi
+    storageClass: ""
+
+# ScyllaDB (chat message storage)
+scylla:
+  image: scylladb/scylla:6.2
+  replicas: 1
+  args:
+    - "--smp=2"
+    - "--memory=2G"
+    - "--overprovisioned=1"
+    - "--developer-mode=1"
+  resources:
+    requests: { memory: "2Gi", cpu: "500m" }
+    limits: { memory: "4Gi", cpu: "4000m" }
+  storage:
+    size: 20Gi
+    storageClass: ""
+
+# MinIO (email attachment storage)
+minio:
+  enabled: false
+  image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+  accessKey: ""
+  secretKey: ""
+  existingSecret: ""
+  bucket: "email-attachments"
+  resources:
+    requests: { memory: "256Mi", cpu: "100m" }
+    limits: { memory: "1Gi", cpu: "1000m" }
+  storage:
+    size: 20Gi
+    storageClass: ""
+
+# apt-cacher-ng (apt caching proxy for Docker builds)
+aptCache:
+  enabled: true
+  image: git.pmon.dev/schnappy/apt-cacher-ng:1.0
+  resources:
+    requests: { memory: "32Mi", cpu: "25m" }
+    limits: { memory: "128Mi", cpu: "200m" }
+  storage:
+    size: 5Gi
+    storageClass: ""

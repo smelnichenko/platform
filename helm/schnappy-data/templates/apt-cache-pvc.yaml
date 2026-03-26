@@ -1,0 +1,19 @@
+{{- if eq (.Values.aptCache.enabled | toString) "true" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "schnappy.fullname" . }}-apt-cache
+  labels:
+    {{- include "schnappy.aptCache.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.aptCache.storage.size }}
+  {{- if .Values.aptCache.storage.storageClass }}
+  storageClassName: {{ .Values.aptCache.storage.storageClass }}
+  {{- end }}
+{{- end }}

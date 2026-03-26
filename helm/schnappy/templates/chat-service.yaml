@@ -1,0 +1,17 @@
+{{- if eq (.Values.chatService.enabled | toString) "true" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.chat.serviceName" . }}
+  labels:
+    {{- include "schnappy.chat.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.chatService.service.type }}
+  ports:
+    - port: {{ .Values.chatService.service.port }}
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "schnappy.chat.selectorLabels" . | nindent 4 }}
+{{- end }}

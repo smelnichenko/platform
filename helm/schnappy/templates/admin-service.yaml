@@ -1,0 +1,17 @@
+{{- if eq (.Values.admin.enabled | toString) "true" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.admin.serviceName" . }}
+  labels:
+    {{- include "schnappy.admin.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.admin.service.type }}
+  ports:
+    - port: {{ .Values.admin.service.port }}
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "schnappy.admin.selectorLabels" . | nindent 4 }}
+{{- end }}

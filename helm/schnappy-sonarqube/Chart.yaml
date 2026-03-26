@@ -1,0 +1,12 @@
+apiVersion: v2
+name: schnappy-sonarqube
+description: Code quality analysis (SonarQube + dedicated PostgreSQL)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - sonarqube
+  - quality
+icon: https://pmon.dev/favicon.ico
+maintainers:
+  - name: schnappy
