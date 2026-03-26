@@ -163,6 +163,8 @@ data:
         {{- if $userComma }},{{ end }}
         {
           "username": "service-account-k6-smoke",
+          "email": "k6-smoke@pmon.dev",
+          "emailVerified": true,
           "enabled": true,
           "serviceAccountClientId": "k6-smoke",
           "realmRoles": ["METRICS", "PLAY", "CHAT", "EMAIL", "MANAGE_USERS"]
