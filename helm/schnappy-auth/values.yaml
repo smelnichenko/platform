@@ -45,7 +45,11 @@ keycloak:
       clusterIssuer: letsencrypt-dns
       secretName: auth-pmon-dev-tls
 
-# Cross-chart references (for keycloak SMTP secret name)
+# Cross-chart references (for keycloak SMTP config)
 mail:
   enabled: false
   existingSecret: ""
+  host: smtp.gmail.com
+  port: "587"
+  username: ""
+  fromAddress: "noreply@example.com"
