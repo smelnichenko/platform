@@ -24,7 +24,7 @@
       },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [{
-        "expr": "last_over_time(k6_checks_rate[1d])",
+        "expr": "avg(last_over_time(k6_checks_rate[1d]))",
         "legendFormat": "pass rate"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
@@ -113,7 +113,7 @@
       },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [{
-        "expr": "last_over_time(k6_http_req_failed_rate[1d])",
+        "expr": "avg(last_over_time(k6_http_req_failed_rate[1d]))",
         "legendFormat": "error rate"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
@@ -137,9 +137,8 @@
         }
       },
       "targets": [{
-        "expr": "k6_checks_rate or last_over_time(k6_checks_rate[6h])",
-        "legendFormat": "smoke test",
-        "intervalFactor": 1
+        "expr": "avg(k6_checks_rate) or avg(last_over_time(k6_checks_rate[6h]))",
+        "legendFormat": "smoke test"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
@@ -149,7 +148,8 @@
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
       "fieldConfig": {
         "defaults": {
-          "unit": "ms"
+          "unit": "ms",
+          "custom": { "pointSize": 5, "drawStyle": "points", "showPoints": "always" }
         }
       },
       "options": { "tooltip": { "mode": "multi" } },
@@ -163,7 +163,7 @@
   "schemaVersion": 39,
   "tags": ["k6", "smoke-test"],
   "templating": { "list": [] },
-  "time": { "from": "now-7d", "to": "now" },
+  "time": { "from": "now-24h", "to": "now" },
   "timepicker": {},
   "timezone": "utc",
   "title": "k6 Smoke Tests",
