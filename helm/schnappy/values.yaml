@@ -202,6 +202,10 @@ smokeTest:
   schedule: "0 6 * * *"
   baseUrl: ""                # Defaults to https://<app.ingress.host>
   clientSecretName: ""       # k8s Secret with CLIENT_SECRET key (for authenticated tests)
+# k6 load test (nightly CronJob — 10 VUs sustained)
+loadTest:
+  enabled: false
+  schedule: "0 3 * * *"
 
 scylla:
   datacenter: datacenter1
