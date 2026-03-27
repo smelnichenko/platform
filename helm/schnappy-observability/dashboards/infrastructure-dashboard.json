@@ -61,7 +61,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "max by (pod) (kube_pod_status_ready{namespace=\"monitor\", condition=\"true\"}) unless on(pod) max by (pod) (kube_pod_owner{namespace=\"monitor\", owner_kind=\"Job\"})",
+          "expr": "max by (pod) (kube_pod_status_ready{namespace=\"schnappy\", condition=\"true\"}) unless on(pod) max by (pod) (kube_pod_owner{namespace=\"schnappy\", owner_kind=\"Job\"})",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -108,7 +108,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"monitor\"}[1h]) > 0 unless on(pod) kube_pod_owner{namespace=\"monitor\", owner_kind=\"Job\"}",
+          "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"schnappy\"}[1h]) > 0 unless on(pod) kube_pod_owner{namespace=\"schnappy\", owner_kind=\"Job\"}",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -180,7 +180,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "kube_pod_container_resource_limits{namespace=\"monitor\", resource=\"memory\"} unless on(pod) kube_pod_owner{namespace=\"monitor\", owner_kind=\"Job\"}",
+          "expr": "kube_pod_container_resource_limits{namespace=\"schnappy\", resource=\"memory\"} unless on(pod) kube_pod_owner{namespace=\"schnappy\", owner_kind=\"Job\"}",
           "legendFormat": "{{pod}}",
           "instant": true,
           "refId": "A"
@@ -212,7 +212,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "kube_pod_container_resource_limits{namespace=\"monitor\", resource=\"cpu\"} * 1000 unless on(pod) kube_pod_owner{namespace=\"monitor\", owner_kind=\"Job\"}",
+          "expr": "kube_pod_container_resource_limits{namespace=\"schnappy\", resource=\"cpu\"} * 1000 unless on(pod) kube_pod_owner{namespace=\"schnappy\", owner_kind=\"Job\"}",
           "legendFormat": "{{pod}}",
           "instant": true,
           "refId": "A"
