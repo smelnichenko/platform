@@ -60,7 +60,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "sum(kube_pod_status_ready{namespace=\"monitor\", condition=\"true\"})",
+          "expr": "sum(kube_pod_status_ready{namespace=\"schnappy\", condition=\"true\"})",
           "legendFormat": "Ready",
           "range": true,
           "refId": "A"
@@ -68,7 +68,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "count(kube_pod_status_ready{namespace=\"monitor\"})",
+          "expr": "count(kube_pod_status_ready{namespace=\"schnappy\"})",
           "legendFormat": "Total",
           "range": true,
           "refId": "B"
