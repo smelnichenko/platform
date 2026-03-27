@@ -70,10 +70,6 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: JAVA_OPTS
               value: {{ .Values.app.javaOpts | default "-Xmx1536m" | quote }}
-            - name: GIT_HASH
-              value: {{ .Values.app.gitHash | default "unknown" | quote }}
-            - name: BUILD_TIME
-              value: {{ .Values.app.buildTime | default "" | quote }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}
             - name: REDIS_PASSWORD
               valueFrom:

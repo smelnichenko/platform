@@ -76,10 +76,6 @@ data:
           export:
             enabled: true
 
-    info:
-      git-hash: ${GIT_HASH:unknown}
-      build-time: ${BUILD_TIME:}
-
     monitor:
       enabled: {{ .Values.monitor.enabled }}
       http:

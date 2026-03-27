@@ -51,14 +51,6 @@ data:
         });
       });
 
-      group('build-info', () => {
-        const r = http.get(`${BASE_URL}/api/build-info`);
-        check(r, {
-          'build-info 200': (r) => r.status === 200,
-          'has gitHash': (r) => r.json('gitHash') !== undefined,
-        });
-      });
-
       group('approval-mode', () => {
         const r = http.get(`${BASE_URL}/api/auth/approval-mode`);
         check(r, { 'approval-mode 200': (r) => r.status === 200 });
