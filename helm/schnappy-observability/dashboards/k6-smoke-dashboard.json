@@ -1,23 +1,21 @@
 {
   "annotations": { "list": [] },
-  "description": "k6 smoke test results — runs after every Argo CD sync (PostSync) and daily at 6 AM UTC",
+  "description": "k6 smoke test results — PostSync hook after every deploy + daily 6 AM UTC CronJob",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "links": [],
   "panels": [
     {
-      "title": "Check Pass Rate",
-      "description": "Percentage of all k6 checks that passed in the last run. 100% = all endpoints healthy.",
+      "title": "Pass Rate",
       "type": "gauge",
-      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "gridPos": { "h": 7, "w": 4, "x": 0, "y": 0 },
       "fieldConfig": {
         "defaults": {
           "min": 0, "max": 1,
           "thresholds": {
             "steps": [
               { "color": "red", "value": null },
-              { "color": "yellow", "value": 0.8 },
               { "color": "green", "value": 1 }
             ]
           },
@@ -32,53 +30,88 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
-      "title": "Total Checks (Last Run)",
-      "description": "Number of k6 iterations completed. Should always be 1 (single smoke test run).",
-      "type": "stat",
-      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "title": "Endpoint Status",
+      "description": "HTTP status per endpoint from the last smoke test run",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 12, "x": 4, "y": 0 },
       "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Endpoint" },
+            "properties": [{ "id": "custom.width", "value": 140 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "custom.width", "value": 70 },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 200 },
+                  { "color": "red", "value": 300 }
+                ]
+              }},
+              { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duration" },
+            "properties": [
+              { "id": "unit", "value": "ms" },
+              { "id": "decimals", "value": 0 },
+              { "id": "custom.width", "value": 90 },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 500 },
+                  { "color": "red", "value": 2000 }
+                ]
+              }},
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
             ]
           }
-        }
+        ]
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "targets": [{
-        "expr": "last_over_time(k6_iterations_total[1d])",
-        "legendFormat": "iterations"
-      }],
+      "options": {
+        "sortBy": [{ "displayName": "Endpoint", "desc": false }],
+        "footer": { "show": false }
+      },
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "Endpoint", "mode": "outer" }
+        }
+      ],
+      "targets": [
+        {
+          "expr": "last_over_time(k6_http_reqs_total{group=~\"::.+\", expected_response=\"true\"}[1d]) * 200",
+          "legendFormat": "{{group}}",
+          "format": "table",
+          "instant": true,
+          "refId": "status"
+        },
+        {
+          "expr": "histogram_avg(last_over_time(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000",
+          "legendFormat": "{{group}}",
+          "format": "table",
+          "instant": true,
+          "refId": "duration"
+        }
+      ],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
-      "title": "HTTP Requests by Group",
-      "description": "Number of HTTP requests per endpoint group.\n\nactuator = /api/actuator/health (Spring Boot)\napproval-mode = /api/auth/approval-mode\nbuild-info = /api/build-info (git hash + build time)\nfrontend = / (React SPA via nginx)\nhealth = /api/health (app health)\nkeycloak = auth.pmon.dev OIDC discovery\npermissions = /api/permissions/required",
-      "type": "stat",
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 },
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "steps": [
-              { "color": "green", "value": null }
-            ]
-          }
-        }
-      },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "targets": [{
-        "expr": "last_over_time(k6_http_reqs_total[1d])",
-        "legendFormat": "{{group}}"
-      }],
-      "datasource": { "type": "prometheus", "uid": "prometheus" }
-    },
-    {
-      "title": "HTTP Request Duration (ms)",
-      "description": "Average response time per endpoint group. Yellow > 500ms, red > 2s.\n\nactuator is typically slow (~1s) on first call due to Spring Boot health check (DB, disk).",
+      "title": "Response Time",
+      "description": "Average response time per endpoint. Actuator is typically slow (~1s) due to Spring health checks.",
       "type": "bargauge",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 0 },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -93,42 +126,20 @@
       },
       "options": {
         "orientation": "horizontal",
+        "displayMode": "gradient",
         "reduceOptions": { "calcs": ["lastNotNull"] }
       },
       "targets": [{
-        "expr": "histogram_avg(last_over_time(k6_http_req_duration_seconds[1d])) * 1000",
-        "legendFormat": "{{group}}"
+        "expr": "sort_desc(histogram_avg(last_over_time(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000)",
+        "legendFormat": "{{ group }}"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
-      "title": "HTTP Error Rate",
-      "description": "Percentage of HTTP requests that returned non-2xx status. Should be 0%.",
-      "type": "stat",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "thresholds": {
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 0.01 }
-            ]
-          }
-        }
-      },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "targets": [{
-        "expr": "avg(last_over_time(k6_http_req_failed_rate[1d]))",
-        "legendFormat": "error rate"
-      }],
-      "datasource": { "type": "prometheus", "uid": "prometheus" }
-    },
-    {
-      "title": "Check Results History",
-      "description": "Pass/fail timeline over time. Green = all checks passed, red = one or more failed. Runs daily at 6 AM + after every Argo CD sync.",
+      "title": "Results History",
+      "description": "PASS/FAIL timeline. Runs daily at 6 AM UTC + after every Argo CD deploy sync.",
       "type": "state-timeline",
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 7 },
       "fieldConfig": {
         "defaults": {
           "thresholds": {
@@ -143,6 +154,10 @@
           ]
         }
       },
+      "options": {
+        "showValue": "always",
+        "mergeValues": true
+      },
       "targets": [{
         "expr": "avg(k6_checks_rate) or avg(last_over_time(k6_checks_rate[6h]))",
         "legendFormat": "smoke test"
@@ -150,20 +165,27 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
-      "title": "Request Duration History",
-      "description": "Response time trend per endpoint group over time. Each dot is one smoke test run. Useful for spotting performance regressions.",
+      "title": "Response Time Trend",
+      "description": "Response time per endpoint over time. Each point is one smoke test run.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "custom": { "pointSize": 5, "drawStyle": "points", "showPoints": "always" }
+          "custom": {
+            "pointSize": 6,
+            "drawStyle": "points",
+            "showPoints": "always"
+          }
         }
       },
-      "options": { "tooltip": { "mode": "multi" } },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }
+      },
       "targets": [{
-        "expr": "histogram_avg(k6_http_req_duration_seconds) * 1000 or histogram_avg(last_over_time(k6_http_req_duration_seconds[6h])) * 1000",
-        "legendFormat": "{{group}}"
+        "expr": "histogram_avg(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}) * 1000 or histogram_avg(last_over_time(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}[6h])) * 1000",
+        "legendFormat": "{{ group }}"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     }
@@ -171,7 +193,7 @@
   "schemaVersion": 39,
   "tags": ["k6", "smoke-test"],
   "templating": { "list": [] },
-  "time": { "from": "now-24h", "to": "now" },
+  "time": { "from": "now-7d", "to": "now" },
   "timepicker": {},
   "timezone": "utc",
   "title": "k6 Smoke Tests",

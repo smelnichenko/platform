@@ -32,7 +32,7 @@ data:
         client_id: 'k6-smoke',
         client_secret: clientSecret,
         grant_type: 'client_credentials',
-      });
+      }, { tags: { name: 'token' } });
       if (res.status !== 200) {
         console.error(`Token request failed: ${res.status} ${res.body}`);
         return null;
