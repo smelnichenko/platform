@@ -38,8 +38,7 @@ data:
         Merge_Log_Key     log_parsed
         K8S-Logging.Parser On
         Annotations       Off
-        Labels            On
-        Replace_Dots      On
+        Labels            Off
 
     [FILTER]
         Name              grep
