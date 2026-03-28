@@ -22,6 +22,7 @@ data:
         Mem_Buf_Limit     32MB
         Skip_Long_Lines   On
         Refresh_Interval  5
+        Exclude_Path      /var/log/containers/*k6-*
 
     [FILTER]
         Name              kubernetes
