@@ -642,35 +642,22 @@ spec:
         - protocol: TCP
           port: 443
 {{- end }}
-{{- if eq (.Values.loadTest.enabled | toString) "true" }}
+{{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
 ---
-# k6 load test network policy
+# Hyperfoil load/stress test network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-k6-load
+  name: {{ include "schnappy.fullname" . }}-hyperfoil
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
       {{- include "schnappy.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: k6-load
+      app.kubernetes.io/component: hyperfoil-load
   policyTypes:
-    - Ingress
     - Egress
-  ingress:
-    # k6-operator coordination (runners + starter + controller)
-    - from:
-        - podSelector:
-            matchLabels:
-              app: k6
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: k6-operator-system
-      ports:
-        - protocol: TCP
-          port: 6565
   egress:
     # DNS
     - ports:
@@ -678,23 +665,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # k6-operator runner coordination
-    - to:
-        - podSelector:
-            matchLabels:
-              app: k6
-      ports:
-        - protocol: TCP
-          port: 6565
-    # k6 → Prometheus (remote write)
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9090
-    # k6 → Keycloak (token exchange)
+    # Hyperfoil → Keycloak (token exchange)
     - to:
         - podSelector:
             matchLabels:
@@ -702,54 +673,51 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # k6 → Gateway (Envoy proxy or Spring Cloud Gateway)
+    # Hyperfoil → backend services (bypass Envoy)
     - to:
         - podSelector:
             matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
-        {{- if eq (.Values.gateway.enabled | toString) "true" }}
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
-        {{- end }}
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
 ---
-# k6-operator starter/initializer pods (app=k6 without component label)
+# Hyperfoil stress test (same rules, different component label)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-k6-operator
+  name: {{ include "schnappy.fullname" . }}-hyperfoil-stress
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      app: k6
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: hyperfoil-stress
   policyTypes:
-    - Ingress
     - Egress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: k6
-      ports:
-        - protocol: TCP
-          port: 6565
   egress:
+    # DNS
     - ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+    # Hyperfoil → Keycloak (token exchange)
     - to:
         - podSelector:
             matchLabels:
-              app: k6
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
-          port: 6565
+          port: 8080
+    # Hyperfoil → backend services (bypass Envoy)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
 {{- end }}
 {{- end }}

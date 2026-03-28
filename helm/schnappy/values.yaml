@@ -208,10 +208,12 @@ smokeTest:
   schedule: "0 6 * * *"
   baseUrl: ""                # Defaults to https://<app.ingress.host>
   clientSecretName: ""       # k8s Secret with CLIENT_SECRET key (for authenticated tests)
-# k6 load test (nightly CronJob — 10 VUs sustained)
-loadTest:
+# Hyperfoil load/stress tests (bypass Envoy, hit backends directly)
+hyperfoil:
   enabled: false
-  schedule: "0 3 * * *"
+  image: quay.io/hyperfoil/hyperfoil:0.28.0
+  load:
+    schedule: "0 3 * * *"
 
 scylla:
   datacenter: datacenter1

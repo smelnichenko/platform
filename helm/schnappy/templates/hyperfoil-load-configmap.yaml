@@ -1,0 +1,113 @@
+{{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-hyperfoil-load
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+data:
+  run.sh: |
+    #!/bin/sh
+    set -e
+
+    # Get token from Keycloak (client_credentials grant)
+    TOKEN_JSON=$(curl -sf -X POST "${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token" \
+      -d "client_id=k6-smoke&client_secret=${K6_CLIENT_SECRET}&grant_type=client_credentials")
+    ACCESS_TOKEN=$(echo "$TOKEN_JSON" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+
+    # Decode JWT payload → extract sub + email for gateway headers
+    PAYLOAD=$(echo "$ACCESS_TOKEN" | cut -d. -f2)
+    # Add base64 padding
+    PAD=$(( 4 - ${#PAYLOAD} % 4 ))
+    [ "$PAD" -lt 4 ] && PAYLOAD="${PAYLOAD}$(printf '%0.s=' $(seq 1 $PAD))"
+    JSON=$(echo "$PAYLOAD" | base64 -d 2>/dev/null)
+    USER_UUID=$(echo "$JSON" | sed 's/.*"sub":"\([^"]*\)".*/\1/')
+    USER_EMAIL=$(echo "$JSON" | sed 's/.*"email":"\([^"]*\)".*/\1/')
+    [ -z "$USER_EMAIL" ] && USER_EMAIL="k6-smoke@pmon.dev"
+
+    echo "Token acquired: UUID=${USER_UUID}"
+
+    /deployment/bin/run.sh \
+      -PMONITOR_URL="${MONITOR_URL}" \
+      -PCHAT_URL="${CHAT_URL}" \
+      -PTOKEN="${ACCESS_TOKEN}" \
+      -PUUID="${USER_UUID}" \
+      -PEMAIL="${USER_EMAIL}" \
+      /benchmarks/load-test.hf.yaml
+
+  load-test.hf.yaml: |
+    name: schnappy-load
+    http:
+      - host: !param MONITOR_URL http://schnappy-monitor:8080
+        sharedConnections: 100
+      - host: !param CHAT_URL http://schnappy-chat:8080
+        sharedConnections: 20
+
+    phases:
+      - rampUp:
+          increasingRate:
+            initialUsersPerSec: 5
+            targetUsersPerSec: 50
+            duration: 60s
+            maxSessions: 200
+            forks:
+              load: &load-scenario
+                scenario:
+                  - setup:
+                      - set: { var: token, value: !param TOKEN _ }
+                      - set: { var: uuid, value: !param UUID _ }
+                      - set: { var: email, value: !param EMAIL _ }
+                  - health:
+                      - httpRequest:
+                          GET: /api/health
+                          authority: !param MONITOR_URL http://schnappy-monitor:8080
+                  - pages:
+                      - httpRequest:
+                          GET: /api/monitor/pages
+                          authority: !param MONITOR_URL http://schnappy-monitor:8080
+                          headers:
+                            authorization: "Bearer ${token}"
+                            x-user-uuid: ${uuid}
+                            x-user-email: ${email}
+                  - feeds:
+                      - httpRequest:
+                          GET: /api/rss/feeds
+                          authority: !param MONITOR_URL http://schnappy-monitor:8080
+                          headers:
+                            authorization: "Bearer ${token}"
+                            x-user-uuid: ${uuid}
+                            x-user-email: ${email}
+                  - channels:
+                      - httpRequest:
+                          GET: /api/chat/channels
+                          authority: !param CHAT_URL http://schnappy-chat:8080
+                          headers:
+                            authorization: "Bearer ${token}"
+                            x-user-uuid: ${uuid}
+                            x-user-email: ${email}
+                  - inbox:
+                      - httpRequest:
+                          GET: /api/inbox/emails
+                          authority: !param MONITOR_URL http://schnappy-monitor:8080
+                          headers:
+                            authorization: "Bearer ${token}"
+                            x-user-uuid: ${uuid}
+                            x-user-email: ${email}
+
+      - sustained:
+          constantRate:
+            usersPerSec: 50
+            duration: 180s
+            maxSessions: 200
+            forks:
+              load: *load-scenario
+
+      - rampDown:
+          decreasingRate:
+            initialUsersPerSec: 50
+            targetUsersPerSec: 0
+            duration: 60s
+            maxSessions: 200
+            forks:
+              load: *load-scenario
+{{- end }}
