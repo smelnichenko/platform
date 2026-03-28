@@ -198,6 +198,8 @@ keycloak:
 # Envoy Gateway (replaces Spring Cloud Gateway for JWT + routing)
 envoyGateway:
   enabled: false
+  rateLimit:
+    requestsPerSecond: 50
 
 # k6 smoke tests (PostSync hook + daily CronJob)
 smokeTest:
