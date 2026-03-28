@@ -16,7 +16,7 @@ spec:
       - name: keycloak
         issuer: https://{{ .Values.keycloak.hostname | default "auth.pmon.dev" }}/realms/schnappy
         remoteJWKS:
-          uri: http://{{ include "schnappy.keycloak.serviceName" . }}:8080/realms/schnappy/protocol/openid-connect/certs
+          uri: http://{{ include "schnappy.keycloak.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:8080/realms/schnappy/protocol/openid-connect/certs
         claimToHeaders:
           - claim: sub
             header: X-User-UUID
