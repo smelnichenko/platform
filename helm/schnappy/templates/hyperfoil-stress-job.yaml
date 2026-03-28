@@ -42,6 +42,8 @@ spec:
                   drop:
                     - ALL
               env:
+                - name: JAVA_OPTS
+                  value: "-Xmx512m -XX:+UseZGC"
                 - name: MONITOR_URL
                   value: "http://{{ include "schnappy.fullname" . }}-monitor:8080"
                 - name: CHAT_URL
