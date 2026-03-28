@@ -58,16 +58,16 @@ data:
     name: schnappy-stress
     http:
       - host: __MONITOR_URL__
-        sharedConnections: 500
+        sharedConnections: 2000
       - host: __CHAT_URL__
-        sharedConnections: 100
+        sharedConnections: 500
       - host: __CHESS_URL__
-        sharedConnections: 100
+        sharedConnections: 500
 
     phases:
-      - ramp200:
+      - ramp500:
           always:
-            users: 200
+            users: 500
             duration: 90s
             scenario: &scenario
               - setup:
@@ -114,13 +114,6 @@ data:
                         x-user-uuid: ${uuid}
                         x-user-email: ${email}
 
-      - ramp500:
-          always:
-            users: 500
-            duration: 90s
-            startAfter: ramp200
-            scenario: *scenario
-
       - ramp1000:
           always:
             users: 1000
@@ -133,5 +126,12 @@ data:
             users: 2000
             duration: 90s
             startAfter: ramp1000
+            scenario: *scenario
+
+      - ramp4000:
+          always:
+            users: 4000
+            duration: 90s
+            startAfter: ramp2000
             scenario: *scenario
 {{- end }}
