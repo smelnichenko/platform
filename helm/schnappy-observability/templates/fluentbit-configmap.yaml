@@ -8,10 +8,12 @@ metadata:
 data:
   fluent-bit.conf: |
     [SERVICE]
-        Flush        1
-        Log_Level    warn
-        Parsers_File /fluent-bit/etc/parsers.conf
-        storage.path /fluent-bit/db/
+        Flush             5
+        Log_Level         warn
+        Parsers_File      /fluent-bit/etc/parsers.conf
+        storage.path      /fluent-bit/db/
+        storage.sync      normal
+        storage.checksum  off
 
     [INPUT]
         Name              tail
@@ -19,9 +21,11 @@ data:
         Path              /var/log/containers/*.log
         Parser            cri
         DB                /fluent-bit/db/tail.db
-        Mem_Buf_Limit     32MB
+        Mem_Buf_Limit     64MB
+        storage.type      filesystem
         Skip_Long_Lines   On
-        Refresh_Interval  5
+        Refresh_Interval  10
+        Rotate_Wait       5
         Exclude_Path      /var/log/containers/*k6-*
 
     [FILTER]
@@ -51,10 +55,11 @@ data:
         Logstash_Prefix   podlogs
         Suppress_Type_Name On
         tls               Off
-        Retry_Limit       3
-        Buffer_Size       512KB
+        Retry_Limit       5
+        Buffer_Size       False
         Generate_ID       Off
         Workers           2
+        Trace_Error       On
 
   parsers.conf: |
     [PARSER]
