@@ -35,20 +35,22 @@ data:
 
     echo "Token acquired: UUID=${USER_UUID}, email=${USER_EMAIL}"
 
-    /deployment/bin/run.sh \
-      -PMONITOR_URL="${MONITOR_URL}" \
-      -PCHAT_URL="${CHAT_URL}" \
-      -PTOKEN="${ACCESS_TOKEN}" \
-      -PUUID="${USER_UUID}" \
-      -PEMAIL="${USER_EMAIL}" \
-      /benchmarks/load-test.hf.yaml
+    # Generate benchmark YAML with actual values substituted
+    sed -e "s|__MONITOR_URL__|${MONITOR_URL}|g" \
+        -e "s|__CHAT_URL__|${CHAT_URL}|g" \
+        -e "s|__TOKEN__|${ACCESS_TOKEN}|g" \
+        -e "s|__UUID__|${USER_UUID}|g" \
+        -e "s|__EMAIL__|${USER_EMAIL}|g" \
+        /benchmarks/load-test.hf.yaml > /tmp/benchmark.yaml
+
+    /deployment/bin/run.sh /tmp/benchmark.yaml
 
   load-test.hf.yaml: |
     name: schnappy-load
     http:
-      - host: !param MONITOR_URL http://schnappy-monitor:8080
+      - host: __MONITOR_URL__
         sharedConnections: 100
-      - host: !param CHAT_URL http://schnappy-chat:8080
+      - host: __CHAT_URL__
         sharedConnections: 20
 
     phases:
@@ -60,17 +62,17 @@ data:
             maxSessions: 200
             scenario:
               - setup:
-                  - set: { var: token, value: !param TOKEN _ }
-                  - set: { var: uuid, value: !param UUID _ }
-                  - set: { var: email, value: !param EMAIL _ }
+                  - set: { var: token, value: __TOKEN__ }
+                  - set: { var: uuid, value: __UUID__ }
+                  - set: { var: email, value: __EMAIL__ }
               - health:
                   - httpRequest:
                       GET: /api/health
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
               - pages:
                   - httpRequest:
                       GET: /api/monitor/pages
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -78,7 +80,7 @@ data:
               - feeds:
                   - httpRequest:
                       GET: /api/rss/feeds
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -86,7 +88,7 @@ data:
               - channels:
                   - httpRequest:
                       GET: /api/chat/channels
-                      authority: !param CHAT_URL http://schnappy-chat:8080
+                      authority: __CHAT_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -94,7 +96,7 @@ data:
               - inbox:
                   - httpRequest:
                       GET: /api/inbox/emails
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -108,17 +110,17 @@ data:
             startAfter: rampUp
             scenario:
               - setup:
-                  - set: { var: token, value: !param TOKEN _ }
-                  - set: { var: uuid, value: !param UUID _ }
-                  - set: { var: email, value: !param EMAIL _ }
+                  - set: { var: token, value: __TOKEN__ }
+                  - set: { var: uuid, value: __UUID__ }
+                  - set: { var: email, value: __EMAIL__ }
               - health:
                   - httpRequest:
                       GET: /api/health
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
               - pages:
                   - httpRequest:
                       GET: /api/monitor/pages
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -126,7 +128,7 @@ data:
               - feeds:
                   - httpRequest:
                       GET: /api/rss/feeds
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -134,7 +136,7 @@ data:
               - channels:
                   - httpRequest:
                       GET: /api/chat/channels
-                      authority: !param CHAT_URL http://schnappy-chat:8080
+                      authority: __CHAT_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -142,7 +144,7 @@ data:
               - inbox:
                   - httpRequest:
                       GET: /api/inbox/emails
-                      authority: !param MONITOR_URL http://schnappy-monitor:8080
+                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
