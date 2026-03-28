@@ -1,5 +1,6 @@
 {{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
 ---
+# JWT validation — extracts sub and email from Keycloak tokens
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -22,4 +23,40 @@ spec:
             header: X-User-UUID
           - claim: email
             header: X-User-Email
+---
+# External auth — calls admin service ensure-user for user provisioning
+# Runs after JWT validation, forwards X-User-UUID/Email/Permissions headers
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-ext-auth
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ include "schnappy.fullname" . }}-core-route
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ include "schnappy.fullname" . }}-chat-route
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ include "schnappy.fullname" . }}-chess-route
+  extAuth:
+    failOpen: true
+    timeout: 5s
+    headersToExtAuth:
+      - X-User-UUID
+      - X-User-Email
+      - X-User-Permissions
+      - Authorization
+    http:
+      backendRef:
+        name: {{ include "schnappy.fullname" . }}-admin
+        port: 8080
+      path: /api/auth/ensure-user
+      headersToBackend:
+        - X-User-UUID
+        - X-User-Email
+        - X-User-Permissions
 {{- end }}
