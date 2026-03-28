@@ -23,6 +23,8 @@ spec:
             header: X-User-UUID
           - claim: email
             header: X-User-Email
+          - claim: realm_access.roles
+            header: X-User-Roles
 ---
 # External auth — calls admin service ensure-user for user provisioning
 # Runs after JWT validation, forwards X-User-UUID/Email/Permissions headers
