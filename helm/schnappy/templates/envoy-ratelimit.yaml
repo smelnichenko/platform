@@ -18,6 +18,7 @@ spec:
       rules:
         - clientSelectors:
             - sourceCIDR:
+                value: 0.0.0.0/0
                 type: Distinct
           limit:
             requests: {{ .Values.envoyGateway.rateLimit.requestsPerSecond | default 50 }}
