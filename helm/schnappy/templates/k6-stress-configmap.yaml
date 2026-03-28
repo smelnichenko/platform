@@ -1,0 +1,83 @@
+{{- if eq (.Values.loadTest.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-k6-stress
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+data:
+  stress-test.js: |
+    import http from 'k6/http';
+    import { check, group, sleep } from 'k6';
+
+    export const options = {
+      stages: [
+        { duration: '30s', target: 50 },
+        { duration: '1m', target: 50 },
+        { duration: '30s', target: 100 },
+        { duration: '1m', target: 100 },
+        { duration: '30s', target: 200 },
+        { duration: '1m', target: 200 },
+        { duration: '30s', target: 300 },
+        { duration: '1m', target: 300 },
+        { duration: '30s', target: 500 },
+        { duration: '1m', target: 500 },
+        { duration: '1m', target: 0 },
+      ],
+      thresholds: {
+        http_req_duration: ['p(95)<2000'],
+        http_req_failed: ['rate<0.10'],
+      },
+    };
+
+    const BASE_URL = __ENV.BASE_URL || 'https://pmon.dev';
+    const KEYCLOAK_URL = __ENV.KEYCLOAK_URL || 'https://auth.pmon.dev';
+
+    let cachedToken = null;
+    let tokenExpiry = 0;
+
+    function getToken() {
+      const now = Date.now();
+      if (cachedToken && now < tokenExpiry) return cachedToken;
+      const clientSecret = __ENV.K6_CLIENT_SECRET;
+      if (!clientSecret) return null;
+      const res = http.post(
+        `${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token`,
+        { client_id: 'k6-smoke', client_secret: clientSecret, grant_type: 'client_credentials' },
+        { tags: { name: 'token' } },
+      );
+      if (res.status !== 200) return null;
+      cachedToken = res.json('access_token');
+      tokenExpiry = now + 240000;
+      return cachedToken;
+    }
+
+    export default function () {
+      const token = getToken();
+      const auth = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+      // No think-times — hammer the endpoints
+      group('health', () => {
+        check(http.get(`${BASE_URL}/api/health`), { 'health 200': (r) => r.status === 200 });
+      });
+
+      group('pages', () => {
+        check(http.get(`${BASE_URL}/api/monitor/pages`, auth), { 'pages 200': (r) => r.status === 200 });
+      });
+
+      group('rss-feeds', () => {
+        check(http.get(`${BASE_URL}/api/rss/feeds`, auth), { 'rss 200': (r) => r.status === 200 });
+      });
+
+      group('channels', () => {
+        check(http.get(`${BASE_URL}/api/chat/channels`, auth), { 'chat 200': (r) => r.status === 200 });
+      });
+
+      group('inbox', () => {
+        check(http.get(`${BASE_URL}/api/inbox/emails`, auth), { 'inbox 200': (r) => r.status === 200 });
+      });
+
+      // Tiny sleep to prevent pure CPU spin
+      sleep(0.1);
+    }
+{{- end }}
