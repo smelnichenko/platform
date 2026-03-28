@@ -52,7 +52,7 @@ data:
         Suppress_Type_Name On
         tls               Off
         Retry_Limit       3
-        Buffer_Size       16KB
+        Buffer_Size       256KB
         Generate_ID       Off
         Workers           2
 
