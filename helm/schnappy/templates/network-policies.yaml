@@ -640,12 +640,11 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # k6-operator runner coordination (port 6565)
+    # k6-operator coordination (runners + starter + controller)
     - from:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: k6-load
+              app: k6
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: k6-operator-system
@@ -663,8 +662,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: k6-load
+              app: k6
       ports:
         - protocol: TCP
           port: 6565
@@ -692,5 +690,41 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+---
+# k6-operator starter/initializer pods (app=k6 without component label)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-k6-operator
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: k6
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: k6
+      ports:
+        - protocol: TCP
+          port: 6565
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app: k6
+      ports:
+        - protocol: TCP
+          port: 6565
 {{- end }}
 {{- end }}
