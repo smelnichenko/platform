@@ -128,17 +128,10 @@ data:
             startAfter: ramp1000
             scenario: *scenario
 
-      - ramp4000:
+      - cooldown:
           always:
-            users: 4000
-            duration: 90s
+            users: 100
+            duration: 30s
             startAfter: ramp2000
-            scenario: *scenario
-
-      - ramp5000:
-          always:
-            users: 5000
-            duration: 90s
-            startAfter: ramp4000
             scenario: *scenario
 {{- end }}
