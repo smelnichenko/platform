@@ -51,10 +51,8 @@ data:
   load-test.hf.yaml: |
     name: schnappy-load
     http:
-      - host: __MONITOR_URL__
-        sharedConnections: 100
-      - host: __CHAT_URL__
-        sharedConnections: 20
+      host: __MONITOR_URL__
+      sharedConnections: 100
 
     phases:
       - rampUp:
@@ -71,11 +69,9 @@ data:
               - health:
                   - httpRequest:
                       GET: /api/health
-                      authority: __MONITOR_URL__
               - pages:
                   - httpRequest:
                       GET: /api/monitor/pages
-                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -83,15 +79,6 @@ data:
               - feeds:
                   - httpRequest:
                       GET: /api/rss/feeds
-                      authority: __MONITOR_URL__
-                      headers:
-                        authorization: "Bearer ${token}"
-                        x-user-uuid: ${uuid}
-                        x-user-email: ${email}
-              - channels:
-                  - httpRequest:
-                      GET: /api/chat/channels
-                      authority: __CHAT_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -99,7 +86,6 @@ data:
               - inbox:
                   - httpRequest:
                       GET: /api/inbox/emails
-                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -119,11 +105,9 @@ data:
               - health:
                   - httpRequest:
                       GET: /api/health
-                      authority: __MONITOR_URL__
               - pages:
                   - httpRequest:
                       GET: /api/monitor/pages
-                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -131,15 +115,6 @@ data:
               - feeds:
                   - httpRequest:
                       GET: /api/rss/feeds
-                      authority: __MONITOR_URL__
-                      headers:
-                        authorization: "Bearer ${token}"
-                        x-user-uuid: ${uuid}
-                        x-user-email: ${email}
-              - channels:
-                  - httpRequest:
-                      GET: /api/chat/channels
-                      authority: __CHAT_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -147,7 +122,6 @@ data:
               - inbox:
                   - httpRequest:
                       GET: /api/inbox/emails
-                      authority: __MONITOR_URL__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
