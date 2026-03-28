@@ -32,6 +32,9 @@ spec:
             - name: k6
               image: {{ .Values.loadTest.image | default .Values.smokeTest.image }}
               command: ['k6', 'run', '--out', 'experimental-prometheus-rw', '/scripts/load-test.js']
+              resources:
+                requests: { cpu: 200m, memory: 64Mi }
+                limits: { cpu: 2000m, memory: 256Mi }
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
