@@ -72,8 +72,7 @@ spec:
                     "index.lifecycle.name": "logs-{{ .Values.elk.elasticsearch.retention.days }}d-retention",
                     "index.refresh_interval": "30s",
                     "index.translog.durability": "async",
-                    "index.translog.sync_interval": "10s",
-                    "index.codec": "best_compression"
+                    "index.translog.sync_interval": "10s"
                   }
                 }
               }')
