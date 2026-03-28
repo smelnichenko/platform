@@ -1,0 +1,88 @@
+{{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
+---
+# Envoy Gateway controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-envoy-controller
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: envoy-gateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # xDS from Envoy proxy
+    - from:
+        - podSelector:
+            matchLabels:
+              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
+      ports:
+        - { protocol: TCP, port: 18000 }
+        - { protocol: TCP, port: 18001 }
+    # Webhook from kube-apiserver
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: TCP, port: 9443 }
+  egress:
+    - ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # k8s API
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+---
+# Envoy proxy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-envoy-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # From Traefik
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: TCP, port: 8080 }
+    # From k6 tests
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: k6-load
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # xDS to controller
+    - to:
+        - podSelector:
+            matchLabels:
+              control-plane: envoy-gateway
+      ports:
+        - { protocol: TCP, port: 18000 }
+    # Backend services
+    - to:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 8080 }
+{{- end }}
