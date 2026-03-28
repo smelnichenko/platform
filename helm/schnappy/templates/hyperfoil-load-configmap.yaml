@@ -36,12 +36,15 @@ data:
     echo "Token acquired: UUID=${USER_UUID}, email=${USER_EMAIL}"
 
     # Generate benchmark YAML with actual values substituted
-    sed -e "s|__MONITOR_URL__|${MONITOR_URL}|g" \
-        -e "s|__CHAT_URL__|${CHAT_URL}|g" \
-        -e "s|__TOKEN__|${ACCESS_TOKEN}|g" \
-        -e "s|__UUID__|${USER_UUID}|g" \
-        -e "s|__EMAIL__|${USER_EMAIL}|g" \
-        /benchmarks/load-test.hf.yaml > /tmp/benchmark.yaml
+    # Use Python-style replacement to handle JWT tokens with special chars
+    cp /benchmarks/load-test.hf.yaml /tmp/benchmark.yaml
+    sed -i "s|__MONITOR_URL__|${MONITOR_URL}|g" /tmp/benchmark.yaml
+    sed -i "s|__CHAT_URL__|${CHAT_URL}|g" /tmp/benchmark.yaml
+    sed -i "s|__UUID__|${USER_UUID}|g" /tmp/benchmark.yaml
+    sed -i "s|__EMAIL__|${USER_EMAIL}|g" /tmp/benchmark.yaml
+    # Token contains special chars — use awk for safe replacement
+    awk -v token="$ACCESS_TOKEN" '{gsub(/__TOKEN__/, token); print}' /tmp/benchmark.yaml > /tmp/benchmark2.yaml
+    mv /tmp/benchmark2.yaml /tmp/benchmark.yaml
 
     /deployment/bin/run.sh /tmp/benchmark.yaml
 
