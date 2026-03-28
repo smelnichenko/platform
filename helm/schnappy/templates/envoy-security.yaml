@@ -1,6 +1,5 @@
 {{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
 ---
-# JWT validation — extracts claims from Keycloak tokens
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -23,55 +22,4 @@ spec:
             header: X-User-UUID
           - claim: email
             header: X-User-Email
----
-# Patch Envoy config to add Lua filter for permissions extraction
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: EnvoyPatchPolicy
-metadata:
-  name: {{ include "schnappy.fullname" . }}-lua-permissions
-  namespace: {{ .Release.Namespace }}
-spec:
-  type: JSONPatch
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: Gateway
-    name: {{ include "schnappy.fullname" . }}-gw
-  jsonPatches:
-    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
-      name: {{ .Release.Namespace }}/{{ include "schnappy.fullname" . }}-gw/http
-      operation:
-        op: add
-        path: "/default_filter_chain/filters/0/typed_config/http_filters/0"
-        value:
-          name: envoy.filters.http.lua
-          typed_config:
-            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
-            default_source_code:
-              inline_string: |
-                function envoy_on_request(request_handle)
-                  local meta = request_handle:streamInfo():dynamicMetadata()
-                  local jwt_data = meta:get("envoy.filters.http.jwt_authn")
-                  if jwt_data == nil then return end
-
-                  local payload = jwt_data["keycloak"]
-                  if payload == nil then return end
-
-                  local realm_access = payload["realm_access"]
-                  if realm_access == nil then return end
-
-                  local roles = realm_access["roles"]
-                  if roles == nil then return end
-
-                  local filtered = {}
-                  for _, role in ipairs(roles) do
-                    if role ~= "offline_access" and role ~= "uma_authorization"
-                       and not role:match("^default%-roles%-") then
-                      table.insert(filtered, role)
-                    end
-                  end
-
-                  if #filtered > 0 then
-                    request_handle:headers():add("X-User-Permissions", table.concat(filtered, ","))
-                  end
-                end
 {{- end }}
