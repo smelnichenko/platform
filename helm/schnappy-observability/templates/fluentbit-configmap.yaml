@@ -63,7 +63,6 @@ data:
         Workers           2
         Trace_Error       On
         Compress          gzip
-        Chunk_Size        1M
 
   parsers.conf: |
     [PARSER]
