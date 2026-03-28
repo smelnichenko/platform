@@ -511,14 +511,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from ingress controller (Traefik) and Envoy Gateway
+    # Allow from Traefik and Envoy proxy
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: envoy-gateway-system
+              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
       ports:
         - protocol: TCP
           port: 80
