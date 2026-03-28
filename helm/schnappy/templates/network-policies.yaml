@@ -639,7 +639,19 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  ingress: []
+  ingress:
+    # k6-operator runner coordination (port 6565)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: k6-load
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: k6-operator-system
+      ports:
+        - protocol: TCP
+          port: 6565
   egress:
     # DNS
     - ports:
@@ -647,6 +659,15 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
+    # k6-operator runner coordination
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: k6-load
+      ports:
+        - protocol: TCP
+          port: 6565
     # k6 → Prometheus (remote write)
     - to:
         - podSelector:
