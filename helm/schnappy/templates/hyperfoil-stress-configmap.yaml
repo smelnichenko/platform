@@ -10,10 +10,13 @@ data:
     #!/bin/sh
 
     echo "Fetching token from ${KEYCLOAK_URL}..."
-    TOKEN_JSON=$(curl -s --max-time 10 -X POST "${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token" \
-      -d "client_id=k6-smoke&client_secret=${K6_CLIENT_SECRET}&grant_type=client_credentials") || {
-      echo "ERROR: Failed to fetch token from Keycloak"; exit 1;
-    }
+    for i in 1 2 3; do
+      TOKEN_JSON=$(curl -s --max-time 10 -X POST "${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token" \
+        -d "client_id=k6-smoke&client_secret=${K6_CLIENT_SECRET}&grant_type=client_credentials") && break
+      echo "Attempt $i failed, retrying in 3s..."
+      sleep 3
+    done
+    [ -z "$TOKEN_JSON" ] && { echo "ERROR: Failed to fetch token from Keycloak after 3 attempts"; exit 1; }
     ACCESS_TOKEN=$(echo "$TOKEN_JSON" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
     if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "$TOKEN_JSON" ]; then
       echo "ERROR: Failed to extract access_token from: ${TOKEN_JSON}"; exit 1;
