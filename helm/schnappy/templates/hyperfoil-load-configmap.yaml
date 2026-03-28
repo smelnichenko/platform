@@ -8,24 +8,28 @@ metadata:
 data:
   run.sh: |
     #!/bin/sh
-    set -e
 
-    # Get token from Keycloak (client_credentials grant)
-    TOKEN_JSON=$(curl -sf -X POST "${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token" \
-      -d "client_id=k6-smoke&client_secret=${K6_CLIENT_SECRET}&grant_type=client_credentials")
+    echo "Fetching token from ${KEYCLOAK_URL}..."
+    TOKEN_JSON=$(curl -s --max-time 10 -X POST "${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token" \
+      -d "client_id=k6-smoke&client_secret=${K6_CLIENT_SECRET}&grant_type=client_credentials") || {
+      echo "ERROR: Failed to fetch token from Keycloak"; exit 1;
+    }
     ACCESS_TOKEN=$(echo "$TOKEN_JSON" | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+    if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "$TOKEN_JSON" ]; then
+      echo "ERROR: Failed to extract access_token from: ${TOKEN_JSON}"; exit 1;
+    fi
 
     # Decode JWT payload → extract sub + email for gateway headers
     PAYLOAD=$(echo "$ACCESS_TOKEN" | cut -d. -f2)
     # Add base64 padding
-    PAD=$(( 4 - ${#PAYLOAD} % 4 ))
-    [ "$PAD" -lt 4 ] && PAYLOAD="${PAYLOAD}$(printf '%0.s=' $(seq 1 $PAD))"
+    MOD=$(( ${#PAYLOAD} % 4 ))
+    if [ "$MOD" -eq 2 ]; then PAYLOAD="${PAYLOAD}=="; elif [ "$MOD" -eq 3 ]; then PAYLOAD="${PAYLOAD}="; fi
     JSON=$(echo "$PAYLOAD" | base64 -d 2>/dev/null)
     USER_UUID=$(echo "$JSON" | sed 's/.*"sub":"\([^"]*\)".*/\1/')
     USER_EMAIL=$(echo "$JSON" | sed 's/.*"email":"\([^"]*\)".*/\1/')
-    [ -z "$USER_EMAIL" ] && USER_EMAIL="k6-smoke@pmon.dev"
+    [ -z "$USER_EMAIL" ] || [ "$USER_EMAIL" = "$JSON" ] && USER_EMAIL="k6-smoke@pmon.dev"
 
-    echo "Token acquired: UUID=${USER_UUID}"
+    echo "Token acquired: UUID=${USER_UUID}, email=${USER_EMAIL}"
 
     /deployment/bin/run.sh \
       -PMONITOR_URL="${MONITOR_URL}" \
