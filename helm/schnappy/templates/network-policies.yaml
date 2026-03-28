@@ -702,14 +702,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # k6 → Gateway (API requests — Spring Cloud or Envoy)
+    # k6 → Gateway (Envoy proxy or Spring Cloud Gateway)
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
-        - namespaceSelector:
+              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
+        {{- if eq (.Values.gateway.enabled | toString) "true" }}
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: envoy-gateway-system
+              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: 8080
