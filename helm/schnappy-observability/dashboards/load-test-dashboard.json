@@ -41,13 +41,13 @@
         }
       },
       "targets": [{
-        "expr": "sum(rate(k6_http_reqs_total[30s]))",
+        "expr": "increase(k6_http_reqs_total[1m]) / 60",
         "legendFormat": "req/s"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
-      "title": "Response Time (p95 / p99)",
+      "title": "Response Time (avg)",
       "type": "timeseries",
       "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
       "fieldConfig": {
@@ -62,20 +62,13 @@
               { "color": "yellow", "value": 300 },
               { "color": "red", "value": 1000 }
             ]
-          },
-          "custom.thresholdsStyle": { "mode": "dashed" }
+          }
         }
       },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, rate(k6_http_req_duration_seconds[1m])) * 1000",
-          "legendFormat": "p95"
-        },
-        {
-          "expr": "histogram_quantile(0.99, rate(k6_http_req_duration_seconds[1m])) * 1000",
-          "legendFormat": "p99"
-        }
-      ],
+      "targets": [{
+        "expr": "histogram_avg(k6_http_req_duration_seconds) * 1000",
+        "legendFormat": "avg"
+      }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
     },
     {
@@ -91,7 +84,7 @@
         }
       },
       "targets": [{
-        "expr": "sum(rate(k6_http_reqs_total{expected_response=\"false\"}[30s])) / sum(rate(k6_http_reqs_total[30s]))",
+        "expr": "k6_http_req_failed_rate",
         "legendFormat": "error rate"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
@@ -112,7 +105,7 @@
         "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
       },
       "targets": [{
-        "expr": "histogram_avg(rate(k6_http_req_duration_seconds{group=~\"::.+\"}[1m])) * 1000",
+        "expr": "histogram_avg(k6_http_req_duration_seconds{group=~\"::.+\"}) * 1000",
         "legendFormat": "{{ group }}"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
@@ -126,19 +119,11 @@
           "color": { "fixedColor": "green", "mode": "fixed" },
           "custom": { "fillOpacity": 20, "lineWidth": 2, "drawStyle": "line", "showPoints": "never" },
           "unit": "percentunit",
-          "max": 1, "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 0.99 }
-            ]
-          },
-          "custom.thresholdsStyle": { "mode": "line" }
+          "max": 1, "min": 0
         }
       },
       "targets": [{
-        "expr": "k6_checks_rate",
+        "expr": "avg(k6_checks_rate)",
         "legendFormat": "checks"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
@@ -262,16 +247,7 @@
         "defaults": {
           "color": { "fixedColor": "orange", "mode": "fixed" },
           "custom": { "fillOpacity": 20, "lineWidth": 2, "drawStyle": "line", "showPoints": "never" },
-          "unit": "none",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 1 },
-              { "color": "red", "value": 5 }
-            ]
-          },
-          "custom.thresholdsStyle": { "mode": "line+area" }
+          "unit": "none"
         }
       },
       "targets": [{
@@ -366,7 +342,7 @@
   "schemaVersion": 39,
   "tags": ["k6", "load-test"],
   "templating": { "list": [] },
-  "time": { "from": "now-15m", "to": "now" },
+  "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "utc",
   "title": "Load Test",
