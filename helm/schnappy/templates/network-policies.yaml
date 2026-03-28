@@ -170,13 +170,17 @@ spec:
         - protocol: TCP
           port: 8080
     {{- end }}
-    # Allow from k6 load test
-    {{- if eq (.Values.loadTest.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests (bypass Envoy, direct to backends)
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: k6-load
+              app.kubernetes.io/component: hyperfoil-load
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 8080
@@ -281,6 +285,21 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-load
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-stress
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
   egress:
     # DNS
     - ports:
@@ -378,6 +397,21 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-load
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-stress
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
   egress:
     # DNS
     - ports:
@@ -454,6 +488,21 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-load
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-stress
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
   egress:
     # DNS
     - ports:
