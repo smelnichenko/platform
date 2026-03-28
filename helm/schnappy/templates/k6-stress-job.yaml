@@ -16,6 +16,8 @@ spec:
     spec:
       backoffLimit: 0
       ttlSecondsAfterFinished: 86400
+      completions: {{ .Values.loadTest.stressWorkers | default 3 }}
+      parallelism: {{ .Values.loadTest.stressWorkers | default 3 }}
       template:
         metadata:
           labels:
