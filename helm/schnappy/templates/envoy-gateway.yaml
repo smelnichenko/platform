@@ -1,11 +1,29 @@
 {{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
 ---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-proxy-config
+  namespace: {{ .Release.Namespace }}
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        name: {{ include "schnappy.fullname" . }}-envoy-proxy
+        type: ClusterIP
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
   name: envoy
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: {{ include "schnappy.fullname" . }}-proxy-config
+    namespace: {{ .Release.Namespace }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
