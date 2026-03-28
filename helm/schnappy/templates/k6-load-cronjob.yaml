@@ -43,7 +43,11 @@ spec:
                 readOnlyRootFilesystem: true
               env:
                 - name: BASE_URL
+                  {{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
+                  value: {{ .Values.loadTest.baseUrl | default (printf "http://%s-envoy-proxy:8080" (include "schnappy.fullname" .)) | quote }}
+                  {{- else }}
                   value: {{ .Values.loadTest.baseUrl | default (printf "http://%s-gateway:8080" (include "schnappy.fullname" .)) | quote }}
+                  {{- end }}
                 - name: KEYCLOAK_URL
                   value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
                 - name: K6_PROMETHEUS_RW_SERVER_URL
