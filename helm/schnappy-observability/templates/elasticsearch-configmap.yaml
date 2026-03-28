@@ -21,4 +21,6 @@ data:
     # Ingestion throughput tuning
     indices.memory.index_buffer_size: 25%
     thread_pool.write.queue_size: 1000
+    thread_pool.write.size: 4
+    indexing_pressure.memory.limit: 20%
 {{- end }}
