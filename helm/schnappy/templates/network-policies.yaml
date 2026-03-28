@@ -164,6 +164,17 @@ spec:
         - protocol: TCP
           port: 8080
     {{- end }}
+    # Allow from k6 load test
+    {{- if eq (.Values.loadTest.enabled | toString) "true" }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: k6-load
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
   egress:
     # DNS
     - ports:

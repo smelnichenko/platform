@@ -30,12 +30,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Allow from k6 smoke test (token exchange)
+    # Allow from k6 tests (token exchange)
     - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
               app.kubernetes.io/component: k6-smoke
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: schnappy
+              app.kubernetes.io/component: k6-load
       ports:
         - protocol: TCP
           port: 8080
