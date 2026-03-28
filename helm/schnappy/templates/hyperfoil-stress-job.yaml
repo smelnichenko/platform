@@ -48,6 +48,8 @@ spec:
                   value: "http://{{ include "schnappy.fullname" . }}-monitor:8080"
                 - name: CHAT_URL
                   value: "http://{{ include "schnappy.fullname" . }}-chat:8080"
+                - name: CHESS_URL
+                  value: "http://{{ include "schnappy.fullname" . }}-chess:8080"
                 - name: KEYCLOAK_URL
                   value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
                 {{- if .Values.smokeTest.clientSecretName }}

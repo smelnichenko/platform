@@ -10,7 +10,6 @@ data:
     #!/bin/sh
 
     echo "Fetching token from ${KEYCLOAK_URL}..."
-    # Retry up to 3 times (pod network may not be ready immediately)
     for i in 1 2 3; do
       TOKEN_JSON=$(curl -s --max-time 10 -X POST "${KEYCLOAK_URL}/realms/schnappy/protocol/openid-connect/token" \
         -d "client_id=k6-smoke&client_secret=${K6_CLIENT_SECRET}&grant_type=client_credentials") && break
@@ -23,9 +22,7 @@ data:
       echo "ERROR: Failed to extract access_token from: ${TOKEN_JSON}"; exit 1;
     fi
 
-    # Decode JWT payload → extract sub + email for gateway headers
     PAYLOAD=$(echo "$ACCESS_TOKEN" | cut -d. -f2)
-    # Add base64 padding
     MOD=$(( ${#PAYLOAD} % 4 ))
     if [ "$MOD" -eq 2 ]; then PAYLOAD="${PAYLOAD}=="; elif [ "$MOD" -eq 3 ]; then PAYLOAD="${PAYLOAD}="; fi
     JSON=$(echo "$PAYLOAD" | base64 -d 2>/dev/null)
@@ -35,33 +32,38 @@ data:
 
     echo "Token acquired: UUID=${USER_UUID}, email=${USER_EMAIL}"
 
-    # Generate benchmark YAML with actual values substituted
-    # Use Python-style replacement to handle JWT tokens with special chars
+    # Strip http:// for authority headers
+    MONITOR_HOST=$(echo "$MONITOR_URL" | sed 's|http://||')
+    CHAT_HOST=$(echo "$CHAT_URL" | sed 's|http://||')
+    CHESS_HOST=$(echo "$CHESS_URL" | sed 's|http://||')
+
     cp /benchmarks/load-test.hf.yaml /tmp/benchmark.yaml
     sed -i "s|__MONITOR_URL__|${MONITOR_URL}|g" /tmp/benchmark.yaml
     sed -i "s|__CHAT_URL__|${CHAT_URL}|g" /tmp/benchmark.yaml
+    sed -i "s|__CHESS_URL__|${CHESS_URL}|g" /tmp/benchmark.yaml
+    sed -i "s|__MONITOR_HOST__|${MONITOR_HOST}|g" /tmp/benchmark.yaml
+    sed -i "s|__CHAT_HOST__|${CHAT_HOST}|g" /tmp/benchmark.yaml
+    sed -i "s|__CHESS_HOST__|${CHESS_HOST}|g" /tmp/benchmark.yaml
     sed -i "s|__UUID__|${USER_UUID}|g" /tmp/benchmark.yaml
     sed -i "s|__EMAIL__|${USER_EMAIL}|g" /tmp/benchmark.yaml
-    # Token contains special chars — use awk for safe replacement
     awk -v token="$ACCESS_TOKEN" '{gsub(/__TOKEN__/, token); print}' /tmp/benchmark.yaml > /tmp/benchmark2.yaml
     mv /tmp/benchmark2.yaml /tmp/benchmark.yaml
 
     /deployment/bin/run.sh -o /tmp/report /tmp/benchmark.yaml || true
 
-    # Print report location and size
     echo "=== HYPERFOIL RESULTS ==="
     ls -lh /tmp/report/ 2>/dev/null
-    # Extract key stats from HTML report
-    if [ -f /tmp/report/index.html ]; then
-      echo "Report generated: /tmp/report/index.html"
-      echo "Test completed successfully"
-    fi
+    [ -f /tmp/report/index.html ] && echo "Report generated successfully"
 
   load-test.hf.yaml: |
     name: schnappy-load
     http:
-      host: __MONITOR_URL__
-      sharedConnections: 100
+      - host: __MONITOR_URL__
+        sharedConnections: 100
+      - host: __CHAT_URL__
+        sharedConnections: 20
+      - host: __CHESS_URL__
+        sharedConnections: 20
 
     phases:
       - rampUp:
@@ -70,7 +72,7 @@ data:
             targetUsersPerSec: 50
             duration: 60s
             maxSessions: 200
-            scenario:
+            scenario: &scenario
               - setup:
                   - set: { var: token, value: __TOKEN__ }
                   - set: { var: uuid, value: __UUID__ }
@@ -78,9 +80,11 @@ data:
               - health:
                   - httpRequest:
                       GET: /api/health
+                      authority: __MONITOR_HOST__
               - pages:
                   - httpRequest:
                       GET: /api/monitor/pages
+                      authority: __MONITOR_HOST__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -88,6 +92,23 @@ data:
               - feeds:
                   - httpRequest:
                       GET: /api/rss/feeds
+                      authority: __MONITOR_HOST__
+                      headers:
+                        authorization: "Bearer ${token}"
+                        x-user-uuid: ${uuid}
+                        x-user-email: ${email}
+              - channels:
+                  - httpRequest:
+                      GET: /api/chat/channels
+                      authority: __CHAT_HOST__
+                      headers:
+                        authorization: "Bearer ${token}"
+                        x-user-uuid: ${uuid}
+                        x-user-email: ${email}
+              - chess:
+                  - httpRequest:
+                      GET: /api/chess/games
+                      authority: __CHESS_HOST__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -95,6 +116,7 @@ data:
               - inbox:
                   - httpRequest:
                       GET: /api/inbox/emails
+                      authority: __MONITOR_HOST__
                       headers:
                         authorization: "Bearer ${token}"
                         x-user-uuid: ${uuid}
@@ -106,33 +128,5 @@ data:
             duration: 180s
             maxSessions: 200
             startAfter: rampUp
-            scenario:
-              - setup:
-                  - set: { var: token, value: __TOKEN__ }
-                  - set: { var: uuid, value: __UUID__ }
-                  - set: { var: email, value: __EMAIL__ }
-              - health:
-                  - httpRequest:
-                      GET: /api/health
-              - pages:
-                  - httpRequest:
-                      GET: /api/monitor/pages
-                      headers:
-                        authorization: "Bearer ${token}"
-                        x-user-uuid: ${uuid}
-                        x-user-email: ${email}
-              - feeds:
-                  - httpRequest:
-                      GET: /api/rss/feeds
-                      headers:
-                        authorization: "Bearer ${token}"
-                        x-user-uuid: ${uuid}
-                        x-user-email: ${email}
-              - inbox:
-                  - httpRequest:
-                      GET: /api/inbox/emails
-                      headers:
-                        authorization: "Bearer ${token}"
-                        x-user-uuid: ${uuid}
-                        x-user-email: ${email}
+            scenario: *scenario
 {{- end }}
