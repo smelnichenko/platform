@@ -11,6 +11,7 @@ spec:
       kind: Gateway
       name: {{ include "schnappy.fullname" . }}-gw
   jwt:
+    optional: true
     providers:
       - name: keycloak
         issuer: https://{{ .Values.keycloak.hostname | default "auth.pmon.dev" }}/realms/schnappy
@@ -21,33 +22,4 @@ spec:
             header: X-User-UUID
           - claim: email
             header: X-User-Email
-        extractFrom:
-          headers:
-            - name: Authorization
-              valuePrefix: "Bearer "
-  # Public paths that skip JWT validation
-  authorization:
-    defaultAction: Deny
-    rules:
-      # Public endpoints — no JWT required
-      - name: public
-        action: Allow
-        principal:
-          notPrincipal: {}
-        matches:
-          - path: { type: PathPrefix, value: /api/health }
-          - path: { type: PathPrefix, value: /api/actuator/ }
-          - path: { type: PathPrefix, value: /api/auth/ }
-          - path: { type: PathPrefix, value: /api/captcha/ }
-          - path: { type: PathPrefix, value: /api/permissions/required }
-          - path: { type: PathPrefix, value: /api/webhooks/ }
-          - path: { type: PathPrefix, value: /api/swagger-ui }
-          - path: { type: PathPrefix, value: /api/api-docs/ }
-          - path: { type: PathPrefix, value: / }
-      # Authenticated endpoints — JWT required
-      - name: authenticated
-        action: Allow
-        principal:
-          jwt:
-            provider: keycloak
 {{- end }}
