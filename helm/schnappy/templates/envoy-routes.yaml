@@ -92,5 +92,5 @@ spec:
         - path: { type: PathPrefix, value: / }
       backendRefs:
         - name: {{ include "schnappy.fullname" . }}-site
-          port: 80
+          port: 8080
 {{- end }}

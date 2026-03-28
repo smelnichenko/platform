@@ -262,11 +262,14 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Allow from ingress controller (when gateway disabled, direct routing)
+    # Allow from ingress controller (Traefik) and Envoy Gateway
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
       ports:
         - protocol: TCP
           port: 8080
@@ -356,11 +359,14 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Allow from ingress controller (when gateway disabled, direct routing)
+    # Allow from ingress controller (Traefik) and Envoy Gateway
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
       ports:
         - protocol: TCP
           port: 8080
@@ -429,11 +435,14 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Allow from ingress controller (when gateway disabled, direct routing)
+    # Allow from ingress controller (Traefik) and Envoy Gateway
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
       ports:
         - protocol: TCP
           port: 8080
