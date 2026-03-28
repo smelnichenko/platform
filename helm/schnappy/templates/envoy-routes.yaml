@@ -1,0 +1,96 @@
+{{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
+---
+# Admin service: auth, captcha, user, permissions, admin
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "schnappy.fullname" . }}-admin-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ include "schnappy.fullname" . }}-gw
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/auth/ }
+        - path: { type: PathPrefix, value: /api/captcha/ }
+        - path: { type: PathPrefix, value: /api/user/ }
+        - path: { type: PathPrefix, value: /api/permissions/ }
+        - path: { type: PathPrefix, value: /api/admin/ }
+      backendRefs:
+        - name: {{ include "schnappy.fullname" . }}-admin
+          port: 8080
+---
+# Chat service: REST + WebSocket
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "schnappy.fullname" . }}-chat-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ include "schnappy.fullname" . }}-gw
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/chat/ }
+      backendRefs:
+        - name: {{ include "schnappy.fullname" . }}-chat
+          port: 8080
+    - matches:
+        - path: { type: PathPrefix, value: /ws/chat/ }
+      backendRefs:
+        - name: {{ include "schnappy.fullname" . }}-chat
+          port: 8080
+---
+# Chess service: REST + WebSocket
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "schnappy.fullname" . }}-chess-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ include "schnappy.fullname" . }}-gw
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/chess/ }
+      backendRefs:
+        - name: {{ include "schnappy.fullname" . }}-chess
+          port: 8080
+    - matches:
+        - path: { type: PathPrefix, value: /ws/chess/ }
+      backendRefs:
+        - name: {{ include "schnappy.fullname" . }}-chess
+          port: 8080
+---
+# Core app: catch-all /api/**
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "schnappy.fullname" . }}-core-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ include "schnappy.fullname" . }}-gw
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/ }
+      backendRefs:
+        - name: {{ include "schnappy.fullname" . }}-monitor
+          port: 8080
+---
+# Frontend: catch-all /
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "schnappy.fullname" . }}-site-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ include "schnappy.fullname" . }}-gw
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ include "schnappy.fullname" . }}-site
+          port: 80
+{{- end }}

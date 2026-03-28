@@ -1,0 +1,53 @@
+{{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-jwt
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ include "schnappy.fullname" . }}-gw
+  jwt:
+    providers:
+      - name: keycloak
+        issuer: https://{{ .Values.keycloak.hostname | default "auth.pmon.dev" }}/realms/schnappy
+        remoteJWKS:
+          uri: http://{{ include "schnappy.keycloak.serviceName" . }}:8080/realms/schnappy/protocol/openid-connect/certs
+        claimToHeaders:
+          - claim: sub
+            header: X-User-UUID
+          - claim: email
+            header: X-User-Email
+        extractFrom:
+          headers:
+            - name: Authorization
+              valuePrefix: "Bearer "
+  # Public paths that skip JWT validation
+  authorization:
+    defaultAction: Deny
+    rules:
+      # Public endpoints — no JWT required
+      - name: public
+        action: Allow
+        principal:
+          notPrincipal: {}
+        matches:
+          - path: { type: PathPrefix, value: /api/health }
+          - path: { type: PathPrefix, value: /api/actuator/ }
+          - path: { type: PathPrefix, value: /api/auth/ }
+          - path: { type: PathPrefix, value: /api/captcha/ }
+          - path: { type: PathPrefix, value: /api/permissions/required }
+          - path: { type: PathPrefix, value: /api/webhooks/ }
+          - path: { type: PathPrefix, value: /api/swagger-ui }
+          - path: { type: PathPrefix, value: /api/api-docs/ }
+          - path: { type: PathPrefix, value: / }
+      # Authenticated endpoints — JWT required
+      - name: authenticated
+        action: Allow
+        principal:
+          jwt:
+            provider: keycloak
+{{- end }}

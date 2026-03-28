@@ -195,6 +195,10 @@ keycloak:
   clients:
     adminService:
       enabled: false
+# Envoy Gateway (replaces Spring Cloud Gateway for JWT + routing)
+envoyGateway:
+  enabled: false
+
 # k6 smoke tests (PostSync hook + daily CronJob)
 smokeTest:
   enabled: false
