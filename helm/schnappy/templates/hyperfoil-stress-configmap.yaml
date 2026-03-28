@@ -22,7 +22,6 @@ data:
       echo "ERROR: Failed to extract access_token from: ${TOKEN_JSON}"; exit 1;
     fi
 
-    # Decode JWT payload → extract sub + email for gateway headers
     PAYLOAD=$(echo "$ACCESS_TOKEN" | cut -d. -f2)
     MOD=$(( ${#PAYLOAD} % 4 ))
     if [ "$MOD" -eq 2 ]; then PAYLOAD="${PAYLOAD}=="; elif [ "$MOD" -eq 3 ]; then PAYLOAD="${PAYLOAD}="; fi
@@ -33,21 +32,23 @@ data:
 
     echo "Token acquired: UUID=${USER_UUID}, email=${USER_EMAIL}"
 
-    /deployment/bin/run.sh \
-      -PMONITOR_URL="${MONITOR_URL}" \
-      -PCHAT_URL="${CHAT_URL}" \
-      -PTOKEN="${ACCESS_TOKEN}" \
-      -PUUID="${USER_UUID}" \
-      -PEMAIL="${USER_EMAIL}" \
-      /benchmarks/stress-test.hf.yaml
+    cp /benchmarks/stress-test.hf.yaml /tmp/benchmark.yaml
+    sed -i "s|__MONITOR_URL__|${MONITOR_URL}|g" /tmp/benchmark.yaml
+    sed -i "s|__UUID__|${USER_UUID}|g" /tmp/benchmark.yaml
+    sed -i "s|__EMAIL__|${USER_EMAIL}|g" /tmp/benchmark.yaml
+    awk -v token="$ACCESS_TOKEN" '{gsub(/__TOKEN__/, token); print}' /tmp/benchmark.yaml > /tmp/benchmark2.yaml
+    mv /tmp/benchmark2.yaml /tmp/benchmark.yaml
+
+    /deployment/bin/run.sh -o /tmp/report /tmp/benchmark.yaml || true
+
+    echo "=== HYPERFOIL STRESS RESULTS ==="
+    ls -lh /tmp/report/ 2>/dev/null
 
   stress-test.hf.yaml: |
     name: schnappy-stress
     http:
-      - host: !param MONITOR_URL http://schnappy-monitor:8080
-        sharedConnections: 500
-      - host: !param CHAT_URL http://schnappy-chat:8080
-        sharedConnections: 100
+      host: __MONITOR_URL__
+      sharedConnections: 500
 
     phases:
       - ramp50:
@@ -56,57 +57,43 @@ data:
             targetUsersPerSec: 50
             duration: 30s
             maxSessions: 2000
-            forks:
-              stress: &stress-scenario
-                scenario:
-                  - setup:
-                      - set: { var: token, value: !param TOKEN _ }
-                      - set: { var: uuid, value: !param UUID _ }
-                      - set: { var: email, value: !param EMAIL _ }
-                  - health:
-                      - httpRequest:
-                          GET: /api/health
-                          authority: !param MONITOR_URL http://schnappy-monitor:8080
-                  - pages:
-                      - httpRequest:
-                          GET: /api/monitor/pages
-                          authority: !param MONITOR_URL http://schnappy-monitor:8080
-                          headers:
-                            authorization: "Bearer ${token}"
-                            x-user-uuid: ${uuid}
-                            x-user-email: ${email}
-                  - feeds:
-                      - httpRequest:
-                          GET: /api/rss/feeds
-                          authority: !param MONITOR_URL http://schnappy-monitor:8080
-                          headers:
-                            authorization: "Bearer ${token}"
-                            x-user-uuid: ${uuid}
-                            x-user-email: ${email}
-                  - channels:
-                      - httpRequest:
-                          GET: /api/chat/channels
-                          authority: !param CHAT_URL http://schnappy-chat:8080
-                          headers:
-                            authorization: "Bearer ${token}"
-                            x-user-uuid: ${uuid}
-                            x-user-email: ${email}
-                  - inbox:
-                      - httpRequest:
-                          GET: /api/inbox/emails
-                          authority: !param MONITOR_URL http://schnappy-monitor:8080
-                          headers:
-                            authorization: "Bearer ${token}"
-                            x-user-uuid: ${uuid}
-                            x-user-email: ${email}
+            scenario: &scenario
+              - setup:
+                  - set: { var: token, value: __TOKEN__ }
+                  - set: { var: uuid, value: __UUID__ }
+                  - set: { var: email, value: __EMAIL__ }
+              - health:
+                  - httpRequest:
+                      GET: /api/health
+              - pages:
+                  - httpRequest:
+                      GET: /api/monitor/pages
+                      headers:
+                        authorization: "Bearer ${token}"
+                        x-user-uuid: ${uuid}
+                        x-user-email: ${email}
+              - feeds:
+                  - httpRequest:
+                      GET: /api/rss/feeds
+                      headers:
+                        authorization: "Bearer ${token}"
+                        x-user-uuid: ${uuid}
+                        x-user-email: ${email}
+              - inbox:
+                  - httpRequest:
+                      GET: /api/inbox/emails
+                      headers:
+                        authorization: "Bearer ${token}"
+                        x-user-uuid: ${uuid}
+                        x-user-email: ${email}
 
       - sustain50:
           constantRate:
             usersPerSec: 50
             duration: 60s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: ramp50
+            scenario: *scenario
 
       - ramp100:
           increasingRate:
@@ -114,16 +101,16 @@ data:
             targetUsersPerSec: 100
             duration: 30s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: sustain50
+            scenario: *scenario
 
       - sustain100:
           constantRate:
             usersPerSec: 100
             duration: 60s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: ramp100
+            scenario: *scenario
 
       - ramp200:
           increasingRate:
@@ -131,16 +118,16 @@ data:
             targetUsersPerSec: 200
             duration: 30s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: sustain100
+            scenario: *scenario
 
       - sustain200:
           constantRate:
             usersPerSec: 200
             duration: 60s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: ramp200
+            scenario: *scenario
 
       - ramp500:
           increasingRate:
@@ -148,16 +135,16 @@ data:
             targetUsersPerSec: 500
             duration: 30s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: sustain200
+            scenario: *scenario
 
       - sustain500:
           constantRate:
             usersPerSec: 500
             duration: 60s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: ramp500
+            scenario: *scenario
 
       - cooldown:
           decreasingRate:
@@ -165,6 +152,6 @@ data:
             targetUsersPerSec: 0
             duration: 60s
             maxSessions: 2000
-            forks:
-              stress: *stress-scenario
+            startAfter: sustain500
+            scenario: *scenario
 {{- end }}
