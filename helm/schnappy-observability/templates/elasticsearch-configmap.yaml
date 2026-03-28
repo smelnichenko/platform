@@ -17,4 +17,8 @@ data:
     xpack.security.http.ssl.enabled: false
     xpack.security.transport.ssl.enabled: false
     xpack.license.self_generated.type: basic
+
+    # Ingestion throughput tuning
+    indices.memory.index_buffer_size: 25%
+    thread_pool.write.queue_size: 1000
 {{- end }}
