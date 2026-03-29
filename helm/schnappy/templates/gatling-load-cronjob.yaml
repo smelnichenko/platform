@@ -60,13 +60,11 @@ spec:
                   value: "{{ include "schnappy.victoriametrics.serviceName" . }}"
                 - name: GRAPHITE_PORT
                   value: "2003"
-                {{- if .Values.smokeTest.clientSecretName }}
-                - name: K6_CLIENT_SECRET
+                - name: CLIENT_SECRET
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Values.smokeTest.clientSecretName }}
+                      name: {{ include "schnappy.fullname" . }}-gatling
                       key: CLIENT_SECRET
-                {{- end }}
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
