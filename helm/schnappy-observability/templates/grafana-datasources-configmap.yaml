@@ -8,8 +8,11 @@ metadata:
 data:
   datasources.yml: |
     apiVersion: 1
-    datasources:
+    deleteDatasources:
       - name: Prometheus
+        orgId: 1
+    datasources:
+      - name: VictoriaMetrics
         type: prometheus
         uid: prometheus
         access: proxy
