@@ -104,11 +104,11 @@ data:
     name: schnappy-stress
     http:
       - host: __MONITOR_URL__
-        sharedConnections: 2500
+        sharedConnections: 5000
       - host: __CHAT_URL__
-        sharedConnections: 500
+        sharedConnections: 2500
       - host: __CHESS_URL__
-        sharedConnections: 500
+        sharedConnections: 2500
 
     phases:
       - ramp200:
