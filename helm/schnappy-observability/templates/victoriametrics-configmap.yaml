@@ -40,7 +40,7 @@ data:
       - job_name: 'woodpecker'
         bearer_token: 'metrics'
         static_configs:
-          - targets: ['woodpecker-server-0.woodpecker-server.woodpecker.svc:9001']
+          - targets: ['woodpecker-server-0.woodpecker-server-headless.woodpecker.svc:9001']
       {{- end }}
       {{- if eq (.Values.victoriametrics.forgejo.enabled | toString) "true" }}
       - job_name: 'forgejo'
