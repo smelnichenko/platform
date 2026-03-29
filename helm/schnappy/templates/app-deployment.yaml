@@ -1,3 +1,4 @@
+{{- if ne (.Values.monitor.enabled | toString) "false" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -161,14 +162,18 @@ spec:
             - name: CHAT_E2E_ENABLED
               value: "true"
             {{- end }}
+            {{- if ne (.Values.kafka.enabled | toString) "false" }}
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
+            {{- end }}
+            {{- if ne (.Values.scylla.enabled | toString) "false" }}
             - name: SCYLLA_CONTACT_POINTS
               value: {{ include "schnappy.scylla.serviceName" . }}
             - name: SCYLLA_PORT
               value: "9042"
             - name: SCYLLA_DATACENTER
               value: "datacenter1"
+            {{- end }}
             {{- if eq (.Values.captcha.enabled | toString) "true" }}
             - name: CAPTCHA_ENABLED
               value: "true"
@@ -207,3 +212,4 @@ spec:
             name: {{ include "schnappy.fullname" . }}-app-config
         - name: tmp
           emptyDir: {}
+{{- end }}

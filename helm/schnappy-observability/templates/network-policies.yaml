@@ -407,3 +407,45 @@ spec:
           port: 9200
 ---
 {{- end }}
+{{- if and .Values.networkPolicies.enabled .Values.reports.enabled }}
+---
+# Reports server (Nginx → MinIO proxy) network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-reports
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.reports.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from Traefik ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Reports → MinIO (S3 proxy)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: schnappy
+              app.kubernetes.io/component: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+{{- end }}

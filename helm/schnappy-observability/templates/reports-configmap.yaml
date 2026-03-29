@@ -1,0 +1,39 @@
+{{- if .Values.reports.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-reports
+  labels:
+    {{- include "schnappy.reports.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log /tmp/error.log warn;
+    pid /tmp/nginx.pid;
+
+    events {
+      worker_connections 64;
+    }
+
+    http {
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+      access_log /tmp/access.log;
+      client_body_temp_path /tmp/client_body;
+      proxy_temp_path /tmp/proxy;
+      fastcgi_temp_path /tmp/fastcgi;
+      uwsgi_temp_path /tmp/uwsgi;
+      scgi_temp_path /tmp/scgi;
+
+      server {
+        listen 8080;
+
+        location / {
+          proxy_pass http://{{ include "schnappy.fullname" . }}-minio:9000/hyperfoil-reports/;
+          proxy_set_header Host {{ include "schnappy.fullname" . }}-minio:9000;
+          proxy_hide_header x-amz-request-id;
+          proxy_hide_header x-amz-id-2;
+        }
+      }
+    }
+{{- end }}

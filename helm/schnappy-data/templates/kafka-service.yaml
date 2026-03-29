@@ -1,3 +1,4 @@
+{{- if eq (.Values.kafka.enabled | toString) "true" }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -13,3 +14,4 @@ spec:
       name: client
   selector:
     {{- include "schnappy.kafka.selectorLabels" . | nindent 4 }}
+{{- end }}

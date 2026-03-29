@@ -49,6 +49,7 @@ redis:
 
 # Kafka (KRaft mode)
 kafka:
+  enabled: true
   image: apache/kafka:4.2.0
   replicas: 1
   clusterId: ""
@@ -82,6 +83,7 @@ kafka:
 
 # ScyllaDB (chat message storage)
 scylla:
+  enabled: true
   image: scylladb/scylla:6.2
   replicas: 1
   args:

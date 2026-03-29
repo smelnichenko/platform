@@ -175,6 +175,18 @@ app.kubernetes.io/component: kube-state-metrics
 app.kubernetes.io/component: es-ilm-job
 {{- end }}
 
+{{/* ========== Reports ========== */}}
+
+{{- define "schnappy.reports.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: reports
+{{- end }}
+
+{{- define "schnappy.reports.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: reports
+{{- end }}
+
 {{/* ========== Cross-chart service name helpers ========== */}}
 
 {{- define "schnappy.monitor.serviceName" -}}

@@ -1,0 +1,33 @@
+{{- if and .Values.reports.enabled .Values.reports.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "schnappy.fullname" . }}-reports
+  labels:
+    {{- include "schnappy.reports.labels" . | nindent 4 }}
+  {{- if and .Values.reports.ingress.tls .Values.reports.ingress.tls.enabled }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.reports.ingress.tls.clusterIssuer | default "letsencrypt-dns" }}
+  {{- end }}
+spec:
+  ingressClassName: traefik
+  {{- if and .Values.reports.ingress.tls .Values.reports.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.reports.ingress.host }}
+      {{- if .Values.reports.ingress.tls.secretName }}
+      secretName: {{ .Values.reports.ingress.tls.secretName }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - {{ if .Values.reports.ingress.host }}host: {{ .Values.reports.ingress.host }}{{ end }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "schnappy.fullname" . }}-reports
+                port:
+                  number: 8080
+{{- end }}

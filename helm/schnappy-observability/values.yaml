@@ -123,6 +123,18 @@ grafana:
     scopes: "openid profile email"
     autoLogin: false
 
+# Hyperfoil report server (Nginx → MinIO proxy)
+reports:
+  enabled: false
+  image: nginx:1.28-alpine
+  ingress:
+    enabled: false
+    host: reports.local
+    tls:
+      enabled: false
+      clusterIssuer: letsencrypt-dns
+      secretName: ""
+
 # Cross-chart references
 app:
   service:

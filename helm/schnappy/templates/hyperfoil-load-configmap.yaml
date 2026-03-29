@@ -55,6 +55,41 @@ data:
     ls -lh /tmp/report/ 2>/dev/null
     [ -f /tmp/report/index.html ] && echo "Report generated successfully"
 
+    # Upload report to MinIO
+    if [ -f /tmp/report/index.html ] && [ -n "$MINIO_USER" ]; then
+      echo "Downloading MinIO client..."
+      curl -sf -o /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x /tmp/mc
+      if [ -x /tmp/mc ]; then
+        export MC_CONFIG_DIR=/tmp/.mc
+        /tmp/mc alias set minio http://{{ include "schnappy.fullname" . }}-minio:9000 "$MINIO_USER" "$MINIO_PASSWORD" --api S3v4
+        /tmp/mc mb --ignore-existing minio/hyperfoil-reports
+        /tmp/mc anonymous set download minio/hyperfoil-reports
+
+        REPORT_DIR="load/$(date -u +%Y-%m-%d_%H%M%S)"
+        echo "Uploading report to minio/hyperfoil-reports/${REPORT_DIR}/"
+        /tmp/mc cp --recursive /tmp/report/ "minio/hyperfoil-reports/${REPORT_DIR}/"
+
+        # Generate index page listing all reports
+        echo "Generating index page..."
+        {
+          echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hyperfoil Reports</title>'
+          echo '<style>body{font-family:sans-serif;max-width:800px;margin:2em auto;padding:0 1em}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #ddd}th{background:#f5f5f5}a{color:#0366d6}</style>'
+          echo '</head><body><h1>Hyperfoil Reports</h1><table><tr><th>Type</th><th>Date</th><th>Link</th></tr>'
+          for type in load stress; do
+            /tmp/mc ls "minio/hyperfoil-reports/${type}/" 2>/dev/null | while read -r line; do
+              dir=$(echo "$line" | awk '{print $NF}' | sed 's|/$||')
+              [ -n "$dir" ] && echo "<tr><td>${type}</td><td>${dir}</td><td><a href=\"${type}/${dir}/index.html\">View Report</a></td></tr>"
+            done
+          done
+          echo '</table></body></html>'
+        } > /tmp/index.html
+        /tmp/mc cp /tmp/index.html minio/hyperfoil-reports/index.html
+        echo "Report uploaded: ${REPORT_DIR}"
+      else
+        echo "WARN: Failed to download MinIO client — report not persisted"
+      fi
+    fi
+
   load-test.hf.yaml: |
     name: schnappy-load
     http:

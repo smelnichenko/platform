@@ -173,6 +173,28 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+    # Hyperfoil report upload
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: schnappy
+              app.kubernetes.io/component: hyperfoil-load
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: schnappy
+              app.kubernetes.io/component: hyperfoil-stress
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Reports server (Nginx proxy)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: schnappy
+              app.kubernetes.io/component: reports
+      ports:
+        - protocol: TCP
+          port: 9000
   egress:
     # DNS only
     - ports:
@@ -182,6 +204,7 @@ spec:
           port: 53
 ---
 {{- end }}
+{{- if eq (.Values.kafka.enabled | toString) "true" }}
 # Kafka network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -237,6 +260,38 @@ spec:
         - protocol: TCP
           port: 9093
 ---
+# Kafka topics job network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-kafka-job
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-job
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Kafka broker
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+{{- end }}
+{{- if eq (.Values.scylla.enabled | toString) "true" }}
+---
 # ScyllaDB network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -273,36 +328,6 @@ spec:
         - protocol: TCP
           port: 53
 ---
-# Kafka topics job network policy
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "schnappy.fullname" . }}-kafka-job
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: kafka-job
-  policyTypes:
-    - Ingress
-    - Egress
-  egress:
-    # DNS
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-    # Kafka broker
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9092
----
 # ScyllaDB schema job network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -332,7 +357,7 @@ spec:
       ports:
         - protocol: TCP
           port: 9042
----
+{{- end }}
 {{- if eq (.Values.aptCache.enabled | toString) "true" }}
 ---
 # apt-cache network policy

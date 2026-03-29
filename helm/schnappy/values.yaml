@@ -189,6 +189,8 @@ postgres:
 redis: {}
 minio: {}
 alertmanager: {}
+kafka:
+  enabled: true
 keycloak:
   enabled: false
   hostname: auth.pmon.dev
@@ -216,5 +218,6 @@ hyperfoil:
     schedule: "0 3 * * *"
 
 scylla:
+  enabled: true
   datacenter: datacenter1
   keyspace: chat

@@ -58,6 +58,18 @@ spec:
                       name: {{ .Values.smokeTest.clientSecretName }}
                       key: CLIENT_SECRET
                 {{- end }}
+                {{- if .Values.minio.existingSecret }}
+                - name: MINIO_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.minio.existingSecret }}
+                      key: MINIO_ROOT_USER
+                - name: MINIO_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.minio.existingSecret }}
+                      key: MINIO_ROOT_PASSWORD
+                {{- end }}
               volumeMounts:
                 - name: benchmarks
                   mountPath: /benchmarks

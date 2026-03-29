@@ -1,4 +1,4 @@
-{{- if gt (int .Values.kafka.replicas) 0 }}
+{{- if and (eq (.Values.kafka.enabled | toString) "true") (gt (int .Values.kafka.replicas) 0) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
