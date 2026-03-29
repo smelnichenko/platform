@@ -246,5 +246,5 @@ spec:
         - path: { type: PathPrefix, value: / }
       backendRefs:
         - name: woodpecker-server
-          port: 8000
+          port: 80
 {{- end }}

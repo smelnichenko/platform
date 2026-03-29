@@ -44,6 +44,9 @@ spec:
     - number: 80
       name: http
       protocol: HTTP
+    - number: 8000
+      name: http-server
+      protocol: HTTP
   resolution: DNS
   location: MESH_EXTERNAL
 {{- end }}
