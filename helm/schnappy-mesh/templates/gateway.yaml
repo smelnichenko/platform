@@ -8,9 +8,11 @@ metadata:
     cert-manager.io/cluster-issuer: {{ .Values.gateway.tls.clusterIssuer | default "letsencrypt-prod" }}
 spec:
   gatewayClassName: istio
-  addresses:
-    - value: {{ .Values.gateway.loadBalancerIP | default "192.168.11.2" }}
-      type: IPAddress
+  # HAProxy on host forwards 80/443 to NodePorts.
+  # No LoadBalancer needed — avoids kube-proxy nftables reject rules.
+  infrastructure:
+    annotations:
+      networking.istio.io/service-type: NodePort
   listeners:
     # HTTPS — main app
     - name: https-app
