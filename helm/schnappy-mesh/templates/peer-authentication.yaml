@@ -1,7 +1,8 @@
 {{- if .Values.peerAuthentication.enabled }}
-# Namespace-wide: require mTLS for all traffic
-# Istio ingress gateway handles TLS termination and is inside the mesh,
-# so all pod-to-pod traffic is STRICT mTLS with no exceptions needed.
+# Namespace-wide: STRICT mTLS for all mesh-to-mesh traffic
+# Traefik (kube-system) sends plaintext to the Istio gateway pod,
+# which is excluded from ambient via pod annotation. All other
+# pod-to-pod traffic enforces STRICT mTLS via ztunnel.
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
