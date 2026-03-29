@@ -52,8 +52,10 @@ data:
     /deployment/bin/run.sh -o /tmp/report /tmp/benchmark.yaml || true
 
     echo "=== HYPERFOIL RESULTS ==="
-    ls -lh /tmp/report/ 2>/dev/null
-    [ -f /tmp/report/index.html ] && echo "Report generated successfully"
+    echo "Report directory contents:"
+    find /tmp/report -type f 2>/dev/null | head -20
+    ls -lhR /tmp/report/ 2>/dev/null | head -30
+    [ -f /tmp/report/index.html ] && echo "Report generated successfully" || echo "WARN: /tmp/report/index.html not found"
 
     # Upload report to MinIO
     if [ -f /tmp/report/index.html ] && [ -n "$MINIO_USER" ]; then
