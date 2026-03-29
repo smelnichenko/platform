@@ -1,0 +1,10 @@
+nameOverride: schnappy
+
+# Strict mTLS for all pod-to-pod traffic in the namespace
+peerAuthentication:
+  enabled: true
+  mode: STRICT
+
+# L4 AuthorizationPolicies (enforced by ztunnel, no waypoint needed)
+authorizationPolicies:
+  enabled: true

@@ -20,6 +20,7 @@ spec:
         prometheus.io/path: "/api/actuator/prometheus"
         prometheus.io/port: "8080"
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-monitor
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

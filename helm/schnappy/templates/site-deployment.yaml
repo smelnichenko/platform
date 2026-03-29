@@ -16,6 +16,7 @@ spec:
         {{- include "schnappy.site.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-site
       securityContext:
         runAsNonRoot: true
         runAsUser: 101

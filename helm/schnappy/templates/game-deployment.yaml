@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/part-of: schnappy
         app.kubernetes.io/component: {{ .name }}
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" $ }}-game-{{ .name }}
       containers:
         - name: game
           image: "{{ .image.repository }}:{{ .image.tag }}"

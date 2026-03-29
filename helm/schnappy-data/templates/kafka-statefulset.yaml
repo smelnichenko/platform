@@ -17,6 +17,7 @@ spec:
         {{- include "schnappy.kafka.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-kafka
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

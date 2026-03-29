@@ -18,6 +18,7 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/reports-configmap.yaml") . | sha256sum }}
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-reports
       securityContext:
         runAsNonRoot: true
         runAsUser: 101

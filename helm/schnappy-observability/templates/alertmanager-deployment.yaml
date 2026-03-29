@@ -18,6 +18,7 @@ spec:
         {{- include "schnappy.alertmanager.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-alertmanager
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534

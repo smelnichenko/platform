@@ -1,0 +1,10 @@
+{{- if .Values.peerAuthentication.enabled }}
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "schnappy.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  mtls:
+    mode: {{ .Values.peerAuthentication.mode }}
+{{- end }}

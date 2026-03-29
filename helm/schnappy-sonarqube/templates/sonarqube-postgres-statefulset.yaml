@@ -17,6 +17,7 @@ spec:
         {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-sonarqube-postgres
       securityContext:
         runAsNonRoot: true
         runAsUser: 999

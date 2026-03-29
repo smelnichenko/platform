@@ -17,6 +17,7 @@ spec:
         {{- include "schnappy.scylla.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-scylla
       securityContext:
         fsGroup: 1000
         seccompProfile:

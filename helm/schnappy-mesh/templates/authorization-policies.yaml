@@ -1,0 +1,181 @@
+{{- if .Values.authorizationPolicies.enabled }}
+{{- $ns := .Release.Namespace }}
+{{- $fn := include "schnappy.fullname" . }}
+# PostgreSQL — only app services + keycloak on port 5432
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-postgres
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: postgres
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-keycloak
+      to:
+        - operation:
+            ports: ["5432"]
+---
+# Redis — only app services on port 6379
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-redis
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: redis
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
+      to:
+        - operation:
+            ports: ["6379"]
+---
+# Kafka — only app services on port 9092/9093
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-kafka
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: kafka
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kafka
+      to:
+        - operation:
+            ports: ["9092", "9093"]
+---
+# ScyllaDB — only monitor + chat on port 9042/7000
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-scylla
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: scylla
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
+      to:
+        - operation:
+            ports: ["9042", "7000"]
+---
+# MinIO — only monitor + reports on port 9000
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-minio
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: minio
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-reports
+      to:
+        - operation:
+            ports: ["9000"]
+---
+# Elasticsearch — only monitor + kibana + fluentbit on port 9200
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-elasticsearch
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: elasticsearch
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kibana
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-fluentbit
+      to:
+        - operation:
+            ports: ["9200"]
+---
+# Keycloak — only envoy gateway, admin, monitor on port 8080
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-keycloak
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: keycloak
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+              - cluster.local/ns/{{ $ns }}/sa/envoy-gateway
+              - cluster.local/ns/{{ $ns }}/sa/envoy-{{ $fn }}-{{ $fn }}-gw-85aa29de
+      to:
+        - operation:
+            ports: ["8080", "9000"]
+---
+# SonarQube PostgreSQL — only sonarqube on port 5432
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-sonarqube-postgres
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: sonarqube-postgres
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-sonarqube
+      to:
+        - operation:
+            ports: ["5432"]
+{{- end }}
