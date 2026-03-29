@@ -90,7 +90,11 @@ data:
           echo '</table></body></html>'
         } > /tmp/index.html
         /tmp/mc cp /tmp/index.html minio/hyperfoil-reports/index.html
-        echo "Report uploaded: ${REPORT_DIR}"
+        echo ""
+        echo "============================================"
+        echo "Report: ${REPORTS_URL}/${REPORT_DIR}/index.html"
+        echo "All:    ${REPORTS_URL}/"
+        echo "============================================"
       else
         echo "WARN: Failed to download MinIO client — report not persisted"
       fi

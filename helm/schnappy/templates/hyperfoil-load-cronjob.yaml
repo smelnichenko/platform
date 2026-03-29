@@ -58,6 +58,10 @@ spec:
                       name: {{ .Values.smokeTest.clientSecretName }}
                       key: CLIENT_SECRET
                 {{- end }}
+                {{- if .Values.hyperfoil.reportsUrl }}
+                - name: REPORTS_URL
+                  value: {{ .Values.hyperfoil.reportsUrl | quote }}
+                {{- end }}
                 {{- if .Values.minio.existingSecret }}
                 - name: MINIO_USER
                   valueFrom:
