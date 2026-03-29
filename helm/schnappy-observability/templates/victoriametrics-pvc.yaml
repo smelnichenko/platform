@@ -1,0 +1,17 @@
+{{- if .Values.victoriametrics.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "schnappy.fullname" . }}-victoriametrics
+  labels:
+    {{- include "schnappy.victoriametrics.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.victoriametrics.storage.size }}
+  {{- if .Values.victoriametrics.storage.storageClass }}
+  storageClassName: {{ .Values.victoriametrics.storage.storageClass }}
+  {{- end }}
+{{- end }}

@@ -9,11 +9,11 @@ data:
   datasources.yml: |
     apiVersion: 1
     datasources:
-      - name: Prometheus
+      - name: VictoriaMetrics
         type: prometheus
         uid: prometheus
         access: proxy
-        url: http://{{ include "schnappy.prometheus.serviceName" . }}:9090
+        url: http://{{ include "schnappy.victoriametrics.serviceName" . }}:8428
         isDefault: true
         editable: false
 {{- end }}

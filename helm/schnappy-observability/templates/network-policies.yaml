@@ -1,16 +1,16 @@
 {{- if .Values.networkPolicies.enabled -}}
-{{- if .Values.prometheus.enabled }}
-# Prometheus network policy
+{{- if .Values.victoriametrics.enabled }}
+# VictoriaMetrics network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-prometheus
+  name: {{ include "schnappy.fullname" . }}-victoriametrics
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "schnappy.prometheus.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.victoriametrics.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -22,7 +22,7 @@ spec:
               {{- include "schnappy.grafana.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
-          port: 9090
+          port: 8428
     {{- end }}
     # k6 tests remote write
     - from:
@@ -36,7 +36,7 @@ spec:
               app.kubernetes.io/component: k6-load
       ports:
         - protocol: TCP
-          port: 9090
+          port: 8428
   egress:
     # DNS
     - ports:
@@ -44,7 +44,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Prometheus → App (scrape)
+    # VictoriaMetrics → App (scrape)
     - to:
         - podSelector:
             matchLabels:
@@ -52,18 +52,8 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Prometheus → Vault (scrape via service DNS)
-    {{- if .Values.prometheus.vault.enabled }}
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: vault
-      ports:
-        - protocol: TCP
-          port: 8200
-    {{- end }}
-    # Prometheus → Woodpecker (scrape)
-    {{- if eq (.Values.prometheus.woodpecker.enabled | toString) "true" }}
+    # VictoriaMetrics → Woodpecker (scrape)
+    {{- if eq (.Values.victoriametrics.woodpecker.enabled | toString) "true" }}
     - to:
         - namespaceSelector:
             matchLabels:
@@ -72,8 +62,8 @@ spec:
         - protocol: TCP
           port: 80
     {{- end }}
-    # Prometheus → Forgejo (scrape)
-    {{- if eq (.Values.prometheus.forgejo.enabled | toString) "true" }}
+    # VictoriaMetrics → Forgejo (scrape)
+    {{- if eq (.Values.victoriametrics.forgejo.enabled | toString) "true" }}
     - to:
         - namespaceSelector:
             matchLabels:
@@ -82,7 +72,7 @@ spec:
         - protocol: TCP
           port: 3000
     {{- end }}
-    # Prometheus → Alertmanager
+    # VictoriaMetrics → Alertmanager
     {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
     - to:
         - podSelector:
@@ -92,7 +82,7 @@ spec:
         - protocol: TCP
           port: 9093
     {{- end }}
-    # Prometheus → kube-state-metrics (scrape)
+    # VictoriaMetrics → kube-state-metrics (scrape)
     {{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
     - to:
         - podSelector:
@@ -104,7 +94,7 @@ spec:
     {{- end }}
 ---
 {{- end }}
-{{- if and .Values.prometheus.enabled (eq (.Values.alertmanager.enabled | toString) "true") }}
+{{- if and .Values.victoriametrics.enabled (eq (.Values.alertmanager.enabled | toString) "true") }}
 # Alertmanager network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -120,7 +110,7 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Prometheus + kubelet probes
+    # VictoriaMetrics + kubelet probes
     - ports:
         - protocol: TCP
           port: 9093
@@ -141,7 +131,7 @@ spec:
           port: 8080
 ---
 {{- end }}
-{{- if and .Values.prometheus.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") }}
+{{- if and .Values.victoriametrics.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") }}
 # kube-state-metrics network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -157,7 +147,7 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Prometheus scraping + kubelet probes
+    # VictoriaMetrics scraping + kubelet probes
     - ports:
         - protocol: TCP
           port: 8080
@@ -210,14 +200,14 @@ spec:
         - protocol: TCP
           port: 53
     # Grafana → Prometheus (datasource)
-    {{- if .Values.prometheus.enabled }}
+    {{- if .Values.victoriametrics.enabled }}
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.prometheus.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.victoriametrics.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
-          port: 9090
+          port: 8428
     {{- end }}
     # Grafana → Keycloak (OAuth2 SSO)
     {{- if eq (.Values.grafana.oauth.enabled | toString) "true" }}

@@ -94,18 +94,18 @@ app.kubernetes.io/component: fluentbit
 
 {{/* ========== Prometheus ========== */}}
 
-{{- define "schnappy.prometheus.labels" -}}
+{{- define "schnappy.victoriametrics.labels" -}}
 {{ include "schnappy.labels" . }}
-app.kubernetes.io/component: prometheus
+app.kubernetes.io/component: victoriametrics
 {{- end }}
 
-{{- define "schnappy.prometheus.selectorLabels" -}}
+{{- define "schnappy.victoriametrics.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: prometheus
+app.kubernetes.io/component: victoriametrics
 {{- end }}
 
-{{- define "schnappy.prometheus.serviceName" -}}
-{{- printf "%s-prometheus" (include "schnappy.fullname" .) }}
+{{- define "schnappy.victoriametrics.serviceName" -}}
+{{- printf "%s-victoriametrics" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/* ========== Grafana ========== */}}

@@ -1,10 +1,10 @@
-{{- if and .Values.prometheus.enabled (eq (.Values.alertmanager.enabled | toString) "true") -}}
+{{- if and .Values.victoriametrics.enabled (eq (.Values.alertmanager.enabled | toString) "true") -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "schnappy.fullname" . }}-prometheus-rules
+  name: {{ include "schnappy.fullname" . }}-victoriametrics-rules
   labels:
-    {{- include "schnappy.prometheus.labels" . | nindent 4 }}
+    {{- include "schnappy.victoriametrics.labels" . | nindent 4 }}
 data:
   infrastructure.yml: |
     groups:

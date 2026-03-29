@@ -229,8 +229,8 @@ app.kubernetes.io/component: gateway
 {{- printf "%s-keycloak" (include "schnappy.fullname" .) }}
 {{- end }}
 
-{{- define "schnappy.prometheus.serviceName" -}}
-{{- printf "%s-prometheus" (include "schnappy.fullname" .) }}
+{{- define "schnappy.victoriametrics.serviceName" -}}
+{{- printf "%s-victoriametrics" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{- define "schnappy.keycloak.secretName" -}}
@@ -282,9 +282,9 @@ app.kubernetes.io/component: elasticsearch
 app.kubernetes.io/component: keycloak
 {{- end }}
 
-{{- define "schnappy.prometheus.selectorLabels" -}}
+{{- define "schnappy.victoriametrics.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: prometheus
+app.kubernetes.io/component: victoriametrics
 {{- end }}
 
 {{- define "schnappy.alertmanager.selectorLabels" -}}
