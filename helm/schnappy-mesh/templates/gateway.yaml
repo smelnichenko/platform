@@ -20,7 +20,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.app }}-tls
+          - name: {{ .Values.gateway.hosts.app | replace "." "-" }}-tls
       allowedRoutes:
         namespaces:
           from: Same
