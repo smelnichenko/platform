@@ -1,0 +1,94 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "schnappy.fullname" . }}-gateway
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.gateway.tls.clusterIssuer | default "letsencrypt-prod" }}
+spec:
+  gatewayClassName: istio
+  addresses:
+    - value: {{ .Values.gateway.loadBalancerIP | default "192.168.11.2" }}
+      type: IPAddress
+  listeners:
+    # HTTPS — main app
+    - name: https-app
+      hostname: {{ .Values.gateway.hosts.app | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.app }}-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # HTTPS — auth (Keycloak)
+    - name: https-auth
+      hostname: {{ .Values.gateway.hosts.auth | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.auth | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # HTTPS — Grafana
+    - name: https-grafana
+      hostname: {{ .Values.gateway.hosts.grafana | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.grafana | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # HTTPS — Kibana
+    - name: https-logs
+      hostname: {{ .Values.gateway.hosts.logs | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.logs | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # HTTPS — Reports
+    - name: https-reports
+      hostname: {{ .Values.gateway.hosts.reports | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.reports | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # HTTPS — SonarQube
+    - name: https-sonar
+      hostname: {{ .Values.gateway.hosts.sonar | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.sonar | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # HTTP → HTTPS redirect
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+{{- end }}

@@ -1,4 +1,7 @@
 {{- if .Values.peerAuthentication.enabled }}
+# Namespace-wide: require mTLS for all traffic
+# Istio ingress gateway handles TLS termination and is inside the mesh,
+# so all pod-to-pod traffic is STRICT mTLS with no exceptions needed.
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:

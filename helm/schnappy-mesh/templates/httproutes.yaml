@@ -1,0 +1,196 @@
+{{- if .Values.gateway.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $gw := printf "%s-gateway" $fn }}
+# HTTP → HTTPS redirect
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-http-redirect
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+---
+# Admin service routes
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-admin-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-app
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/auth }
+        - path: { type: PathPrefix, value: /api/captcha }
+        - path: { type: PathPrefix, value: /api/user }
+        - path: { type: PathPrefix, value: /api/permissions }
+        - path: { type: PathPrefix, value: /api/admin }
+      backendRefs:
+        - name: {{ $fn }}-admin
+          port: 8080
+---
+# Chat service routes
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-chat-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-app
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/chat }
+        - path: { type: PathPrefix, value: /ws/chat }
+      backendRefs:
+        - name: {{ $fn }}-chat
+          port: 8080
+---
+# Chess service routes
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-chess-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-app
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/chess }
+        - path: { type: PathPrefix, value: /ws/chess }
+      backendRefs:
+        - name: {{ $fn }}-chess
+          port: 8080
+---
+# Core app (catch-all /api)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-core-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-app
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api }
+      backendRefs:
+        - name: {{ $fn }}-monitor
+          port: 8080
+---
+# Frontend (catch-all /)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-site-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-app
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-site
+          port: 8080
+---
+# Keycloak
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-keycloak-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-auth
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-keycloak
+          port: 8080
+---
+# Grafana
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-grafana-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-grafana
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-grafana
+          port: 3000
+---
+# Kibana
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-kibana-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-logs
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-kibana
+          port: 5601
+---
+# Reports
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-reports-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-reports
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-reports
+          port: 8080
+---
+# SonarQube
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-sonarqube-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https-sonar
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-sonarqube
+          port: 9000
+{{- end }}
