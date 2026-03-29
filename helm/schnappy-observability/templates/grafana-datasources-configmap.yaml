@@ -9,7 +9,7 @@ data:
   datasources.yml: |
     apiVersion: 1
     datasources:
-      - name: VictoriaMetrics
+      - name: Prometheus
         type: prometheus
         uid: prometheus
         access: proxy
