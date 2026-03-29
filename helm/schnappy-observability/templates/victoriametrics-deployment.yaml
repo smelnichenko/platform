@@ -42,10 +42,6 @@ spec:
             {{- if .Values.victoriametrics.graphiteEnabled }}
             - '-graphiteListenAddr=:2003'
             {{- end }}
-            {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
-            - '-notifier.url=http://{{ include "schnappy.alertmanager.serviceName" . }}:9093'
-            - '-rule=/etc/victoriametrics/rules/*.yml'
-            {{- end }}
           ports:
             - containerPort: 8428
               name: http
@@ -58,10 +54,6 @@ spec:
               mountPath: /etc/victoriametrics
             - name: data
               mountPath: /data
-            {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
-            - name: rules
-              mountPath: /etc/victoriametrics/rules/
-            {{- end }}
             - name: tmp
               mountPath: /tmp
           resources:
@@ -85,11 +77,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "schnappy.fullname" . }}-victoriametrics
-        {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
-        - name: rules
-          configMap:
-            name: {{ include "schnappy.fullname" . }}-victoriametrics-rules
-        {{- end }}
         - name: tmp
           emptyDir: {}
 {{- end }}
