@@ -70,6 +70,40 @@ spec:
               port: 8428
             initialDelaySeconds: 5
             periodSeconds: 5
+        {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
+        - name: vmalert
+          image: {{ .Values.victoriametrics.vmalertImage | default "victoriametrics/vmalert:v1.117.1" }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          args:
+            - '-datasource.url=http://localhost:8428'
+            - '-remoteRead.url=http://localhost:8428'
+            - '-remoteWrite.url=http://localhost:8428'
+            - '-notifier.url=http://{{ include "schnappy.alertmanager.serviceName" . }}:9093'
+            - '-rule=/etc/vmalert/rules/*.yml'
+            - '-httpListenAddr=:8880'
+          ports:
+            - containerPort: 8880
+              name: vmalert
+          volumeMounts:
+            - name: rules
+              mountPath: /etc/vmalert/rules
+            - name: tmp-vmalert
+              mountPath: /tmp
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8880
+            initialDelaySeconds: 5
+            periodSeconds: 10
+        {{- end }}
       volumes:
         - name: config
           configMap:
@@ -79,4 +113,11 @@ spec:
             claimName: {{ include "schnappy.fullname" . }}-victoriametrics
         - name: tmp
           emptyDir: {}
+        {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
+        - name: rules
+          configMap:
+            name: {{ include "schnappy.fullname" . }}-victoriametrics-rules
+        - name: tmp-vmalert
+          emptyDir: {}
+        {{- end }}
 {{- end }}
