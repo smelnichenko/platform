@@ -1,13 +1,13 @@
-{{- if eq (.Values.gatling.enabled | toString) "true" }}
+{{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "schnappy.fullname" . }}-gatling-load
+  name: {{ include "schnappy.fullname" . }}-hyperfoil-load
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
-    app.kubernetes.io/component: gatling-load
+    app.kubernetes.io/component: hyperfoil-load
 spec:
-  schedule: {{ .Values.gatling.load.schedule | quote }}
+  schedule: {{ .Values.hyperfoil.load.schedule | quote }}
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -19,35 +19,30 @@ spec:
         metadata:
           labels:
             {{- include "schnappy.selectorLabels" . | nindent 12 }}
-            app.kubernetes.io/component: gatling-load
+            app.kubernetes.io/component: hyperfoil-load
             app.kubernetes.io/part-of: schnappy
         spec:
           securityContext:
             runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
+            runAsUser: 1001
+            runAsGroup: 1001
             seccompProfile:
               type: RuntimeDefault
           containers:
-            - name: gatling
-              image: {{ .Values.gatling.image.repository }}:{{ .Values.gatling.image.tag }}
-              args:
-                - "io.gatling.app.Gatling"
-                - "-s"
-                - "io.schnappy.loadtest.LoadSimulation"
-                - "-rf"
-                - "/tmp/results"
-                - "-nr"
+            - name: hyperfoil
+              image: {{ .Values.hyperfoil.image }}
+              command: ['/bin/sh', '/benchmarks/run.sh']
               resources:
-                requests: { cpu: 500m, memory: 512Mi }
-                limits: { cpu: 2000m, memory: 1Gi }
+                requests: { cpu: 500m, memory: 256Mi }
+                limits: { cpu: 2000m, memory: 512Mi }
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
                   drop:
                     - ALL
-                readOnlyRootFilesystem: true
               env:
+                - name: JAVA_OPTS
+                  value: "-Xmx256m -XX:+UseZGC"
                 - name: MONITOR_URL
                   value: "http://{{ include "schnappy.fullname" . }}-monitor:8080"
                 - name: CHAT_URL
@@ -56,19 +51,23 @@ spec:
                   value: "http://{{ include "schnappy.fullname" . }}-chess:8080"
                 - name: KEYCLOAK_URL
                   value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
-                - name: GRAPHITE_HOST
-                  value: "{{ include "schnappy.victoriametrics.serviceName" . }}"
-                - name: GRAPHITE_PORT
-                  value: "2003"
-                - name: CLIENT_SECRET
+                {{- if .Values.smokeTest.clientSecretName }}
+                - name: K6_CLIENT_SECRET
                   valueFrom:
                     secretKeyRef:
-                      name: {{ include "schnappy.fullname" . }}-gatling
+                      name: {{ .Values.smokeTest.clientSecretName }}
                       key: CLIENT_SECRET
+                {{- end }}
               volumeMounts:
+                - name: benchmarks
+                  mountPath: /benchmarks
                 - name: tmp
                   mountPath: /tmp
           volumes:
+            - name: benchmarks
+              configMap:
+                name: {{ include "schnappy.fullname" . }}-hyperfoil-load
+                defaultMode: 0755
             - name: tmp
               emptyDir: {}
           restartPolicy: Never

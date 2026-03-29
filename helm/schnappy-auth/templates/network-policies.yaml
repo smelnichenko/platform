@@ -33,7 +33,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Allow from k6 smoke + Gatling load/stress tests (token exchange)
+    # Allow from k6 smoke + Hyperfoil load/stress tests (token exchange)
     - from:
         - podSelector:
             matchLabels:
@@ -42,11 +42,11 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: gatling-load
+              app.kubernetes.io/component: hyperfoil-load
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: gatling-stress
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 8080

@@ -61,17 +61,17 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    {{- if eq (.Values.gatling.enabled | toString) "true" }}
-    # Allow from Gatling load/stress tests (bypass Envoy, direct to backends)
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests (bypass Envoy, direct to backends)
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-load
+              app.kubernetes.io/component: hyperfoil-load
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-stress
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 8080
@@ -185,17 +185,17 @@ spec:
         - protocol: TCP
           port: 8080
     {{- end }}
-    # Allow from Gatling load/stress tests (bypass Envoy, direct to backends)
-    {{- if eq (.Values.gatling.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests (bypass Envoy, direct to backends)
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-load
+              app.kubernetes.io/component: hyperfoil-load
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-stress
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 8080
@@ -300,17 +300,17 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    {{- if eq (.Values.gatling.enabled | toString) "true" }}
-    # Allow from Gatling load/stress tests
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-load
+              app.kubernetes.io/component: hyperfoil-load
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-stress
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 8080
@@ -412,17 +412,17 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    {{- if eq (.Values.gatling.enabled | toString) "true" }}
-    # Allow from Gatling load/stress tests
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-load
+              app.kubernetes.io/component: hyperfoil-load
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-stress
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 8080
@@ -503,17 +503,17 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    {{- if eq (.Values.gatling.enabled | toString) "true" }}
-    # Allow from Gatling load/stress tests
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-load
+              app.kubernetes.io/component: hyperfoil-load
         - podSelector:
             matchLabels:
               {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: gatling-stress
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 8080
@@ -706,20 +706,20 @@ spec:
         - protocol: TCP
           port: 443
 {{- end }}
-{{- if eq (.Values.gatling.enabled | toString) "true" }}
+{{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
 ---
-# Gatling load/stress test network policy
+# Hyperfoil load/stress test network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-gatling
+  name: {{ include "schnappy.fullname" . }}-hyperfoil
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
       {{- include "schnappy.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: gatling-load
+      app.kubernetes.io/component: hyperfoil-load
   policyTypes:
     - Egress
   egress:
@@ -729,7 +729,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Gatling → Keycloak (token exchange)
+    # Hyperfoil → Keycloak (token exchange)
     - to:
         - podSelector:
             matchLabels:
@@ -737,7 +737,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Gatling → backend services (bypass Envoy)
+    # Hyperfoil → backend services (bypass Envoy)
     - to:
         - podSelector:
             matchLabels:
@@ -745,7 +745,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Gatling → VictoriaMetrics (Graphite metrics)
+    # Hyperfoil → VictoriaMetrics (Graphite metrics)
     - to:
         - podSelector:
             matchLabels:
@@ -754,18 +754,18 @@ spec:
         - protocol: TCP
           port: 2003
 ---
-# Gatling stress test (same rules, different component label)
+# Hyperfoil stress test (same rules, different component label)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-gatling-stress
+  name: {{ include "schnappy.fullname" . }}-hyperfoil-stress
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
       {{- include "schnappy.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: gatling-stress
+      app.kubernetes.io/component: hyperfoil-stress
   policyTypes:
     - Egress
   egress:
@@ -775,7 +775,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Gatling → Keycloak (token exchange)
+    # Hyperfoil → Keycloak (token exchange)
     - to:
         - podSelector:
             matchLabels:
@@ -783,7 +783,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Gatling → backend services (bypass Envoy)
+    # Hyperfoil → backend services (bypass Envoy)
     - to:
         - podSelector:
             matchLabels:
@@ -791,7 +791,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Gatling → VictoriaMetrics (Graphite metrics)
+    # Hyperfoil → VictoriaMetrics (Graphite metrics)
     - to:
         - podSelector:
             matchLabels:

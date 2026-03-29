@@ -33,16 +33,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8428
-    # Gatling load/stress Graphite metrics
+    # Hyperfoil load/stress Graphite metrics
     - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: gatling-load
+              app.kubernetes.io/component: hyperfoil-load
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: gatling-stress
+              app.kubernetes.io/component: hyperfoil-stress
       ports:
         - protocol: TCP
           port: 2003

@@ -209,16 +209,11 @@ smokeTest:
   baseUrl: ""                # Defaults to https://<app.ingress.host>
   clientSecretName: ""       # k8s Secret with CLIENT_SECRET key (for authenticated tests)
 # Hyperfoil load/stress tests (bypass Envoy, hit backends directly)
-gatling:
+hyperfoil:
   enabled: false
-  image:
-    repository: git.pmon.dev/schnappy/gatling-tests
-    tag: "latest"
+  image: quay.io/hyperfoil/hyperfoil:0.28.0
   load:
     schedule: "0 3 * * *"
-  stress:
-    schedule: "0 0 31 2 *"
-    suspend: true
 
 scylla:
   datacenter: datacenter1
