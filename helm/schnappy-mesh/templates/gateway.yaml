@@ -84,11 +84,47 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
+    # HTTPS — Argo CD
+    - name: https-argocd
+      hostname: {{ .Values.gateway.hosts.argocd | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.argocd | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    # HTTPS — Forgejo
+    - name: https-forgejo
+      hostname: {{ .Values.gateway.hosts.forgejo | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.forgejo | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    # HTTPS — Woodpecker CI
+    - name: https-ci
+      hostname: {{ .Values.gateway.hosts.ci | quote }}
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.hosts.ci | replace "." "-" }}-tls
+      allowedRoutes:
+        namespaces:
+          from: All
     # HTTP → HTTPS redirect
     - name: http
       port: 80
       protocol: HTTP
       allowedRoutes:
         namespaces:
-          from: Same
+          from: All
 {{- end }}
