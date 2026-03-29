@@ -52,13 +52,18 @@ data:
     /deployment/bin/run.sh -o /tmp/report /tmp/benchmark.yaml || true
 
     echo "=== HYPERFOIL RESULTS ==="
-    echo "Report directory contents:"
-    find /tmp/report -type f 2>/dev/null | head -20
-    ls -lhR /tmp/report/ 2>/dev/null | head -30
-    [ -f /tmp/report/index.html ] && echo "Report generated successfully" || echo "WARN: /tmp/report/index.html not found"
+    # Hyperfoil -o writes a single HTML file, not a directory
+    if [ -f /tmp/report ]; then
+      mkdir -p /tmp/report-dir
+      mv /tmp/report /tmp/report-dir/index.html
+      echo "Report generated successfully (single file)"
+    elif [ -f /tmp/report/index.html ]; then
+      mv /tmp/report /tmp/report-dir
+      echo "Report generated successfully (directory)"
+    fi
 
     # Upload report to MinIO
-    if [ -f /tmp/report/index.html ] && [ -n "$MINIO_USER" ]; then
+    if [ -f /tmp/report-dir/index.html ] && [ -n "$MINIO_USER" ]; then
       echo "Downloading MinIO client..."
       curl -sf -o /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x /tmp/mc
       if [ -x /tmp/mc ]; then
@@ -69,7 +74,7 @@ data:
 
         REPORT_DIR="load/$(date -u +%Y-%m-%d_%H%M%S)"
         echo "Uploading report to minio/hyperfoil-reports/${REPORT_DIR}/"
-        /tmp/mc cp --recursive /tmp/report/ "minio/hyperfoil-reports/${REPORT_DIR}/"
+        /tmp/mc cp --recursive /tmp/report-dir/ "minio/hyperfoil-reports/${REPORT_DIR}/"
 
         # Generate index page listing all reports
         echo "Generating index page..."
