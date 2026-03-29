@@ -28,11 +28,30 @@ data:
       server {
         listen 8080;
 
+        # Directory paths → append index.html
+        location ~ /$ {
+          proxy_pass http://{{ include "schnappy.fullname" . }}-minio:9000/hyperfoil-reports/${uri}index.html;
+          proxy_set_header Host {{ include "schnappy.fullname" . }}-minio:9000;
+          proxy_hide_header x-amz-request-id;
+          proxy_hide_header x-amz-id-2;
+          proxy_intercept_errors on;
+          error_page 403 404 = @notfound;
+        }
+
         location / {
           proxy_pass http://{{ include "schnappy.fullname" . }}-minio:9000/hyperfoil-reports/;
           proxy_set_header Host {{ include "schnappy.fullname" . }}-minio:9000;
           proxy_hide_header x-amz-request-id;
           proxy_hide_header x-amz-id-2;
+        }
+
+        # Bare paths without trailing slash → redirect to add slash
+        location ~ ^(/[^.]+[^/])$ {
+          return 301 $1/;
+        }
+
+        location @notfound {
+          return 404 'Not found';
         }
       }
     }
