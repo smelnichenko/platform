@@ -169,10 +169,6 @@ chessService:
     type: ClusterIP
     port: 8080
 
-# Linkerd
-linkerd:
-  enabled: false
-  authorizationPolicy: false
 
 chat:
   e2eEnabled: false

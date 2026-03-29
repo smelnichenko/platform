@@ -61,9 +61,6 @@ chess:
 chat:
   e2eEnabled: false
 
-linkerd:
-  enabled: false                # Enable after Linkerd is installed on cluster
-  authorizationPolicy: false
 
 postgres:
   enabled: true
