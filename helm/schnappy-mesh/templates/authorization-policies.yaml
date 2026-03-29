@@ -1,6 +1,26 @@
 {{- if .Values.authorizationPolicies.enabled }}
 {{- $ns := .Release.Namespace }}
 {{- $fn := include "schnappy.fullname" . }}
+# Istio ingress gateway → all backend services on port 8080
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-gateway-to-backends
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: schnappy
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-gateway-istio
+      to:
+        - operation:
+            ports: ["8080", "3000", "5601", "9000"]
+---
 # PostgreSQL — only app services + keycloak on port 5432
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
@@ -153,8 +173,7 @@ spec:
             principals:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
-              - cluster.local/ns/{{ $ns }}/sa/envoy-gateway
-              - cluster.local/ns/{{ $ns }}/sa/envoy-{{ $fn }}-{{ $fn }}-gw-85aa29de
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-gateway-istio
       to:
         - operation:
             ports: ["8080", "9000"]

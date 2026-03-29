@@ -1,0 +1,25 @@
+{{- if .Values.gateway.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $issuer := .Values.gateway.tls.clusterIssuer | default "letsencrypt-prod" }}
+# Cross-namespace host certificates (not auto-provisioned by cert-manager Gateway API)
+{{- range $key, $host := .Values.gateway.hosts }}
+{{- $name := $host | replace "." "-" }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}-tls
+  namespace: {{ $.Release.Namespace }}
+spec:
+  secretName: {{ $name }}-tls
+  issuerRef:
+    {{- if or (hasPrefix "grafana" $host) (hasPrefix "logs" $host) (hasPrefix "reports" $host) (hasPrefix "sonar" $host) (hasPrefix "git" $host) (hasPrefix "cd" $host) (hasPrefix "ci" $host) }}
+    name: letsencrypt-dns
+    {{- else }}
+    name: {{ $issuer }}
+    {{- end }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ $host }}
+{{- end }}
+{{- end }}

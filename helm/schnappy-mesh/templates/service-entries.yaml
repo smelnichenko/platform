@@ -1,0 +1,49 @@
+{{- if .Values.gateway.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+# Cross-namespace services (not in ambient mesh, need ServiceEntry for discovery)
+---
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: {{ $fn }}-forgejo
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    - forgejo-http.forgejo.svc.cluster.local
+  ports:
+    - number: 3000
+      name: http
+      protocol: HTTP
+  resolution: DNS
+  location: MESH_EXTERNAL
+---
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: {{ $fn }}-argocd
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    - argocd-server.argocd.svc.cluster.local
+  ports:
+    - number: 443
+      name: https
+      protocol: HTTPS
+  resolution: DNS
+  location: MESH_EXTERNAL
+---
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: {{ $fn }}-woodpecker
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    - woodpecker-server.woodpecker.svc.cluster.local
+  ports:
+    - number: 80
+      name: http
+      protocol: HTTP
+  resolution: DNS
+  location: MESH_EXTERNAL
+{{- end }}
