@@ -54,6 +54,12 @@ spec:
               mountPath: /etc/victoriametrics
             - name: data
               mountPath: /data
+            {{- if .Values.victoriametrics.vault.enabled }}
+            - name: vault-ca
+              mountPath: /vault/tls
+            - name: vault-metrics-token
+              mountPath: /var/run/secrets/vault-metrics
+            {{- end }}
             - name: tmp
               mountPath: /tmp
           resources:
@@ -111,6 +117,17 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "schnappy.fullname" . }}-victoriametrics
+        {{- if .Values.victoriametrics.vault.enabled }}
+        - name: vault-ca
+          secret:
+            secretName: vault-ca-monitor
+        - name: vault-metrics-token
+          secret:
+            secretName: vault-metrics-secret
+            items:
+              - key: token
+                path: token
+        {{- end }}
         - name: tmp
           emptyDir: {}
         {{- if eq (.Values.alertmanager.enabled | toString) "true" }}

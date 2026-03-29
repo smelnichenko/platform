@@ -19,6 +19,18 @@ data:
         metrics_path: '/api/actuator/prometheus'
         static_configs:
           - targets: ['{{ include "schnappy.monitor.serviceName" . }}:{{ .Values.app.service.port }}']
+      {{- if .Values.victoriametrics.vault.enabled }}
+      - job_name: 'vault'
+        metrics_path: '/v1/sys/metrics'
+        params:
+          format: ['prometheus']
+        scheme: https
+        tls_config:
+          ca_file: /vault/tls/ca.crt
+        bearer_token_file: /var/run/secrets/vault-metrics/token
+        static_configs:
+          - targets: ['vault.vault.svc:8200']
+      {{- end }}
       {{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
       - job_name: 'kube-state-metrics'
         static_configs:

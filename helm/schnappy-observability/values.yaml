@@ -51,6 +51,8 @@ victoriametrics:
   retention: 90d
   scrapeInterval: 15s
   graphiteEnabled: false
+  vault:
+    enabled: false
   woodpecker:
     enabled: false
   forgejo:
