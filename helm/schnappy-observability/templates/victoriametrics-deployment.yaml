@@ -121,7 +121,7 @@ spec:
         {{- if .Values.victoriametrics.vault.enabled }}
         - name: vault-ca
           secret:
-            secretName: vault-ca-monitor
+            secretName: vault-ca-{{ include "schnappy.fullname" . }}
         - name: vault-metrics-token
           secret:
             secretName: vault-metrics-secret
