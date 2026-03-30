@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "schnappy.fullname" . }}-k6-smoke
+  name: {{ include "schnappy.fullname" . }}-k6-postsync
   namespace: {{ .Values.smokeTest.namespace | default .Release.Namespace }}
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
