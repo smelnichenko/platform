@@ -13,11 +13,7 @@ metadata:
 spec:
   secretName: {{ $name }}-tls
   issuerRef:
-    {{- if or (hasPrefix "grafana" $host) (hasPrefix "logs" $host) (hasPrefix "reports" $host) (hasPrefix "sonar" $host) (hasPrefix "git" $host) (hasPrefix "cd" $host) (hasPrefix "ci" $host) }}
     name: letsencrypt-dns
-    {{- else }}
-    name: {{ $issuer }}
-    {{- end }}
     kind: ClusterIssuer
   dnsNames:
     - {{ $host }}
