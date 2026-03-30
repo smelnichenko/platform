@@ -678,23 +678,24 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # k6 → Prometheus (remote write)
+    # k6 → VictoriaMetrics (remote write)
     - to:
         - podSelector:
             matchLabels:
               {{- include "schnappy.victoriametrics.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
-          port: 9090
-    # k6 → Keycloak (token exchange)
+          port: 8428
+    # k6 → Keycloak (token exchange via Istio gateway)
+    # k6 → app (smoke test via Istio gateway)
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+              gateway.networking.k8s.io/gateway-name: schnappy-gateway
       ports:
         - protocol: TCP
-          port: 8080
-    # k6 → external HTTPS (pmon.dev, auth.pmon.dev via Traefik)
+          port: 443
+    # k6 → external HTTPS (fallback)
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
