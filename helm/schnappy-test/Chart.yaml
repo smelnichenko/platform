@@ -1,0 +1,5 @@
+apiVersion: v2
+name: schnappy-test
+description: Smoke tests for schnappy (k6)
+version: 0.1.0
+appVersion: "1.0.0"

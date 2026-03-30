@@ -2,11 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "schnappy.fullname" . }}-k6-postsync
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-    app.kubernetes.io/component: k6-smoke
+  name: schnappy-k6-postsync
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookFailed
@@ -16,7 +12,6 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "schnappy.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: k6-smoke
         app.kubernetes.io/part-of: schnappy
     spec:
@@ -38,15 +33,11 @@ spec:
             readOnlyRootFilesystem: true
           env:
             - name: BASE_URL
-              value: {{ .Values.smokeTest.baseUrl | default (printf "https://%s" .Values.app.ingress.host) | quote }}
+              value: {{ .Values.smokeTest.baseUrl | quote }}
             - name: KEYCLOAK_URL
-              value: "https://{{ .Values.keycloak.hostname | default "auth.pmon.dev" }}"
+              value: {{ .Values.smokeTest.keycloakUrl | quote }}
             - name: KEYCLOAK_PUBLIC_URL
-              value: "https://{{ .Values.keycloak.hostname | default "auth.pmon.dev" }}"
-            - name: K6_PROMETHEUS_RW_SERVER_URL
-              value: "http://{{ include "schnappy.victoriametrics.serviceName" . }}.schnappy.svc:8428/api/v1/write"
-            - name: K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM
-              value: "true"
+              value: {{ .Values.smokeTest.keycloakUrl | quote }}
             {{- if .Values.smokeTest.clientSecretName }}
             - name: K6_CLIENT_SECRET
               valueFrom:
@@ -60,6 +51,6 @@ spec:
       volumes:
         - name: scripts
           configMap:
-            name: {{ include "schnappy.fullname" . }}-k6-smoke
+            name: schnappy-k6-smoke
       restartPolicy: Never
 {{- end }}

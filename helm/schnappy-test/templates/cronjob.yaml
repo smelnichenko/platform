@@ -1,0 +1,59 @@
+{{- if eq (.Values.smokeTest.enabled | toString) "true" }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: schnappy-k6-smoke
+spec:
+  schedule: {{ .Values.smokeTest.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: k6-smoke
+            app.kubernetes.io/part-of: schnappy
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 12345
+            runAsGroup: 12345
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: k6
+              image: {{ .Values.smokeTest.image }}
+              command: ['k6', 'run', '/scripts/smoke-test.js']
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              env:
+                - name: BASE_URL
+                  value: {{ .Values.smokeTest.baseUrl | quote }}
+                - name: KEYCLOAK_URL
+                  value: {{ .Values.smokeTest.keycloakUrl | quote }}
+                - name: KEYCLOAK_PUBLIC_URL
+                  value: {{ .Values.smokeTest.keycloakUrl | quote }}
+                {{- if .Values.smokeTest.clientSecretName }}
+                - name: K6_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.smokeTest.clientSecretName }}
+                      key: CLIENT_SECRET
+                {{- end }}
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+          volumes:
+            - name: scripts
+              configMap:
+                name: schnappy-k6-smoke
+          restartPolicy: Never
+{{- end }}
