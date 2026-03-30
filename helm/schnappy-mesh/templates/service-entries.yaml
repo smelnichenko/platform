@@ -26,9 +26,9 @@ spec:
   hosts:
     - argocd-server.argocd.svc.cluster.local
   ports:
-    - number: 443
-      name: https
-      protocol: HTTPS
+    - number: 80
+      name: http
+      protocol: HTTP
   resolution: DNS
   location: MESH_EXTERNAL
 ---

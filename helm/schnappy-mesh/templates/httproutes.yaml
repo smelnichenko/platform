@@ -210,7 +210,7 @@ spec:
         - path: { type: PathPrefix, value: / }
       backendRefs:
         - name: argocd-server
-          port: 443
+          port: 80
 ---
 # Forgejo
 apiVersion: gateway.networking.k8s.io/v1
