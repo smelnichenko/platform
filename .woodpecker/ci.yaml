@@ -30,7 +30,7 @@ steps:
           wget -q --spider --timeout=2 "$SONAR_HOST_URL/api/system/status" 2>/dev/null && break
           sleep 1
         done
-      - npx sonarqube-scanner -Dsonar.qualitygate.wait=true
+      - npx sonarqube-scanner -Dsonar.qualitygate.wait=true -Dsonar.scanner.skipJreProvisioning=true
     depends_on: [helm-lint]
     backend_options:
       kubernetes:
