@@ -77,8 +77,8 @@ data:
       });
 
       group('actuator', () => {
-        const r = http.get(`${BASE_URL}/api/actuator/health`);
-        check(r, { 'actuator 200': (r) => r.status === 200 });
+        const r = http.get(`${BASE_URL}/api/actuator/health/readiness`);
+        check(r, { 'actuator-readiness 200': (r) => r.status === 200 });
       });
 
       // ===== Authenticated endpoints =====
