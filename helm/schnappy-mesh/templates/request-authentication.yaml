@@ -1,0 +1,44 @@
+{{- if .Values.jwt.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+# JWT validation on the Istio gateway — extracts claims to headers
+# Applied only to the gateway pod; backend services read X-User-UUID/X-User-Email headers
+apiVersion: security.istio.io/v1
+kind: RequestAuthentication
+metadata:
+  name: {{ $fn }}-jwt
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRefs:
+    - kind: Gateway
+      group: gateway.networking.k8s.io
+      name: {{ $fn }}-gateway
+  jwtRules:
+    - issuer: {{ .Values.jwt.issuer }}
+      jwksUri: {{ .Values.jwt.jwksUri }}
+      forwardOriginalToken: true
+      outputClaimToHeaders:
+        - header: x-user-uuid
+          claim: sub
+        - header: x-user-email
+          claim: email
+---
+# Allow requests without JWT on all paths (JWT is optional at gateway level)
+# Backend services enforce auth via GatewayAuthFilter — if X-User-UUID is set,
+# the user is authenticated; if not, the request is treated as anonymous.
+# Public paths (/api/health, /api/auth/approval-mode, etc.) don't require JWT.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-jwt-optional
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRefs:
+    - kind: Gateway
+      group: gateway.networking.k8s.io
+      name: {{ $fn }}-gateway
+  action: ALLOW
+  rules:
+    # Allow all traffic — JWT validation is optional (RequestAuthentication
+    # validates if present, rejects if malformed, allows if absent)
+    - {}
+{{- end }}
