@@ -6,9 +6,8 @@ metadata:
   labels:
     {{- include "schnappy.elasticsearch.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": post-upgrade,post-install
-    "helm.sh/hook-weight": "10"
-    "helm.sh/hook-delete-policy": before-hook-creation
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
   activeDeadlineSeconds: 300
