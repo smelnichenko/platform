@@ -28,7 +28,7 @@ spec:
       containers:
         - name: k6
           image: {{ .Values.smokeTest.image }}
-          command: ['k6', 'run', '--out', 'experimental-prometheus-rw', '/scripts/smoke-test.js']
+          command: ['k6', 'run', '/scripts/smoke-test.js']
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
