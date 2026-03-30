@@ -8,10 +8,9 @@ metadata:
   name: {{ $fn }}-jwt
   namespace: {{ .Release.Namespace }}
 spec:
-  targetRefs:
-    - kind: Gateway
-      group: gateway.networking.k8s.io
-      name: {{ $fn }}-gateway
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ $fn }}-gateway
   jwtRules:
     - issuer: {{ .Values.jwt.issuer }}
       jwksUri: {{ .Values.jwt.jwksUri }}
@@ -32,10 +31,9 @@ metadata:
   name: {{ $fn }}-jwt-optional
   namespace: {{ .Release.Namespace }}
 spec:
-  targetRefs:
-    - kind: Gateway
-      group: gateway.networking.k8s.io
-      name: {{ $fn }}-gateway
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ $fn }}-gateway
   action: ALLOW
   rules:
     # Allow all traffic — JWT validation is optional (RequestAuthentication
