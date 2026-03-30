@@ -15,6 +15,9 @@ spec:
     - issuer: {{ .Values.jwt.issuer }}
       jwksUri: {{ .Values.jwt.jwksUri }}
       forwardOriginalToken: true
+      fromHeaders:
+        - name: Authorization
+          prefix: "Bearer "
       outputClaimToHeaders:
         - header: x-user-uuid
           claim: sub
