@@ -8,7 +8,8 @@ metadata:
     {{- include "schnappy.labels" . | nindent 4 }}
     app.kubernetes.io/component: k6-smoke
   annotations:
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookFailed
 spec:
   backoffLimit: 0
   ttlSecondsAfterFinished: 86400
