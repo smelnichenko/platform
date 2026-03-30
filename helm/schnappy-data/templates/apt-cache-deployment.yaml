@@ -17,6 +17,7 @@ spec:
       labels:
         {{- include "schnappy.aptCache.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
+        istio.io/dataplane-mode: none
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-apt-cache
       securityContext:
