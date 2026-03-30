@@ -18,6 +18,7 @@ spec:
         {{- include "schnappy.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: k6-smoke
         app.kubernetes.io/part-of: schnappy
+        istio.io/dataplane-mode: none
     spec:
       securityContext:
         runAsNonRoot: true
