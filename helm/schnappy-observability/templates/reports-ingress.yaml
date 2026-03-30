@@ -10,7 +10,7 @@ metadata:
     cert-manager.io/cluster-issuer: {{ .Values.reports.ingress.tls.clusterIssuer | default "letsencrypt-dns" }}
   {{- end }}
 spec:
-  ingressClassName: traefik
+  ingressClassName: {{ .Values.reports.ingress.className | default "traefik" }}
   {{- if and .Values.reports.ingress.tls .Values.reports.ingress.tls.enabled }}
   tls:
     - hosts:
