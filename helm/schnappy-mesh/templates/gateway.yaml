@@ -6,6 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.gateway.tls.clusterIssuer | default "letsencrypt-prod" }}
+    gateway.istio.io/replicas: {{ .Values.gateway.replicas | default 1 | quote }}
 spec:
   gatewayClassName: istio
   # HAProxy on host forwards 80/443 to NodePorts.
