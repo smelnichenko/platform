@@ -28,7 +28,7 @@ games: []
 gameDefaults:
   pullPolicy: IfNotPresent
   replicas: 1
-  port: 80
+  port: 8080
 
 # Backend API
 app:

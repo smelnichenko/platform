@@ -12,7 +12,7 @@ spec:
   type: ClusterIP
   ports:
     - port: {{ .port | default $root.Values.gameDefaults.port }}
-      targetPort: 8080
+      targetPort: {{ .port | default $root.Values.gameDefaults.port }}
       protocol: TCP
       name: http
   selector:
