@@ -52,11 +52,11 @@ spec:
                   value: "http://{{ include "schnappy.fullname" . }}-chess:8080"
                 - name: KEYCLOAK_URL
                   value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
-                {{- if .Values.smokeTest.clientSecretName }}
+                {{- if .Values.hyperfoil.clientSecretName }}
                 - name: K6_CLIENT_SECRET
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Values.smokeTest.clientSecretName }}
+                      name: {{ .Values.hyperfoil.clientSecretName }}
                       key: CLIENT_SECRET
                 {{- end }}
                 {{- if .Values.hyperfoil.reportsUrl }}

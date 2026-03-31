@@ -211,6 +211,7 @@ hyperfoil:
   enabled: false
   image: quay.io/hyperfoil/hyperfoil:0.28.0
   reportsUrl: ""             # URL for report links in logs (e.g. https://reports.pmon.dev)
+  clientSecretName: ""       # ExternalSecret name for Keycloak service account
   load:
     schedule: "0 3 * * *"
 
