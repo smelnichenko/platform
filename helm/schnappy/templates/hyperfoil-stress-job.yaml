@@ -22,7 +22,7 @@ spec:
             {{- include "schnappy.selectorLabels" . | nindent 12 }}
             app.kubernetes.io/component: hyperfoil-stress
             app.kubernetes.io/part-of: schnappy
-            istio.io/dataplane-mode: none
+            sidecar.istio.io/inject: "false"
         spec:
           securityContext:
             runAsNonRoot: true
