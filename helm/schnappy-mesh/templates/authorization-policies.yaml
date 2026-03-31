@@ -90,6 +90,7 @@ spec:
             principals:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-scylla
       to:
         - operation:
             ports: ["9042", "7000"]
