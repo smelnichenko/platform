@@ -29,6 +29,13 @@ spec:
       containers:
         - name: kafka-topics
           image: {{ .Values.kafka.image }}
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           command:
             - sh
             - -c

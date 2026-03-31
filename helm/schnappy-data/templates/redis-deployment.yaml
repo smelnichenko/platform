@@ -17,6 +17,7 @@ spec:
         app.kubernetes.io/part-of: schnappy
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-redis
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 999

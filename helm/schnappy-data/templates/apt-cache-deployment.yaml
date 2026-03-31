@@ -20,6 +20,7 @@ spec:
         istio.io/dataplane-mode: none
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-apt-cache
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 100
