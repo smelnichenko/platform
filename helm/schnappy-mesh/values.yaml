@@ -25,9 +25,3 @@ gateway:
     argocd: cd.pmon.dev
     forgejo: git.pmon.dev
     ci: ci.pmon.dev
-
-# JWT validation via Keycloak
-jwt:
-  enabled: false
-  issuer: https://auth.pmon.dev/realms/schnappy
-  jwksUri: http://schnappy-keycloak:8080/realms/schnappy/protocol/openid-connect/certs
