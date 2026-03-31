@@ -1,8 +1,4 @@
 {{- if .Values.peerAuthentication.enabled }}
-# Namespace-wide: STRICT mTLS for all mesh-to-mesh traffic
-# Traefik (kube-system) sends plaintext to the Istio gateway pod,
-# which is excluded from ambient via pod annotation. All other
-# pod-to-pod traffic enforces STRICT mTLS via ztunnel.
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
