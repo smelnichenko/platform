@@ -17,6 +17,7 @@ spec:
         {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-elasticsearch
       restartPolicy: OnFailure
       containers:
         - name: ilm-setup
