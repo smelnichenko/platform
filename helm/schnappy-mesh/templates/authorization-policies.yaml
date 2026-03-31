@@ -156,6 +156,7 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-gateway-istio
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-hyperfoil
       to:
         - operation:
             ports: ["8080", "9000"]
