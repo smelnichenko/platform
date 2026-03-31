@@ -1,26 +1,17 @@
 {{- if .Values.jwt.enabled }}
 {{- $fn := include "schnappy.fullname" . }}
-# JWT validation only on pmon.dev app routes (not sonar/ci/git/auth/grafana/logs)
-# Validates Bearer tokens, ignores Basic auth and query params
+# JWT validation on the gateway — validates Bearer tokens only
+# Applied to gateway pod via selector. AuthorizationPolicy below
+# ensures only app routes require valid JWT.
 apiVersion: security.istio.io/v1
 kind: RequestAuthentication
 metadata:
   name: {{ $fn }}-jwt
   namespace: {{ .Release.Namespace }}
 spec:
-  targetRefs:
-    - kind: HTTPRoute
-      group: gateway.networking.k8s.io
-      name: {{ $fn }}-core-route
-    - kind: HTTPRoute
-      group: gateway.networking.k8s.io
-      name: {{ $fn }}-admin-route
-    - kind: HTTPRoute
-      group: gateway.networking.k8s.io
-      name: {{ $fn }}-chat-route
-    - kind: HTTPRoute
-      group: gateway.networking.k8s.io
-      name: {{ $fn }}-chess-route
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ $fn }}-gateway
   jwtRules:
     - issuer: {{ .Values.jwt.issuer }}
       jwksUri: {{ .Values.jwt.jwksUri }}
