@@ -21,7 +21,6 @@ spec:
             {{- include "schnappy.selectorLabels" . | nindent 12 }}
             app.kubernetes.io/component: hyperfoil-load
             app.kubernetes.io/part-of: schnappy
-            sidecar.istio.io/inject: "false"
         spec:
           securityContext:
             runAsNonRoot: true
