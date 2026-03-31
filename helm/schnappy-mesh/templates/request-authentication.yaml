@@ -1,8 +1,6 @@
 {{- if .Values.jwt.enabled }}
 {{- $fn := include "schnappy.fullname" . }}
-# JWT validation on the gateway — validates Bearer tokens only
-# Applied to gateway pod via selector. AuthorizationPolicy below
-# ensures only app routes require valid JWT.
+# JWT validation on the gateway — validates Keycloak Bearer tokens
 apiVersion: security.istio.io/v1
 kind: RequestAuthentication
 metadata:
@@ -24,4 +22,33 @@ spec:
           claim: sub
         - header: x-user-email
           claim: email
+---
+# EnvoyFilter: remove JWT filter from non-app virtual hosts
+# Forgejo registry, SonarQube, Woodpecker use Bearer tokens with
+# non-Keycloak issuers that would be rejected by the JWT filter.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: {{ $fn }}-jwt-passthrough
+  namespace: {{ .Release.Namespace }}
+spec:
+  workloadSelector:
+    labels:
+      gateway.networking.k8s.io/gateway-name: {{ $fn }}-gateway
+  configPatches:
+    {{- range $host := .Values.jwt.passthroughHosts | default list }}
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          portNumber: 443
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+              subFilter:
+                name: envoy.filters.http.jwt_authn
+            sni: {{ $host }}
+      patch:
+        operation: REMOVE
+    {{- end }}
 {{- end }}
