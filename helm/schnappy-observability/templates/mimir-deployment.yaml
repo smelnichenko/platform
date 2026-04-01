@@ -29,6 +29,19 @@ spec:
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: init-dirs
+          image: {{ .Values.mimir.image }}
+          command: ['sh', '-c', 'mkdir -p /data/ruler-configs /data/ruler-data']
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
       containers:
         - name: mimir
           image: {{ .Values.mimir.image }}
