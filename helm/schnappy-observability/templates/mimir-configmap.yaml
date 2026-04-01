@@ -51,8 +51,8 @@ data:
 
     limits:
       max_global_series_per_user: 0
-      ingestion_rate: 0
-      ingestion_burst_size: 0
+      ingestion_rate: 100000
+      ingestion_burst_size: 200000
       compactor_blocks_retention_period: {{ .Values.mimir.retention | default "90d" }}
 
     ruler:
