@@ -15,6 +15,10 @@ spec:
       labels:
         {{- include "schnappy.admin.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/api/actuator/prometheus"
+        prometheus.io/port: "8080"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-admin
       securityContext:
