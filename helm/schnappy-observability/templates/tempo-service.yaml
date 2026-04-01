@@ -16,11 +16,11 @@ spec:
     - port: 4317
       targetPort: 4317
       protocol: TCP
-      name: otlp-grpc
+      name: grpc-otlp
     - port: 9411
       targetPort: 9411
       protocol: TCP
-      name: zipkin
+      name: http-zipkin
   selector:
     {{- include "schnappy.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: tempo
