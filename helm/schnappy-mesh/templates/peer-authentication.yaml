@@ -24,17 +24,4 @@ spec:
   portLevelMtls:
     9009:
       mode: PERMISSIVE
----
-# MinIO has no sidecar — disable mTLS for traffic to MinIO
-# so sidecar-injected pods (Tempo, Mimir) can connect with plaintext
-apiVersion: networking.istio.io/v1
-kind: DestinationRule
-metadata:
-  name: {{ include "schnappy.fullname" . }}-minio-no-mtls
-  namespace: {{ .Release.Namespace }}
-spec:
-  host: {{ include "schnappy.fullname" . }}-minio.{{ .Release.Namespace }}.svc.cluster.local
-  trafficPolicy:
-    tls:
-      mode: DISABLE
 {{- end }}
