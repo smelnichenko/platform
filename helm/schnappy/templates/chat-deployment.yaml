@@ -21,6 +21,8 @@ spec:
         prometheus.io/port: "8080"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-chat
+      imagePullSecrets:
+        - name: forgejo-registry
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

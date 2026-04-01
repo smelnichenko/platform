@@ -22,6 +22,8 @@ spec:
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-monitor
       automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: forgejo-registry
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
