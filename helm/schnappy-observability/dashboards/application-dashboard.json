@@ -835,25 +835,13 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(jvm_memory_used_bytes{job=\"schnappy-app\",area=\"heap\"}) by (job)",
+          "expr": "sum by (job) (jvm_memory_used_bytes{job=~\"schnappy-.*\",area=\"heap\"})",
           "legendFormat": "{{job}} used",
-          "range": true,
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(jvm_memory_max_bytes{job=\"schnappy-app\",area=\"heap\"}) by (job)",
+          "expr": "sum by (job) (jvm_memory_max_bytes{job=~\"schnappy-.*\",area=\"heap\"})",
           "legendFormat": "{{job}} max",
-          "range": true,
           "refId": "B"
         }
       ],
@@ -940,14 +928,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(jvm_gc_pause_seconds_sum{job=\"schnappy-app\"}[5m])",
-          "legendFormat": "{{action}} {{cause}}",
-          "range": true,
+          "expr": "rate(jvm_gc_pause_seconds_sum{job=~\"schnappy-.*\"}[5m])",
+          "legendFormat": "{{job}} {{action}} {{cause}}",
           "refId": "A"
         }
       ],
@@ -1001,14 +983,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "jvm_threads_live_threads{job=\"schnappy-app\"}",
-          "legendFormat": "{{instance}}",
-          "range": true,
+          "expr": "jvm_threads_live_threads{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],
@@ -1095,14 +1071,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "process_cpu_usage{job=\"schnappy-app\"}",
-          "legendFormat": "{{instance}}",
-          "range": true,
+          "expr": "process_cpu_usage{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],
@@ -1237,36 +1207,18 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "hikaricp_connections_active{job=\"schnappy-app\"}",
-          "legendFormat": "{{pool}} active",
-          "range": true,
+          "expr": "hikaricp_connections_active{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}} active",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "hikaricp_connections_idle{job=\"schnappy-app\"}",
-          "legendFormat": "{{pool}} idle",
-          "range": true,
+          "expr": "hikaricp_connections_idle{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}} idle",
           "refId": "B"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "hikaricp_connections_max{job=\"schnappy-app\"}",
-          "legendFormat": "{{pool}} max",
-          "range": true,
+          "expr": "hikaricp_connections_max{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}} max",
           "refId": "C"
         }
       ],
@@ -1357,14 +1309,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "hikaricp_connections_pending{job=\"schnappy-app\"}",
-          "legendFormat": "{{pool}}",
-          "range": true,
+          "expr": "hikaricp_connections_pending{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],
@@ -1451,14 +1397,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(hikaricp_connections_acquire_seconds_count{job=\"schnappy-app\"}[5m])",
-          "legendFormat": "{{pool}}",
-          "range": true,
+          "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=~\"schnappy-.*\"}[5m]) / rate(hikaricp_connections_acquire_seconds_count{job=~\"schnappy-.*\"}[5m]) * 1000",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],
@@ -1516,14 +1456,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "increase(hikaricp_connections_timeout_total{job=\"schnappy-app\"}[1h])",
-          "legendFormat": "{{pool}}",
-          "range": true,
+          "expr": "increase(hikaricp_connections_timeout_total{job=~\"schnappy-.*\"}[1h])",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],

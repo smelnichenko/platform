@@ -333,12 +333,14 @@
       },
       "targets": [
         {
-          "expr": "sum by (job) (jvm_memory_used_bytes{area=\"heap\"})",
-          "legendFormat": "used \u2014 {{ job }}"
+          "expr": "sum by (job) (jvm_memory_used_bytes{job=~\"schnappy-.*\",area=\"heap\"})",
+          "legendFormat": "{{job}} used",
+          "refId": "A"
         },
         {
-          "expr": "sum by (job) (jvm_memory_max_bytes{area=\"heap\"})",
-          "legendFormat": "max"
+          "expr": "sum by (job) (jvm_memory_max_bytes{job=~\"schnappy-.*\",area=\"heap\"})",
+          "legendFormat": "{{job}} max",
+          "refId": "B"
         }
       ],
       "datasource": {
@@ -384,8 +386,9 @@
       },
       "targets": [
         {
-          "expr": "rate(jvm_gc_pause_seconds_sum[1m])",
-          "legendFormat": "{{action}} {{cause}}"
+          "expr": "rate(jvm_gc_pause_seconds_sum{job=~\"schnappy-.*\"}[1m])",
+          "legendFormat": "{{job}}",
+          "refId": "A"
         }
       ],
       "datasource": {
@@ -420,8 +423,9 @@
       },
       "targets": [
         {
-          "expr": "process_cpu_usage",
-          "legendFormat": "{{instance}}"
+          "expr": "process_cpu_usage{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}}",
+          "refId": "A"
         }
       ],
       "datasource": {
@@ -512,16 +516,19 @@
       },
       "targets": [
         {
-          "expr": "hikaricp_connections_active",
-          "legendFormat": "{{pool}} active"
+          "expr": "hikaricp_connections_active{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}} active",
+          "refId": "A"
         },
         {
-          "expr": "hikaricp_connections_idle",
-          "legendFormat": "{{pool}} idle"
+          "expr": "hikaricp_connections_idle{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}} idle",
+          "refId": "B"
         },
         {
-          "expr": "hikaricp_connections_max",
-          "legendFormat": "{{pool}} max"
+          "expr": "hikaricp_connections_max{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}} max",
+          "refId": "C"
         }
       ],
       "datasource": {
@@ -555,8 +562,9 @@
       },
       "targets": [
         {
-          "expr": "hikaricp_connections_pending",
-          "legendFormat": "{{pool}}"
+          "expr": "hikaricp_connections_pending{job=~\"schnappy-.*\"}",
+          "legendFormat": "{{job}}",
+          "refId": "A"
         }
       ],
       "datasource": {
@@ -602,12 +610,14 @@
       },
       "targets": [
         {
-          "expr": "rate(hikaricp_connections_acquire_seconds_sum[1m]) / rate(hikaricp_connections_acquire_seconds_count[1m])",
-          "legendFormat": "{{pool}} acquire"
+          "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=~\"schnappy-.*\"}[1m]) / rate(hikaricp_connections_acquire_seconds_count{job=~\"schnappy-.*\"}[1m]) * 1000",
+          "legendFormat": "{{job}} acquire ms",
+          "refId": "A"
         },
         {
-          "expr": "rate(hikaricp_connections_timeout_total[1m])",
-          "legendFormat": "{{pool}} timeout"
+          "expr": "rate(hikaricp_connections_timeout_total{job=~\"schnappy-.*\"}[1m])",
+          "legendFormat": "{{job}} timeouts/s",
+          "refId": "B"
         }
       ],
       "datasource": {
