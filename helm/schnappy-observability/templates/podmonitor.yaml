@@ -18,6 +18,9 @@ spec:
     matchExpressions:
       - key: security.istio.io/tlsMode
         operator: Exists
+      - key: app.kubernetes.io/component
+        operator: NotIn
+        values: [kube-state-metrics]
   podMetricsEndpoints:
     - path: /stats/prometheus
       interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
