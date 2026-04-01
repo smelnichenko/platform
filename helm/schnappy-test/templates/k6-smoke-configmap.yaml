@@ -105,9 +105,9 @@ data:
         check(r, { 'channels 200': (r) => r.status === 200 });
       });
 
-      group('config', () => {
-        const r = http.get(`${BASE_URL}/api/monitor/config`, auth);
-        check(r, { 'config 200': (r) => r.status === 200 });
+      group('chess', () => {
+        const r = http.get(`${BASE_URL}/api/chess/games`, auth);
+        check(r, { 'chess-games 200': (r) => r.status === 200 });
       });
     }
 {{- end }}
