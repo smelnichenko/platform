@@ -80,25 +80,13 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(kube_pod_status_ready{namespace=\"schnappy\", condition=\"true\"})",
+          "expr": "count(max by (pod) (kube_pod_status_ready{namespace=\"schnappy\", condition=\"true\"}) == 1)",
           "legendFormat": "Ready",
-          "range": true,
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "count(kube_pod_status_ready{namespace=\"schnappy\"})",
+          "expr": "count(max by (pod) (kube_pod_status_ready{namespace=\"schnappy\"}))",
           "legendFormat": "Total",
-          "range": true,
           "refId": "B"
         }
       ],
