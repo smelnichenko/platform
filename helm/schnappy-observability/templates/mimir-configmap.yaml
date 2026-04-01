@@ -56,10 +56,10 @@ data:
       compactor_blocks_retention_period: {{ .Values.mimir.retention | default "90d" }}
 
     ruler:
-      rule_path: /data/rules
+      rule_path: /data/ruler-data
 
     ruler_storage:
       backend: local
       local:
-        directory: /data/rules
+        directory: /data/ruler-configs
 {{- end }}
