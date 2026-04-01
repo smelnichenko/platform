@@ -113,6 +113,7 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-reports
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-hyperfoil
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-mimir
       to:
         - operation:
             ports: ["9000"]

@@ -34,6 +34,7 @@ spec:
           image: {{ .Values.mimir.image }}
           args:
             - -config.file=/etc/mimir/mimir.yaml
+            - -config.expand-env=true
             - -target=all
           ports:
             - containerPort: 9009
