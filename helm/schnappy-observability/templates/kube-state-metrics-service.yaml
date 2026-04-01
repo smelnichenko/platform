@@ -1,4 +1,4 @@
-{{- if and .Values.victoriametrics.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") -}}
+{{- if and .Values.prometheus.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") -}}
 apiVersion: v1
 kind: Service
 metadata:
