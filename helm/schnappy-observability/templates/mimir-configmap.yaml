@@ -1,0 +1,62 @@
+{{- if eq (.Values.mimir.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-mimir-config
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mimir
+data:
+  mimir.yaml: |
+    target: all
+    multitenancy_enabled: false
+
+    server:
+      http_listen_port: 9009
+      log_level: warn
+
+    common:
+      storage:
+        backend: s3
+        s3:
+          endpoint: {{ include "schnappy.fullname" . }}-minio.{{ .Release.Namespace }}.svc:9000
+          access_key_id: ${MINIO_ROOT_USER}
+          secret_access_key: ${MINIO_ROOT_PASSWORD}
+          insecure: true
+
+    blocks_storage:
+      s3:
+        bucket_name: mimir-blocks
+      tsdb:
+        dir: /data/tsdb
+      bucket_store:
+        sync_dir: /data/tsdb-sync
+
+    compactor:
+      data_dir: /data/compactor
+      compaction_interval: 1h
+      blocks_retention_period: {{ .Values.mimir.retention | default "90d" }}
+
+    ingester:
+      ring:
+        replication_factor: 1
+        kvstore:
+          store: memberlist
+
+    store_gateway:
+      sharding_ring:
+        replication_factor: 1
+
+    activity_tracker:
+      filepath: /data/activity.log
+
+    limits:
+      max_global_series_per_user: 0
+      ingestion_rate: 0
+      ingestion_burst_size: 0
+
+    ruler_storage:
+      backend: local
+      local:
+        directory: /data/rules
+{{- end }}

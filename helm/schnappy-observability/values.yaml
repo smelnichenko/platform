@@ -44,25 +44,26 @@ elk:
       requests: { memory: "128Mi", cpu: "50m" }
       limits: { memory: "256Mi", cpu: "200m" }
 
-# VictoriaMetrics (Prometheus replacement)
-victoriametrics:
+# Prometheus (scraping via ServiceMonitors, deployed separately via kube-prometheus-stack)
+prometheus:
   enabled: false
-  image: victoriametrics/victoria-metrics:v1.117.1
-  retention: 90d
   scrapeInterval: 15s
-  graphiteEnabled: false
-  vault:
-    enabled: false
   woodpecker:
     enabled: false
   forgejo:
     enabled: false
+
+# Grafana Mimir (long-term metrics storage via MinIO S3)
+mimir:
+  enabled: false
+  image: grafana/mimir:2.16.0
+  retention: 90d
+  minioSecret: schnappy-minio
   resources:
-    requests: { memory: "128Mi", cpu: "100m" }
-    limits: { memory: "512Mi", cpu: "500m" }
-  storage:
-    size: 5Gi
-    storageClass: ""
+    requests: { memory: "512Mi", cpu: "200m" }
+    limits: { memory: "2Gi", cpu: "2000m" }
+  storage: 5Gi
+  storageClassName: ""
 
 # Alertmanager
 alertmanager:

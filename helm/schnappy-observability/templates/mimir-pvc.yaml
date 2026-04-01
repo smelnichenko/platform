@@ -1,0 +1,18 @@
+{{- if eq (.Values.mimir.enabled | toString) "true" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "schnappy.fullname" . }}-mimir
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mimir
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.mimir.storageClassName }}
+  storageClassName: {{ .Values.mimir.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.mimir.storage | default "5Gi" }}
+{{- end }}

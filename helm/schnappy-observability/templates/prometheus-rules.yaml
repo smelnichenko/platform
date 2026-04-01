@@ -1,0 +1,234 @@
+{{- if and (eq (.Values.prometheus.enabled | toString) "true") (eq (.Values.alertmanager.enabled | toString) "true") }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $ns := .Release.Namespace }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $fn }}-alerts
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: infrastructure
+      rules:
+        - alert: PodRestartingFrequently
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="{{ $ns }}"}[1h]) > 3
+            unless on(pod, namespace) kube_pod_owner{namespace="{{ $ns }}", owner_kind="Job"}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{"{{"}} $labels.pod {{"}}"}} restarting frequently"
+            description: "Pod has restarted {{"{{"}} $value {{"}}"}} times in the last hour."
+        - alert: ContainerOOMKilled
+          expr: kube_pod_container_status_last_terminated_reason{namespace="{{ $ns }}", reason="OOMKilled"} == 1
+          labels:
+            severity: critical
+          annotations:
+            summary: "Container {{"{{"}} $labels.container {{"}}"}} in {{"{{"}} $labels.pod {{"}}"}} was OOM killed"
+        - alert: PodCrashLoopBackOff
+          expr: kube_pod_container_status_waiting_reason{namespace="{{ $ns }}", reason="CrashLoopBackOff"} == 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{"{{"}} $labels.pod {{"}}"}} in CrashLoopBackOff"
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="{{ $ns }}", condition="true"} == 0
+            unless on(pod, namespace) kube_pod_status_phase{phase=~"Succeeded|Failed"} == 1
+            unless on(pod, namespace) kube_pod_owner{namespace="{{ $ns }}", owner_kind="Job"}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{"{{"}} $labels.pod {{"}}"}} not ready"
+        - alert: Watchdog
+          expr: vector(1)
+          labels:
+            severity: none
+          annotations:
+            summary: "Watchdog alert (always firing)"
+            description: "Dead man's switch. If not firing, the alerting pipeline is broken."
+
+    - name: resources
+      rules:
+        - alert: JvmMemoryHigh
+          expr: |
+            sum(jvm_memory_used_bytes{job="schnappy-app"})
+            / sum(jvm_memory_max_bytes{job="schnappy-app"})
+            > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "JVM memory usage high ({{"{{"}} $value | humanizePercentage {{"}}"}})"
+        - alert: ProcessCPUHigh
+          expr: process_cpu_usage{job="schnappy-app"} > 0.9
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Process CPU usage high"
+        - alert: PVCUsageHigh
+          expr: kubelet_volume_stats_used_bytes{namespace="{{ $ns }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ $ns }}"} > 0.8
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage high"
+        - alert: PVCUsageCritical
+          expr: kubelet_volume_stats_used_bytes{namespace="{{ $ns }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ $ns }}"} > 0.9
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage critical"
+
+    - name: application
+      rules:
+        - alert: HighHTTPErrorRate
+          expr: sum(rate(http_server_requests_seconds_count{job="schnappy-app", status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="schnappy-app"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High HTTP 5xx error rate ({{"{{"}} $value | humanizePercentage {{"}}"}})"
+        - alert: HighRequestLatency
+          expr: http_server_requests_seconds_max{job="schnappy-app"} > 5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High request latency (max > 5s)"
+        - alert: AppDown
+          expr: up{job="schnappy-app"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Monitor app is down"
+        - alert: HikariPoolExhausted
+          expr: hikaricp_connections_active{job="schnappy-app"} / hikaricp_connections_max{job="schnappy-app"} > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "HikariCP connection pool nearly exhausted"
+        - alert: JVMHeapHigh
+          expr: jvm_memory_used_bytes{job="schnappy-app", area="heap"} / jvm_memory_max_bytes{job="schnappy-app", area="heap"} > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "JVM heap usage high"
+
+    - name: kafka
+      rules:
+        - alert: KafkaBrokerDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~".*kafka-\\d+$"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kafka broker {{"{{"}} $labels.pod {{"}}"}} is down"
+
+    - name: database
+      rules:
+        - alert: PostgreSQLDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-postgres-[a-z0-9]+-[a-z0-9]+", pod!~".*backup.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL {{"{{"}} $labels.pod {{"}}"}} is down"
+        - alert: DatabaseConnectionPoolExhausted
+          expr: hikaricp_connections_active{job="schnappy-app"} / hikaricp_connections_max{job="schnappy-app"} > 0.9
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Database connection pool nearly exhausted"
+        - alert: DatabaseConnectionsPending
+          expr: hikaricp_connections_pending{job="schnappy-app"} > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Database connections pending ({{"{{"}} $value {{"}}"}})"
+        - alert: ScyllaDBDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-scylla-\\d+$"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ScyllaDB {{"{{"}} $labels.pod {{"}}"}} is down"
+
+    - name: certificates
+      rules:
+        - alert: CertExpiringIn30Days
+          expr: certmanager_certificate_expiration_timestamp_seconds - time() < 30 * 24 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{"{{"}} $labels.namespace {{"}}"}}/{{"{{"}} $labels.name {{"}}"}} expiring in less than 30 days"
+        - alert: CertExpiringIn7Days
+          expr: certmanager_certificate_expiration_timestamp_seconds - time() < 7 * 24 * 3600
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Certificate {{"{{"}} $labels.namespace {{"}}"}}/{{"{{"}} $labels.name {{"}}"}} expiring in less than 7 days"
+
+    - name: backups
+      rules:
+        - alert: PostgresBackupFailed
+          expr: kube_job_status_failed{namespace="{{ $ns }}", job_name=~".*postgres-backup.*"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL backup job failed"
+        - alert: PostgresBackupMissed
+          expr: time() - max(kube_job_status_completion_time{namespace="{{ $ns }}", job_name=~".*postgres-backup.*"}) > 26 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "PostgreSQL backup missed"
+
+    - name: elk
+      rules:
+        - alert: ElasticsearchDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-elasticsearch-\\d+$"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Elasticsearch {{"{{"}} $labels.pod {{"}}"}} is down"
+        - alert: FluentbitDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-fluentbit-.*"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Fluent-bit {{"{{"}} $labels.pod {{"}}"}} is down"
+        - alert: KibanaDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-kibana-.*"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Kibana {{"{{"}} $labels.pod {{"}}"}} is down"
+
+    - name: smoke-tests
+      rules:
+        - alert: K6SmokeTestFailing
+          expr: k6_checks{check=~".*"} < 1
+          labels:
+            severity: critical
+          annotations:
+            summary: "k6 smoke test check failing ({{"{{"}} $labels.check {{"}}"}})"
+{{- end }}

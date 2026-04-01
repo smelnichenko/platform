@@ -1,6 +1,6 @@
 apiVersion: v2
 name: schnappy-observability
-description: Monitoring and logging (ELK, Prometheus, Grafana, Alertmanager)
+description: Monitoring and logging (ELK, Mimir, Grafana, Alertmanager)
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

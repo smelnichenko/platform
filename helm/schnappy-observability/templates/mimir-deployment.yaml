@@ -1,0 +1,88 @@
+{{- if eq (.Values.mimir.enabled | toString) "true" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.fullname" . }}-mimir
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mimir
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mimir
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mimir
+        app.kubernetes.io/part-of: schnappy
+    spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-mimir
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mimir
+          image: {{ .Values.mimir.image }}
+          args:
+            - -config.file=/etc/mimir/mimir.yaml
+            - -target=all
+          ports:
+            - containerPort: 9009
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mimir
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mimir.minioSecret | default "schnappy-minio" }}
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mimir.minioSecret | default "schnappy-minio" }}
+                  key: MINIO_ROOT_PASSWORD
+          resources:
+            {{- toYaml .Values.mimir.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 9009
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 9009
+            initialDelaySeconds: 15
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "schnappy.fullname" . }}-mimir-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "schnappy.fullname" . }}-mimir
+        - name: tmp
+          emptyDir: {}
+{{- end }}

@@ -1,0 +1,84 @@
+{{- if eq (.Values.prometheus.enabled | toString) "true" }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $ns := .Release.Namespace }}
+# App services (monitor, admin, chat, chess) — Spring Boot Actuator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fn }}-app
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [{{ $ns }}]
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: schnappy
+      app.kubernetes.io/component: app
+  endpoints:
+    - port: http
+      path: /api/actuator/prometheus
+      interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
+---
+# kube-state-metrics
+{{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fn }}-kube-state-metrics
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [{{ $ns }}]
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: kube-state-metrics
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: http
+      interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
+{{- end }}
+---
+# Woodpecker CI
+{{- if eq (.Values.prometheus.woodpecker.enabled | toString) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fn }}-woodpecker
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [woodpecker]
+  selector:
+    matchLabels:
+      app: woodpecker-server
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
+      bearerTokenSecret:
+        name: {{ $fn }}-prometheus-tokens
+        key: woodpecker
+{{- end }}
+---
+# Forgejo
+{{- if eq (.Values.prometheus.forgejo.enabled | toString) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fn }}-forgejo
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [forgejo]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: forgejo
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
+{{- end }}
+{{- end }}

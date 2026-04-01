@@ -11,12 +11,16 @@ data:
     deleteDatasources:
       - name: Prometheus
         orgId: 1
-    datasources:
       - name: VictoriaMetrics
+        orgId: 1
+    datasources:
+      - name: Mimir
         type: prometheus
         uid: prometheus
         access: proxy
-        url: http://{{ include "schnappy.victoriametrics.serviceName" . }}:8428
+        url: http://{{ include "schnappy.fullname" . }}-mimir:9009/prometheus
         isDefault: true
         editable: false
+        jsonData:
+          prometheusType: Mimir
 {{- end }}

@@ -1,51 +1,25 @@
 {{- if .Values.networkPolicies.enabled -}}
-{{- if .Values.victoriametrics.enabled }}
-# VictoriaMetrics network policy
+{{- if eq (.Values.mimir.enabled | toString) "true" }}
+# Mimir network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-victoriametrics
+  name: {{ include "schnappy.fullname" . }}-mimir
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "schnappy.victoriametrics.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mimir
   policyTypes:
     - Ingress
     - Egress
   ingress:
-    {{- if .Values.grafana.enabled }}
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.grafana.selectorLabels" . | nindent 14 }}
-      ports:
+    # Prometheus remote_write + Grafana queries
+    - ports:
         - protocol: TCP
-          port: 8428
-    {{- end }}
-    # k6 smoke test remote write
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: k6-smoke
-      ports:
-        - protocol: TCP
-          port: 8428
-    # Hyperfoil load/stress Graphite metrics
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: hyperfoil-load
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: hyperfoil-stress
-      ports:
-        - protocol: TCP
-          port: 2003
+          port: 9009
   egress:
     # DNS
     - ports:
@@ -53,67 +27,18 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # VictoriaMetrics → App (scrape)
+    # Mimir → MinIO (S3 block storage)
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/part-of: schnappy
+              app.kubernetes.io/component: minio
       ports:
         - protocol: TCP
-          port: 8080
-    # VictoriaMetrics → Vault (scrape)
-    {{- if .Values.victoriametrics.vault.enabled }}
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: vault
-      ports:
-        - protocol: TCP
-          port: 8200
-    {{- end }}
-    # VictoriaMetrics → Woodpecker (scrape)
-    {{- if eq (.Values.victoriametrics.woodpecker.enabled | toString) "true" }}
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: woodpecker
-      ports:
-        - protocol: TCP
-          port: 9001
-    {{- end }}
-    # VictoriaMetrics → Forgejo (scrape)
-    {{- if eq (.Values.victoriametrics.forgejo.enabled | toString) "true" }}
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: forgejo
-      ports:
-        - protocol: TCP
-          port: 3000
-    {{- end }}
-    # VictoriaMetrics → Alertmanager
-    {{- if eq (.Values.alertmanager.enabled | toString) "true" }}
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.alertmanager.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9093
-    {{- end }}
-    # VictoriaMetrics → kube-state-metrics (scrape)
-    {{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    {{- end }}
+          port: 9000
 ---
 {{- end }}
-{{- if and .Values.victoriametrics.enabled (eq (.Values.alertmanager.enabled | toString) "true") }}
+{{- if eq (.Values.alertmanager.enabled | toString) "true" }}
 # Alertmanager network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -150,7 +75,7 @@ spec:
           port: 8080
 ---
 {{- end }}
-{{- if and .Values.victoriametrics.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") }}
+{{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
 # kube-state-metrics network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -218,15 +143,16 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Grafana → Prometheus (datasource)
-    {{- if .Values.victoriametrics.enabled }}
+    # Grafana → Mimir (datasource)
+    {{- if eq (.Values.mimir.enabled | toString) "true" }}
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.victoriametrics.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: mimir
       ports:
         - protocol: TCP
-          port: 8428
+          port: 9009
     {{- end }}
     # Grafana → Keycloak (OAuth2 SSO)
     {{- if eq (.Values.grafana.oauth.enabled | toString) "true" }}

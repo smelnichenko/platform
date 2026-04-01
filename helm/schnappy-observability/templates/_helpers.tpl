@@ -92,20 +92,20 @@ app.kubernetes.io/component: fluentbit
 app.kubernetes.io/component: fluentbit
 {{- end }}
 
-{{/* ========== Prometheus ========== */}}
+{{/* ========== Mimir ========== */}}
 
-{{- define "schnappy.victoriametrics.labels" -}}
+{{- define "schnappy.mimir.labels" -}}
 {{ include "schnappy.labels" . }}
-app.kubernetes.io/component: victoriametrics
+app.kubernetes.io/component: mimir
 {{- end }}
 
-{{- define "schnappy.victoriametrics.selectorLabels" -}}
+{{- define "schnappy.mimir.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: victoriametrics
+app.kubernetes.io/component: mimir
 {{- end }}
 
-{{- define "schnappy.victoriametrics.serviceName" -}}
-{{- printf "%s-victoriametrics" (include "schnappy.fullname" .) }}
+{{- define "schnappy.mimir.serviceName" -}}
+{{- printf "%s-mimir" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/* ========== Grafana ========== */}}

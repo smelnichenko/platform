@@ -1,0 +1,19 @@
+{{- if eq (.Values.mimir.enabled | toString) "true" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.fullname" . }}-mimir
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mimir
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9009
+      targetPort: 9009
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "schnappy.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mimir
+{{- end }}
