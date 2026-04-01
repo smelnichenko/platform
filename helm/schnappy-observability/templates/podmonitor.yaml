@@ -45,4 +45,32 @@ spec:
         - action: replace
           sourceLabels: [__meta_kubernetes_pod_name]
           targetLabel: pod
+---
+# kube-state-metrics — separate PodMonitor with honor_labels
+# KSM's metrics contain pod/namespace labels that must be preserved,
+# not overwritten by PodMonitor relabeling.
+{{- if eq (.Values.kubeStateMetrics.enabled | toString) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ $fn }}-kube-state-metrics
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [{{ .Release.Namespace }}]
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: kube-state-metrics
+  podMetricsEndpoints:
+    - path: /stats/prometheus
+      interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
+      honorLabels: true
+      relabelings:
+        - action: replace
+          sourceLabels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
+          regex: (.+);(\d+)
+          replacement: $1:$2
+          targetLabel: __address__
+{{- end }}
 {{- end }}
