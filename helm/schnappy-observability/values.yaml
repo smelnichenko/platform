@@ -11,7 +11,7 @@ networkPolicies:
 elk:
   enabled: false
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.8
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.13
     replicas: 1
     javaOpts: "-Xms1g -Xmx1g"
     password: ""
@@ -25,7 +25,7 @@ elk:
     retention:
       days: 30
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.19.8
+    image: docker.elastic.co/kibana/kibana:8.19.13
     replicas: 1
     resources:
       requests: { memory: "256Mi", cpu: "100m" }
@@ -39,7 +39,7 @@ elk:
         secretName: ""
         clusterIssuer: "letsencrypt-prod"
   fluentbit:
-    image: cr.fluentbit.io/fluent/fluent-bit:4.2.3
+    image: cr.fluentbit.io/fluent/fluent-bit:4.2.3.1
     resources:
       requests: { memory: "128Mi", cpu: "50m" }
       limits: { memory: "256Mi", cpu: "200m" }
@@ -56,7 +56,7 @@ prometheus:
 # Grafana Mimir (long-term metrics storage via MinIO S3)
 mimir:
   enabled: false
-  image: grafana/mimir:2.16.0
+  image: grafana/mimir:2.17.8
   retention: 90d
   minioSecret: schnappy-minio
   resources:
@@ -68,7 +68,7 @@ mimir:
 # Alertmanager
 alertmanager:
   enabled: false
-  image: prom/alertmanager:v0.28.1
+  image: prom/alertmanager:v0.31.1
   alertEmailTo: ""
   alertEmailFrom: "alerts@pmon.dev"
   smtp:
@@ -90,7 +90,7 @@ alertmanager:
 # kube-state-metrics
 kubeStateMetrics:
   enabled: false
-  image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.15.0
+  image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0
   resources:
     requests: { memory: "64Mi", cpu: "25m" }
     limits: { memory: "256Mi", cpu: "200m" }
@@ -98,7 +98,7 @@ kubeStateMetrics:
 # Grafana
 grafana:
   enabled: false
-  image: grafana/grafana:latest
+  image: grafana/grafana:12.4.2
   adminUser: admin
   adminPassword: ""
   existingSecret: ""
@@ -131,7 +131,7 @@ grafana:
 # Hyperfoil report server (Nginx → MinIO proxy)
 reports:
   enabled: false
-  image: nginx:1.28-alpine
+  image: nginx:1.28.3-alpine
   ingress:
     enabled: false
     host: reports.local

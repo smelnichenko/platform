@@ -202,7 +202,7 @@ envoyGateway:
 # k6 smoke tests (PostSync hook + daily CronJob)
 smokeTest:
   enabled: false
-  image: grafana/k6:latest
+  image: grafana/k6:1.7.1
   schedule: "0 6 * * *"
   baseUrl: ""                # Defaults to https://<app.ingress.host>
   clientSecretName: ""       # k8s Secret with CLIENT_SECRET key (for authenticated tests)

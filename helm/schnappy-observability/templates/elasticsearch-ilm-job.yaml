@@ -21,7 +21,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: ilm-setup
-          image: curlimages/curl:8.11.0
+          image: curlimages/curl:8.18.0
           env:
             - name: ES_URL
               value: "http://{{ include "schnappy.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc:9200"
