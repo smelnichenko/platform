@@ -36,8 +36,8 @@ spec:
               value: "ttl=5s,select=first,policy=preferIPv4"
             - name: K6_PROMETHEUS_RW_SERVER_URL
               value: "http://schnappy-mimir.schnappy.svc:9009/api/v1/push"
-            - name: K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM
-              value: "true"
+            - name: K6_PROMETHEUS_RW_TREND_STATS
+              value: "p(95),p(99),avg,min,max,med"
             - name: BASE_URL
               value: {{ .Values.smokeTest.baseUrl | quote }}
             - name: KEYCLOAK_URL

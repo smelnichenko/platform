@@ -1,6 +1,8 @@
 {
-  "annotations": { "list": [] },
-  "description": "k6 smoke test results — PostSync hook after every deploy + daily 6 AM UTC CronJob",
+  "annotations": {
+    "list": []
+  },
+  "description": "k6 smoke test results \u2014 PostSync hook after every deploy + daily 6 AM UTC CronJob",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -9,84 +11,191 @@
     {
       "title": "Pass Rate",
       "type": "gauge",
-      "gridPos": { "h": 7, "w": 4, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
       "fieldConfig": {
         "defaults": {
-          "min": 0, "max": 1,
+          "min": 0,
+          "max": 1,
           "thresholds": {
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
             ]
           },
           "unit": "percentunit"
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "targets": [{
-        "expr": "avg(last_over_time(k6_checks_rate[1d]))",
-        "legendFormat": "pass rate"
-      }],
-      "datasource": { "type": "prometheus", "uid": "prometheus" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg(last_over_time(k6_checks_rate[1d]))",
+          "legendFormat": "pass rate"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "title": "Endpoint Status",
       "description": "HTTP status per endpoint from the last smoke test run",
       "type": "table",
-      "gridPos": { "h": 7, "w": 12, "x": 4, "y": 0 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 4,
+        "y": 0
+      },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Time" },
-            "properties": [{ "id": "custom.hidden", "value": true }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Endpoint" },
-            "properties": [{ "id": "custom.width", "value": 140 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Status" },
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
             "properties": [
-              { "id": "custom.width", "value": 70 },
-              { "id": "thresholds", "value": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "red", "value": null },
-                  { "color": "green", "value": 200 },
-                  { "color": "red", "value": 300 }
-                ]
-              }},
-              { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } }
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Duration" },
+            "matcher": {
+              "id": "byName",
+              "options": "Endpoint"
+            },
             "properties": [
-              { "id": "unit", "value": "ms" },
-              { "id": "decimals", "value": 0 },
-              { "id": "custom.width", "value": 90 },
-              { "id": "thresholds", "value": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 500 },
-                  { "color": "red", "value": 2000 }
-                ]
-              }},
-              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 200
+                    },
+                    {
+                      "color": "red",
+                      "value": 300
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 500
+                    },
+                    {
+                      "color": "red",
+                      "value": 2000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
             ]
           }
         ]
       },
       "options": {
-        "sortBy": [{ "displayName": "Endpoint", "desc": false }],
-        "footer": { "show": false }
+        "sortBy": [
+          {
+            "displayName": "Endpoint",
+            "desc": false
+          }
+        ],
+        "footer": {
+          "show": false
+        }
       },
       "transformations": [
         {
           "id": "joinByField",
-          "options": { "byField": "Endpoint", "mode": "outer" }
+          "options": {
+            "byField": "Endpoint",
+            "mode": "outer"
+          }
         }
       ],
       "targets": [
@@ -98,28 +207,45 @@
           "refId": "status"
         },
         {
-          "expr": "histogram_avg(last_over_time(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000",
+          "expr": "last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000",
           "legendFormat": "{{group}}",
           "format": "table",
           "instant": true,
           "refId": "duration"
         }
       ],
-      "datasource": { "type": "prometheus", "uid": "prometheus" }
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "title": "Response Time",
       "description": "Average response time per endpoint. Actuator is typically slow (~1s) due to Spring health checks.",
       "type": "bargauge",
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 0 },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 500 },
-              { "color": "red", "value": 2000 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
             ]
           }
         }
@@ -127,30 +253,68 @@
       "options": {
         "orientation": "horizontal",
         "displayMode": "gradient",
-        "reduceOptions": { "calcs": ["lastNotNull"] }
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
       },
-      "targets": [{
-        "expr": "sort_desc(histogram_avg(last_over_time(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000)",
-        "legendFormat": "{{ group }}"
-      }],
-      "datasource": { "type": "prometheus", "uid": "prometheus" }
+      "targets": [
+        {
+          "expr": "sort_desc(last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000)",
+          "legendFormat": "{{ group }}"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "title": "Results History",
       "description": "PASS/FAIL timeline. Runs daily at 6 AM UTC + after every Argo CD deploy sync.",
       "type": "state-timeline",
-      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 7 },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
       "fieldConfig": {
         "defaults": {
           "thresholds": {
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
             ]
           },
           "mappings": [
-            { "type": "value", "options": { "1": { "text": "PASS", "color": "green" } } },
-            { "type": "range", "options": { "from": 0, "to": 0.99, "result": { "text": "FAIL", "color": "red" } } }
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "PASS",
+                  "color": "green"
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.99,
+                "result": {
+                  "text": "FAIL",
+                  "color": "red"
+                }
+              }
+            }
           ]
         }
       },
@@ -158,17 +322,27 @@
         "showValue": "always",
         "mergeValues": true
       },
-      "targets": [{
-        "expr": "avg(k6_checks_rate) or avg(last_over_time(k6_checks_rate[6h]))",
-        "legendFormat": "smoke test"
-      }],
-      "datasource": { "type": "prometheus", "uid": "prometheus" }
+      "targets": [
+        {
+          "expr": "avg(k6_checks_rate) or avg(last_over_time(k6_checks_rate[6h]))",
+          "legendFormat": "smoke test"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "title": "Response Time Trend",
       "description": "Response time per endpoint over time. Each point is one smoke test run.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -180,20 +354,43 @@
         }
       },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        }
       },
-      "targets": [{
-        "expr": "histogram_avg(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}) * 1000 or histogram_avg(last_over_time(k6_http_req_duration_seconds{group=~\"::.+\", expected_response=\"true\"}[6h])) * 1000",
-        "legendFormat": "{{ group }}"
-      }],
-      "datasource": { "type": "prometheus", "uid": "prometheus" }
+      "targets": [
+        {
+          "expr": "k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"} * 1000 or last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[6h])) * 1000",
+          "legendFormat": "{{ group }}"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     }
   ],
   "schemaVersion": 39,
-  "tags": ["k6", "smoke-test"],
-  "templating": { "list": [] },
-  "time": { "from": "now-7d", "to": "now" },
+  "tags": [
+    "k6",
+    "smoke-test"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "utc",
   "title": "k6 Smoke Tests",
