@@ -55,6 +55,9 @@ data:
       ingestion_burst_size: 0
       compactor_blocks_retention_period: {{ .Values.mimir.retention | default "90d" }}
 
+    ruler:
+      rule_path: /data/rules
+
     ruler_storage:
       backend: local
       local:
