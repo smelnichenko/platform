@@ -71,6 +71,10 @@ alertmanager:
   image: prom/alertmanager:v0.28.1
   alertEmailTo: ""
   alertEmailFrom: "alerts@pmon.dev"
+  smtp:
+    host: smtp.resend.com
+    port: "587"
+    username: resend
   webhookSecret: ""
   existingSecret: ""
   groupWait: 30s

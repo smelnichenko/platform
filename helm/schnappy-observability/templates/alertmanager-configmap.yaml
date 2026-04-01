@@ -9,6 +9,11 @@ data:
   alertmanager.yml: |
     global:
       resolve_timeout: 5m
+      smtp_smarthost: '{{ .Values.alertmanager.smtp.host | default "smtp.resend.com" }}:{{ .Values.alertmanager.smtp.port | default "587" }}'
+      smtp_from: '{{ .Values.alertmanager.alertEmailFrom }}'
+      smtp_auth_username: '{{ .Values.alertmanager.smtp.username | default "resend" }}'
+      smtp_auth_password_file: /etc/alertmanager/secrets/SMTP_PASSWORD
+      smtp_require_tls: true
     route:
       receiver: resend-webhook
       group_by: ['alertname', 'namespace', 'pod']
@@ -16,6 +21,10 @@ data:
       group_interval: {{ .Values.alertmanager.groupInterval }}
       repeat_interval: {{ .Values.alertmanager.repeatInterval }}
       routes:
+        - match:
+            alertname: AppDown
+          receiver: email-direct
+          continue: true
         - match:
             severity: critical
           repeat_interval: 1h
@@ -30,6 +39,12 @@ data:
             send_resolved: true
             http_config:
               bearer_token_file: /etc/alertmanager/secrets/ALERTMANAGER_WEBHOOK_SECRET
+      - name: email-direct
+        email_configs:
+          - to: '{{ .Values.alertmanager.alertEmailTo }}'
+            send_resolved: true
+            headers:
+              Subject: '{{`{{ template "email.default.subject" . }}`}}'
     inhibit_rules:
       - source_match:
           severity: critical
