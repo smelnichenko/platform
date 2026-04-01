@@ -65,15 +65,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Alertmanager → App (webhook)
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Alertmanager → SMTP (direct email fallback)
+    # Alertmanager → SMTP (email alerts)
     - ports:
         - protocol: TCP
           port: 587

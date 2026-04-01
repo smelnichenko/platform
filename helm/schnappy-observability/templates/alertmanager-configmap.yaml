@@ -15,16 +15,12 @@ data:
       smtp_auth_password_file: /etc/alertmanager/secrets/SMTP_PASSWORD
       smtp_require_tls: true
     route:
-      receiver: resend-webhook
+      receiver: email
       group_by: ['alertname', 'namespace', 'pod']
       group_wait: {{ .Values.alertmanager.groupWait }}
       group_interval: {{ .Values.alertmanager.groupInterval }}
       repeat_interval: {{ .Values.alertmanager.repeatInterval }}
       routes:
-        - match:
-            alertname: AppDown
-          receiver: email-direct
-          continue: true
         - match:
             severity: critical
           repeat_interval: 1h
@@ -33,18 +29,10 @@ data:
           receiver: 'null'
     receivers:
       - name: 'null'
-      - name: resend-webhook
-        webhook_configs:
-          - url: 'http://{{ include "schnappy.monitor.serviceName" . }}:8080/api/webhooks/alertmanager'
-            send_resolved: true
-            http_config:
-              bearer_token_file: /etc/alertmanager/secrets/ALERTMANAGER_WEBHOOK_SECRET
-      - name: email-direct
+      - name: email
         email_configs:
           - to: '{{ .Values.alertmanager.alertEmailTo }}'
             send_resolved: true
-            headers:
-              Subject: '{{`{{ template "email.default.subject" . }}`}}'
     inhibit_rules:
       - source_match:
           severity: critical
