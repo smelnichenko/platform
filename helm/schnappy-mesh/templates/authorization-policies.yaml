@@ -135,6 +135,7 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kibana
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-fluentbit
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-elasticsearch
       to:
         - operation:
             ports: ["9200"]
