@@ -97,7 +97,7 @@
           },
           "editorMode": "code",
           "expr": "count(kube_pod_status_ready{namespace=\"schnappy\"})",
-          "legendFormat": "Ready",
+          "legendFormat": "Total",
           "range": true,
           "refId": "B"
         }
@@ -290,14 +290,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"schnappy-app\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"schnappy-app\"}[5m]))",
-          "legendFormat": "5xx/s",
-          "range": true,
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"schnappy-app\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"schnappy-app\"}[5m])) or vector(0)",
+          "legendFormat": "Error %",
           "refId": "A"
         }
       ],
@@ -929,7 +923,7 @@
       "targets": [
         {
           "expr": "rate(jvm_gc_pause_seconds_sum{job=~\"schnappy-.*\"}[5m])",
-          "legendFormat": "{{job}} {{action}} {{cause}}",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],
@@ -989,7 +983,7 @@
         }
       ],
       "title": "Threads",
-      "type": "stat"
+      "type": "timeseries"
     },
     {
       "datasource": {
