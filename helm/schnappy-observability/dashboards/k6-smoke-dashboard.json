@@ -324,7 +324,7 @@
       },
       "targets": [
         {
-          "expr": "avg(k6_checks_rate) or avg(last_over_time(k6_checks_rate[6h]))",
+          "expr": "avg(last_over_time(k6_checks_rate[1d]))",
           "legendFormat": "smoke test"
         }
       ],
@@ -369,7 +369,7 @@
       },
       "targets": [
         {
-          "expr": "k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"} * 1000 or last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[6h]) * 1000",
+          "expr": "last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d]) * 1000",
           "legendFormat": "{{group}}"
         }
       ],
