@@ -27,7 +27,7 @@ spec:
           containers:
             - name: k6
               image: {{ .Values.smokeTest.image }}
-              command: ['k6', 'run', '/scripts/smoke-test.js']
+              command: ['k6', 'run', '--no-usage-report', '--out', 'experimental-prometheus-rw', '/scripts/smoke-test.js']
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
@@ -41,6 +41,12 @@ spec:
                   value: {{ .Values.smokeTest.keycloakUrl | quote }}
                 - name: KEYCLOAK_PUBLIC_URL
                   value: {{ .Values.smokeTest.keycloakUrl | quote }}
+                - name: K6_PROMETHEUS_RW_SERVER_URL
+                  value: "http://schnappy-mimir.schnappy.svc:9009/api/v1/push"
+                - name: K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM
+                  value: "true"
+                - name: K6_DNS
+                  value: "ttl=5s,select=first,policy=preferIPv4"
                 {{- if .Values.smokeTest.clientSecretName }}
                 - name: K6_CLIENT_SECRET
                   valueFrom:
