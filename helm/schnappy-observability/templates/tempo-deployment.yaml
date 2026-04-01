@@ -21,7 +21,6 @@ spec:
         app.kubernetes.io/component: tempo
         app.kubernetes.io/part-of: schnappy
       annotations:
-        traffic.sidecar.istio.io/excludeOutboundPorts: "9000"
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
         prometheus.io/port: "3200"
