@@ -28,6 +28,12 @@ spec:
           regex: (.+);(\d+)
           replacement: $1:$2
           targetLabel: __address__
+        # Set job label from component (e.g. app → schnappy-app)
+        - action: replace
+          sourceLabels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+          regex: (.+)
+          replacement: schnappy-$1
+          targetLabel: job
         # Add component label
         - action: replace
           sourceLabels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
