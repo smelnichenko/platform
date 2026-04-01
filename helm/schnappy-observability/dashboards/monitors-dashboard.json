@@ -115,14 +115,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
           "expr": "monitor_extracted_value",
           "legendFormat": "{{page}}",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -176,14 +170,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(monitor_check_total)",
+          "expr": "sum(monitor_check_total{job=\"schnappy-app\"})",
           "legendFormat": "Total",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -237,14 +225,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(monitor_check_total{matched=\"true\"})",
+          "expr": "sum(monitor_check_total{job=\"schnappy-app\",matched=\"true\"})",
           "legendFormat": "Matched",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -306,19 +288,13 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(monitor_check_duration_seconds_sum[5m]) / rate(monitor_check_duration_seconds_count[5m]) * 1000",
-          "legendFormat": "avg ms",
-          "range": true,
+          "expr": "rate(monitor_check_duration_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"schnappy-app\"}[5m]) * 1000",
+          "legendFormat": "{{page}} avg ms",
           "refId": "A"
         }
       ],
       "title": "Avg Response Time",
-      "type": "stat"
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -375,14 +351,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(monitor_check_total{matched=\"true\"}) / sum(monitor_check_total)",
+          "expr": "sum(monitor_check_total{job=\"schnappy-app\",matched=\"true\"}) / sum(monitor_check_total{job=\"schnappy-app\"})",
           "legendFormat": "Success %",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -497,14 +467,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "increase(monitor_check_total[1m])",
-          "legendFormat": "{{page}} ({{matched}})",
-          "range": true,
+          "expr": "sum by (page) (increase(monitor_check_total{job=\"schnappy-app\"}[1m]))",
+          "legendFormat": "{{page}}",
           "refId": "A"
         }
       ],
@@ -591,25 +555,13 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
           "expr": "monitor_check_duration_seconds_max{job=\"schnappy-app\"}",
-          "legendFormat": "{{uri}} max",
-          "range": true,
+          "legendFormat": "{{page}} max",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
           "expr": "rate(monitor_check_duration_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"schnappy-app\"}[5m])",
-          "legendFormat": "{{uri}} avg",
-          "range": true,
+          "legendFormat": "{{page}} avg",
           "refId": "B"
         }
       ],
@@ -708,14 +660,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(rss_check_total{job=\"schnappy-app\"}[5m])) by (feed)",
+          "expr": "sum by (feed) (rate(rss_check_total{job=\"schnappy-app\"}[5m]))",
           "legendFormat": "{{feed}}",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -802,14 +748,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
           "expr": "rss_check_duration_seconds_max{job=\"schnappy-app\"}",
           "legendFormat": "{{feed}}",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -896,14 +836,8 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(rss_check_total{job=\"schnappy-app\",success=\"true\"}[5m])) by (feed) / sum(rate(rss_check_total{job=\"schnappy-app\"}[5m])) by (feed)",
-          "legendFormat": "Success %",
-          "range": true,
+          "expr": "sum by (feed) (rate(rss_check_total{job=\"schnappy-app\",success=\"true\"}[5m])) / sum by (feed) (rate(rss_check_total{job=\"schnappy-app\"}[5m]))",
+          "legendFormat": "{{feed}}",
           "refId": "A"
         }
       ],
