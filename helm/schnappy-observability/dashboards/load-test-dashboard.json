@@ -66,7 +66,7 @@
         }
       },
       "targets": [{
-        "expr": "histogram_avg(k6_http_req_duration_seconds) * 1000",
+        "expr": "k6_http_req_duration_avg * 1000",
         "legendFormat": "avg"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }
@@ -105,7 +105,7 @@
         "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
       },
       "targets": [{
-        "expr": "histogram_avg(k6_http_req_duration_seconds{group=~\"::.+\"}) * 1000",
+        "expr": "k6_http_req_duration_avg{group=~\"::.+\"} * 1000",
         "legendFormat": "{{ group }}"
       }],
       "datasource": { "type": "prometheus", "uid": "prometheus" }

@@ -207,7 +207,7 @@
           "refId": "status"
         },
         {
-          "expr": "last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000",
+          "expr": "last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d]) * 1000",
           "legendFormat": "{{group}}",
           "format": "table",
           "instant": true,
@@ -261,7 +261,7 @@
       },
       "targets": [
         {
-          "expr": "sort_desc(last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d])) * 1000)",
+          "expr": "sort_desc(last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d]) * 1000)",
           "legendFormat": "{{ group }}"
         }
       ],
@@ -369,7 +369,7 @@
       },
       "targets": [
         {
-          "expr": "k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"} * 1000 or last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[6h])) * 1000",
+          "expr": "k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"} * 1000 or last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[6h]) * 1000",
           "legendFormat": "{{ group }}"
         }
       ],
