@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: init-dirs
-          image: {{ .Values.mimir.image }}
+          image: busybox:1.37
           command: ['sh', '-c', 'mkdir -p /data/ruler-configs /data/ruler-data']
           volumeMounts:
             - name: data
