@@ -1,0 +1,27 @@
+{{- if eq (.Values.tempo.enabled | toString) "true" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.fullname" . }}-tempo
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3200
+      targetPort: 3200
+      protocol: TCP
+      name: http
+    - port: 4317
+      targetPort: 4317
+      protocol: TCP
+      name: otlp-grpc
+    - port: 9411
+      targetPort: 9411
+      protocol: TCP
+      name: zipkin
+  selector:
+    {{- include "schnappy.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+{{- end }}

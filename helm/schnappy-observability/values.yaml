@@ -65,6 +65,18 @@ mimir:
   storage: 5Gi
   storageClassName: ""
 
+# Grafana Tempo (distributed tracing)
+tempo:
+  enabled: false
+  image: grafana/tempo:2.7.2
+  retention: 336h
+  minioSecret: schnappy-minio
+  resources:
+    requests: { memory: 256Mi, cpu: 100m }
+    limits: { memory: 1Gi, cpu: 1000m }
+  storage: 2Gi
+  storageClassName: ""
+
 # Alertmanager
 alertmanager:
   enabled: false

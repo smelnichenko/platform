@@ -1,0 +1,62 @@
+{{- if eq (.Values.tempo.enabled | toString) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-tempo-config
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+data:
+  tempo.yaml: |
+    stream_over_http_enabled: true
+
+    server:
+      http_listen_port: 3200
+
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+        zipkin:
+          endpoint: 0.0.0.0:9411
+
+    ingester:
+      max_block_duration: 5m
+
+    compactor:
+      compaction:
+        block_retention: {{ .Values.tempo.retention | default "336h" }}
+
+    metrics_generator:
+      registry:
+        external_labels:
+          source: tempo
+      storage:
+        path: /data/generator/wal
+        remote_write:
+          - url: http://{{ include "schnappy.fullname" . }}-mimir:9009/api/v1/push
+            send_exemplars: true
+      traces_storage:
+        path: /data/generator/traces
+
+    storage:
+      trace:
+        backend: s3
+        wal:
+          path: /data/wal
+        s3:
+          bucket: tempo-traces
+          endpoint: {{ include "schnappy.fullname" . }}-minio.{{ .Release.Namespace }}.svc:9000
+          access_key: ${MINIO_ROOT_USER}
+          secret_key: ${MINIO_ROOT_PASSWORD}
+          insecure: true
+
+    overrides:
+      defaults:
+        metrics_generator:
+          processors:
+            - service-graphs
+            - span-metrics
+{{- end }}

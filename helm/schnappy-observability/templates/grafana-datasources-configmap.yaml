@@ -23,4 +23,35 @@ data:
         editable: false
         jsonData:
           prometheusType: Mimir
+          {{- if eq (.Values.tempo.enabled | toString) "true" }}
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+          {{- end }}
+      {{- if eq (.Values.tempo.enabled | toString) "true" }}
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://{{ include "schnappy.fullname" . }}-tempo:3200
+        editable: false
+        jsonData:
+          tracesToMetrics:
+            datasourceUid: prometheus
+            spanStartTimeShift: "-1h"
+            spanEndTimeShift: "1h"
+            tags:
+              - key: service.name
+                value: job
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+          search:
+            hide: false
+          traceQuery:
+            timeShiftEnabled: true
+            spanStartTimeShift: "-1h"
+            spanEndTimeShift: "1h"
+      {{- end }}
 {{- end }}

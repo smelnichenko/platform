@@ -1,0 +1,109 @@
+{{- if eq (.Values.tempo.enabled | toString) "true" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.fullname" . }}-tempo
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: tempo
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: tempo
+        app.kubernetes.io/part-of: schnappy
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "3200"
+    spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-tempo
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: init-dirs
+          image: busybox:1.37
+          command: ['sh', '-c', 'mkdir -p /data/wal /data/generator/wal /data/generator/traces']
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      containers:
+        - name: tempo
+          image: {{ .Values.tempo.image }}
+          args:
+            - -config.file=/etc/tempo/tempo.yaml
+            - -config.expand-env=true
+          ports:
+            - containerPort: 3200
+              name: http
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 9411
+              name: zipkin
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tempo
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.tempo.minioSecret | default "schnappy-minio" }}
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.tempo.minioSecret | default "schnappy-minio" }}
+                  key: MINIO_ROOT_PASSWORD
+          resources:
+            {{- toYaml .Values.tempo.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3200
+            initialDelaySeconds: 15
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "schnappy.fullname" . }}-tempo-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "schnappy.fullname" . }}-tempo
+        - name: tmp
+          emptyDir: {}
+{{- end }}

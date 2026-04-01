@@ -82,6 +82,14 @@ spec:
                   name: {{ include "schnappy.redis.secretName" . }}
                   key: REDIS_PASSWORD
             {{- end }}
+            {{- if eq (.Values.tracing.enabled | toString) "true" }}
+            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+              value: {{ .Values.tracing.samplingProbability | default "0.1" | quote }}
+            - name: MANAGEMENT_OTLP_TRACING_ENDPOINT
+              value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy.svc:4317" | quote }}
+            - name: SPRING_APPLICATION_NAME
+              value: chess
+            {{- end }}
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
           resources:

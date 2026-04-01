@@ -1,0 +1,18 @@
+{{- if eq (.Values.tempo.enabled | toString) "true" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "schnappy.fullname" . }}-tempo
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.tempo.storageClassName }}
+  storageClassName: {{ .Values.tempo.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.tempo.storage | default "2Gi" }}
+{{- end }}

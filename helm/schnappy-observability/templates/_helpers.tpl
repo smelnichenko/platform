@@ -108,6 +108,22 @@ app.kubernetes.io/component: mimir
 {{- printf "%s-mimir" (include "schnappy.fullname" .) }}
 {{- end }}
 
+{{/* ========== Tempo ========== */}}
+
+{{- define "schnappy.tempo.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: tempo
+{{- end }}
+
+{{- define "schnappy.tempo.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: tempo
+{{- end }}
+
+{{- define "schnappy.tempo.serviceName" -}}
+{{- printf "%s-tempo" (include "schnappy.fullname" .) }}
+{{- end }}
+
 {{/* ========== Grafana ========== */}}
 
 {{- define "schnappy.grafana.labels" -}}
