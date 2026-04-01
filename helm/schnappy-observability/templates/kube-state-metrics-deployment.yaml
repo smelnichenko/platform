@@ -15,6 +15,10 @@ spec:
       labels:
         {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8080"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-kube-state-metrics
       securityContext:
