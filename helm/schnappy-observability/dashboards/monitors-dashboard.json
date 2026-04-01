@@ -182,7 +182,7 @@
           },
           "editorMode": "code",
           "expr": "sum(monitor_check_total)",
-          "legendFormat": "Total Checks",
+          "legendFormat": "Total",
           "range": true,
           "refId": "A"
         }
@@ -243,7 +243,7 @@
           },
           "editorMode": "code",
           "expr": "sum(monitor_check_total{matched=\"true\"})",
-          "legendFormat": "Successful Matches",
+          "legendFormat": "Matched",
           "range": true,
           "refId": "A"
         }
@@ -312,7 +312,7 @@
           },
           "editorMode": "code",
           "expr": "rate(monitor_check_duration_seconds_sum[5m]) / rate(monitor_check_duration_seconds_count[5m]) * 1000",
-          "legendFormat": "Avg ms",
+          "legendFormat": "avg ms",
           "range": true,
           "refId": "A"
         }
@@ -503,7 +503,7 @@
           },
           "editorMode": "code",
           "expr": "increase(monitor_check_total[1m])",
-          "legendFormat": "{{page}}",
+          "legendFormat": "{{page}} ({{matched}})",
           "range": true,
           "refId": "A"
         }
@@ -597,7 +597,7 @@
           },
           "editorMode": "code",
           "expr": "monitor_check_duration_seconds_max{job=\"schnappy-app\"}",
-          "legendFormat": "Max",
+          "legendFormat": "{{uri}} max",
           "range": true,
           "refId": "A"
         },
@@ -608,7 +608,7 @@
           },
           "editorMode": "code",
           "expr": "rate(monitor_check_duration_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"schnappy-app\"}[5m])",
-          "legendFormat": "Avg",
+          "legendFormat": "{{uri}} avg",
           "range": true,
           "refId": "B"
         }

@@ -131,7 +131,7 @@
       "targets": [
         {
           "expr": "k6_http_req_duration_avg * 1000",
-          "legendFormat": "Avg ms"
+          "legendFormat": "avg ms"
         }
       ],
       "datasource": {
@@ -168,7 +168,7 @@
       "targets": [
         {
           "expr": "k6_http_req_failed_rate",
-          "legendFormat": "5xx rate"
+          "legendFormat": "failed %"
         }
       ],
       "datasource": {
@@ -421,7 +421,7 @@
       "targets": [
         {
           "expr": "process_cpu_usage",
-          "legendFormat": "CPU %"
+          "legendFormat": "{{instance}}"
         }
       ],
       "datasource": {
@@ -513,15 +513,15 @@
       "targets": [
         {
           "expr": "hikaricp_connections_active",
-          "legendFormat": "active"
+          "legendFormat": "{{pool}} active"
         },
         {
           "expr": "hikaricp_connections_idle",
-          "legendFormat": "idle"
+          "legendFormat": "{{pool}} idle"
         },
         {
           "expr": "hikaricp_connections_max",
-          "legendFormat": "max"
+          "legendFormat": "{{pool}} max"
         }
       ],
       "datasource": {
@@ -556,7 +556,7 @@
       "targets": [
         {
           "expr": "hikaricp_connections_pending",
-          "legendFormat": "Pending"
+          "legendFormat": "{{pool}}"
         }
       ],
       "datasource": {
@@ -603,11 +603,11 @@
       "targets": [
         {
           "expr": "rate(hikaricp_connections_acquire_seconds_sum[1m]) / rate(hikaricp_connections_acquire_seconds_count[1m])",
-          "legendFormat": "acquire time"
+          "legendFormat": "{{pool}} acquire"
         },
         {
           "expr": "rate(hikaricp_connections_timeout_total[1m])",
-          "legendFormat": "timeouts/s"
+          "legendFormat": "{{pool}} timeout"
         }
       ],
       "datasource": {
@@ -751,11 +751,11 @@
       "targets": [
         {
           "expr": "rate(http_server_requests_seconds_sum{job=\"schnappy-app\"}[1m]) / rate(http_server_requests_seconds_count{job=\"schnappy-app\"}[1m])",
-          "legendFormat": "Avg"
+          "legendFormat": "{{uri}} avg"
         },
         {
           "expr": "http_server_requests_seconds_max{job=\"schnappy-app\"}",
-          "legendFormat": "Max"
+          "legendFormat": "{{uri}} max"
         }
       ],
       "datasource": {

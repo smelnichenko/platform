@@ -208,7 +208,7 @@
         },
         {
           "expr": "last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d]) * 1000",
-          "legendFormat": "{{group}}",
+          "legendFormat": "{{group}} latency",
           "format": "table",
           "instant": true,
           "refId": "duration"
@@ -262,7 +262,7 @@
       "targets": [
         {
           "expr": "sort_desc(last_over_time(k6_http_req_duration_avg{group=~\"::.+\", expected_response=\"true\"}[1d]) * 1000)",
-          "legendFormat": "{{ group }}"
+          "legendFormat": "{{group}}"
         }
       ],
       "datasource": {
@@ -325,7 +325,7 @@
       "targets": [
         {
           "expr": "avg(k6_checks_rate) or avg(last_over_time(k6_checks_rate[6h]))",
-          "legendFormat": "Pass/Fail"
+          "legendFormat": "smoke test"
         }
       ],
       "datasource": {

@@ -262,7 +262,7 @@
           },
           "editorMode": "code",
           "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"schnappy\"}[1h]) > 0 unless on(pod) kube_pod_owner{namespace=\"schnappy\", owner_kind=\"Job\"}",
-          "legendFormat": "{{pod}}",
+          "legendFormat": "{{pod}} ({{container}})",
           "range": true,
           "refId": "A"
         }

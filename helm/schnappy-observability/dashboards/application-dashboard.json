@@ -296,7 +296,7 @@
           },
           "editorMode": "code",
           "expr": "sum(rate(http_server_requests_seconds_count{job=\"schnappy-app\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"schnappy-app\"}[5m]))",
-          "legendFormat": "5xx rate",
+          "legendFormat": "5xx/s",
           "range": true,
           "refId": "A"
         }
@@ -365,7 +365,7 @@
           },
           "editorMode": "code",
           "expr": "sum(rate(http_server_requests_seconds_sum{job=\"schnappy-app\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"schnappy-app\"}[5m]))",
-          "legendFormat": "Avg ms",
+          "legendFormat": "avg ms",
           "range": true,
           "refId": "A"
         }
@@ -565,7 +565,7 @@
           },
           "editorMode": "code",
           "expr": "http_server_requests_seconds_max{job=\"schnappy-app\"}",
-          "legendFormat": "Max",
+          "legendFormat": "{{uri}} max",
           "range": true,
           "refId": "A"
         },
@@ -576,7 +576,7 @@
           },
           "editorMode": "code",
           "expr": "rate(http_server_requests_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(http_server_requests_seconds_count{job=\"schnappy-app\"}[5m])",
-          "legendFormat": "Avg",
+          "legendFormat": "{{uri}} avg",
           "range": true,
           "refId": "B"
         }
@@ -706,7 +706,7 @@
           },
           "editorMode": "code",
           "expr": "sum(increase(http_server_requests_seconds_count{job=\"schnappy-app\"}[1h])) by (status)",
-          "legendFormat": "{{status}}",
+          "legendFormat": "HTTP {{status}}",
           "range": true,
           "refId": "A"
         }
@@ -841,7 +841,7 @@
           },
           "editorMode": "code",
           "expr": "sum(jvm_memory_used_bytes{job=\"schnappy-app\",area=\"heap\"}) by (job)",
-          "legendFormat": "Used",
+          "legendFormat": "{{job}} used",
           "range": true,
           "refId": "A"
         },
@@ -852,7 +852,7 @@
           },
           "editorMode": "code",
           "expr": "sum(jvm_memory_max_bytes{job=\"schnappy-app\",area=\"heap\"}) by (job)",
-          "legendFormat": "Max",
+          "legendFormat": "{{job}} max",
           "range": true,
           "refId": "B"
         }
@@ -1007,7 +1007,7 @@
           },
           "editorMode": "code",
           "expr": "jvm_threads_live_threads{job=\"schnappy-app\"}",
-          "legendFormat": "Live threads",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
@@ -1101,7 +1101,7 @@
           },
           "editorMode": "code",
           "expr": "process_cpu_usage{job=\"schnappy-app\"}",
-          "legendFormat": "CPU %",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
@@ -1243,7 +1243,7 @@
           },
           "editorMode": "code",
           "expr": "hikaricp_connections_active{job=\"schnappy-app\"}",
-          "legendFormat": "Active",
+          "legendFormat": "{{pool}} active",
           "range": true,
           "refId": "A"
         },
@@ -1254,7 +1254,7 @@
           },
           "editorMode": "code",
           "expr": "hikaricp_connections_idle{job=\"schnappy-app\"}",
-          "legendFormat": "Idle",
+          "legendFormat": "{{pool}} idle",
           "range": true,
           "refId": "B"
         },
@@ -1265,7 +1265,7 @@
           },
           "editorMode": "code",
           "expr": "hikaricp_connections_max{job=\"schnappy-app\"}",
-          "legendFormat": "Max",
+          "legendFormat": "{{pool}} max",
           "range": true,
           "refId": "C"
         }
@@ -1363,7 +1363,7 @@
           },
           "editorMode": "code",
           "expr": "hikaricp_connections_pending{job=\"schnappy-app\"}",
-          "legendFormat": "Pending",
+          "legendFormat": "{{pool}}",
           "range": true,
           "refId": "A"
         }
@@ -1457,7 +1457,7 @@
           },
           "editorMode": "code",
           "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(hikaricp_connections_acquire_seconds_count{job=\"schnappy-app\"}[5m])",
-          "legendFormat": "Avg ms",
+          "legendFormat": "{{pool}}",
           "range": true,
           "refId": "A"
         }
@@ -1522,7 +1522,7 @@
           },
           "editorMode": "code",
           "expr": "increase(hikaricp_connections_timeout_total{job=\"schnappy-app\"}[1h])",
-          "legendFormat": "Timeouts",
+          "legendFormat": "{{pool}}",
           "range": true,
           "refId": "A"
         }
