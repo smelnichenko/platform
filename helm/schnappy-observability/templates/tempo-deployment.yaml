@@ -46,38 +46,6 @@ spec:
               drop:
                 - ALL
             readOnlyRootFilesystem: true
-        - name: init-bucket
-          image: quay.io/minio/mc:latest
-          command:
-            - sh
-            - -c
-            - |
-              mc alias set myminio http://{{ include "schnappy.fullname" . }}-minio.{{ .Release.Namespace }}.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
-              mc mb myminio/tempo-traces --ignore-existing || true
-          env:
-            - name: HOME
-              value: /tmp
-            - name: MC_CONFIG_DIR
-              value: /tmp/.mc
-            - name: MINIO_ROOT_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.tempo.minioSecret | default "schnappy-minio" }}
-                  key: MINIO_ROOT_USER
-            - name: MINIO_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.tempo.minioSecret | default "schnappy-minio" }}
-                  key: MINIO_ROOT_PASSWORD
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            readOnlyRootFilesystem: true
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
       containers:
         - name: tempo
           image: {{ .Values.tempo.image }}

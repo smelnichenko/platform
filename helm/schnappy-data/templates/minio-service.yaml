@@ -11,7 +11,7 @@ spec:
     - port: 9000
       targetPort: 9000
       protocol: TCP
-      name: tcp-s3
+      name: http-s3
   selector:
     {{- include "schnappy.minio.selectorLabels" . | nindent 4 }}
 {{- end }}
