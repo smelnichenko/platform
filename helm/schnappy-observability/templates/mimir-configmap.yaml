@@ -35,7 +35,6 @@ data:
     compactor:
       data_dir: /data/compactor
       compaction_interval: 1h
-      blocks_retention_period: {{ .Values.mimir.retention | default "90d" }}
 
     ingester:
       ring:
@@ -54,6 +53,7 @@ data:
       max_global_series_per_user: 0
       ingestion_rate: 0
       ingestion_burst_size: 0
+      compactor_blocks_retention_period: {{ .Values.mimir.retention | default "90d" }}
 
     ruler_storage:
       backend: local
