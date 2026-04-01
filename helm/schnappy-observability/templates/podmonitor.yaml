@@ -25,6 +25,10 @@ spec:
     - path: /stats/prometheus
       interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
       relabelings:
+        # Only scrape istio-proxy container (serves merged metrics on 15020)
+        - action: keep
+          sourceLabels: [__meta_kubernetes_pod_container_name]
+          regex: istio-proxy
         # Rewrite address to pod-ip:15020
         - action: replace
           sourceLabels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
@@ -67,6 +71,9 @@ spec:
       interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
       honorLabels: true
       relabelings:
+        - action: keep
+          sourceLabels: [__meta_kubernetes_pod_container_name]
+          regex: istio-proxy
         - action: replace
           sourceLabels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
           regex: (.+);(\d+)
