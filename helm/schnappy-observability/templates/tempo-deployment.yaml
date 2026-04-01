@@ -55,6 +55,8 @@ spec:
               mc alias set myminio http://{{ include "schnappy.fullname" . }}-minio.{{ .Release.Namespace }}.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
               mc mb myminio/tempo-traces --ignore-existing
           env:
+            - name: HOME
+              value: /tmp
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
