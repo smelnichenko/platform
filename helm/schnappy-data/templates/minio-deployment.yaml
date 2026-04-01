@@ -15,8 +15,6 @@ spec:
       labels:
         {{- include "schnappy.minio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
-      annotations:
-        sidecar.istio.io/inject: "false"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-minio
       securityContext:
