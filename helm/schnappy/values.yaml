@@ -202,7 +202,7 @@ envoyGateway:
 # Distributed tracing (OTLP → Tempo)
 tracing:
   enabled: false
-  tempoEndpoint: "http://schnappy-tempo.schnappy.svc:4317"
+  tempoEndpoint: "http://schnappy-tempo.schnappy.svc:4318/v1/traces"
   samplingProbability: "0.1"
 
 # k6 smoke tests (PostSync hook + daily CronJob)
