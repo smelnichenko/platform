@@ -15,8 +15,6 @@ spec:
       labels:
         {{- include "schnappy.minio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
-      annotations:
-        traffic.sidecar.istio.io/excludeInboundPorts: "9000"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-minio
       securityContext:
