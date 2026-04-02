@@ -88,8 +88,9 @@ spec:
             - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
               value: {{ .Values.tracing.samplingProbability | default "0.1" | quote }}
             - name: MANAGEMENT_OTLP_TRACING_ENDPOINT
-              value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy.svc:4317" | quote }}
-
+              value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy.svc:4318/v1/traces" | quote }}
+            - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
+              value: "false"
             - name: SPRING_APPLICATION_NAME
               value: chat
             {{- end }}
