@@ -16,6 +16,8 @@ spec:
       labels:
         {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
+      annotations:
+        backup.velero.io/backup-volumes: data
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-elasticsearch
       securityContext:

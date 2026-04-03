@@ -20,6 +20,8 @@ spec:
         {{- include "schnappy.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: mimir
         app.kubernetes.io/part-of: schnappy
+      annotations:
+        backup.velero.io/backup-volumes: data
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-mimir
       securityContext:

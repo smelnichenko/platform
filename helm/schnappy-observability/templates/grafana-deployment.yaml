@@ -16,6 +16,7 @@ spec:
         {{- include "schnappy.grafana.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
       annotations:
+        backup.velero.io/backup-volumes: data
         checksum/datasources: {{ include (print $.Template.BasePath "/grafana-datasources-configmap.yaml") . | sha256sum }}
         checksum/dashboards: {{ include (print $.Template.BasePath "/grafana-dashboards-configmap.yaml") . | sha256sum }}
     spec:
