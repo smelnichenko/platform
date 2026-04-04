@@ -109,22 +109,6 @@ spec:
         - name: {{ $fn }}-site
           port: 8080
 ---
-# Keycloak
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: {{ $fn }}-keycloak-route
-  namespace: {{ .Release.Namespace }}
-spec:
-  parentRefs:
-    - name: {{ $gw }}
-      sectionName: https-auth
-  rules:
-    - matches:
-        - path: { type: PathPrefix, value: / }
-      backendRefs:
-        - name: {{ $fn }}-keycloak
-          port: 8080
 ---
 # Grafana
 apiVersion: gateway.networking.k8s.io/v1

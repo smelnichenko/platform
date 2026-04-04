@@ -25,18 +25,7 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
-    # HTTPS — auth (Keycloak)
-    - name: https-auth
-      hostname: {{ .Values.gateway.hosts.auth | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.gateway.hosts.auth | replace "." "-" }}-tls
-      allowedRoutes:
-        namespaces:
-          from: Same
+    # Keycloak removed — now on Pi HA (Caddy TLS)
     # HTTPS — Grafana
     - name: https-grafana
       hostname: {{ .Values.gateway.hosts.grafana | quote }}
