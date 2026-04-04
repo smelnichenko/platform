@@ -97,18 +97,7 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    # HTTPS — Forgejo
-    - name: https-forgejo
-      hostname: {{ .Values.gateway.hosts.forgejo | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.gateway.hosts.forgejo | replace "." "-" }}-tls
-      allowedRoutes:
-        namespaces:
-          from: All
+    # Forgejo removed — now on Pi HA (Caddy TLS)
     # HTTPS — Woodpecker CI
     - name: https-ci
       hostname: {{ .Values.gateway.hosts.ci | quote }}

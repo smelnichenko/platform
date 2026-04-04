@@ -13,9 +13,6 @@ spec:
       namespace: argocd
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      namespace: forgejo
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
       namespace: woodpecker
   to:
     - group: gateway.networking.k8s.io
