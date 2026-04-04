@@ -24,6 +24,8 @@ spec:
         fsGroup: 101
         seccompProfile:
           type: RuntimeDefault
+      imagePullSecrets:
+        - name: forgejo-registry
       containers:
         - name: site
           image: "{{ .Values.site.image.repository }}:{{ .Values.site.image.tag }}"

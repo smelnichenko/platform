@@ -22,6 +22,8 @@ spec:
         app.kubernetes.io/component: {{ .name }}
     spec:
       serviceAccountName: {{ include "schnappy.fullname" $ }}-{{ .name }}
+      imagePullSecrets:
+        - name: forgejo-registry
       containers:
         - name: game
           image: "{{ .image.repository }}:{{ .image.tag }}"
