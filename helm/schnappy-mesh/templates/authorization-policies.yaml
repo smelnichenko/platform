@@ -2,7 +2,7 @@
 {{- $ns := .Release.Namespace }}
 {{- $fn := include "schnappy.fullname" . }}
 ---
-# PostgreSQL — only app services + keycloak on port 5432
+# PostgreSQL — only app services on port 5432
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -21,7 +21,6 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-keycloak
       to:
         - operation:
             ports: ["5432"]
@@ -140,29 +139,6 @@ spec:
       to:
         - operation:
             ports: ["9200"]
----
-# Keycloak — only envoy gateway, admin, monitor on port 8080
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: {{ $fn }}-keycloak
-  namespace: {{ $ns }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: keycloak
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-gateway-istio
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-hyperfoil
-      to:
-        - operation:
-            ports: ["8080", "9000"]
 ---
 # SonarQube PostgreSQL — only sonarqube on port 5432
 apiVersion: security.istio.io/v1
