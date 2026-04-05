@@ -40,6 +40,7 @@ spec:
                   key: SONARQUBE_POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+          args: ["-c", "ssl=off"]
           ports:
             - containerPort: 5432
               name: postgres
