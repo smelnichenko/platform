@@ -30,17 +30,6 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      initContainers:
-        - name: wait-for-postgres
-          image: busybox:1.37
-          command: ['sh', '-c', 'until nc -z {{ include "schnappy.postgres.serviceName" . }} 5432; do echo waiting; sleep 2; done']
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 1000
-            capabilities:
-              drop:
-                - ALL
       containers:
         - name: admin
           image: "{{ .Values.admin.image.repository }}:{{ .Values.admin.image.tag }}"
