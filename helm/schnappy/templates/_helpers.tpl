@@ -225,9 +225,6 @@ app.kubernetes.io/component: gateway
 {{- printf "%s-redis" (include "schnappy.fullname" .) }}
 {{- end }}
 
-{{- define "schnappy.victoriametrics.serviceName" -}}
-{{- printf "%s-victoriametrics" (include "schnappy.fullname" .) }}
-{{- end }}
 
 {{- define "schnappy.keycloak.secretName" -}}
 {{- if .Values.keycloak }}
@@ -273,15 +270,7 @@ app.kubernetes.io/component: minio
 app.kubernetes.io/component: elasticsearch
 {{- end }}
 
-{{- define "schnappy.keycloak.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: keycloak
-{{- end }}
 
-{{- define "schnappy.victoriametrics.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: victoriametrics
-{{- end }}
 
 {{- define "schnappy.alertmanager.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
