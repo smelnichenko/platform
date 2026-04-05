@@ -140,7 +140,7 @@ spec:
             - name: KEYCLOAK_ADMIN_ENABLED
               value: "true"
             - name: KEYCLOAK_SERVER_URL
-              value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
+              value: "https://{{ .Values.keycloak.hostname }}"
             - name: KEYCLOAK_REALM
               value: "schnappy"
             - name: KEYCLOAK_CLIENT_ID
