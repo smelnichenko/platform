@@ -11,7 +11,7 @@ spec:
     - port: 9092
       targetPort: client
       protocol: TCP
-      name: client
+      name: tcp-kafka
   selector:
     {{- include "schnappy.kafka.selectorLabels" . | nindent 4 }}
 {{- end }}

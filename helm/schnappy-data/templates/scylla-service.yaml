@@ -11,7 +11,7 @@ spec:
     - port: 9042
       targetPort: cql
       protocol: TCP
-      name: cql
+      name: tcp-cql
     - port: 7000
       targetPort: inter-node
       protocol: TCP

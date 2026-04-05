@@ -1,0 +1,56 @@
+{{- if .Values.minio.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "schnappy.fullname" . }}-minio-buckets
+  labels:
+    {{- include "schnappy.minio.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.minio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio-buckets
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "schnappy.fullname" . }}-minio
+      containers:
+        - name: create-buckets
+          image: minio/mc:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mc alias set local http://{{ include "schnappy.minio.serviceName" . }}:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              {{- range .Values.minio.buckets }}
+              mc mb local/{{ . }} --ignore-existing
+              {{- end }}
+              mc ls local/
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.existingSecret | default (printf "%s-minio" (include "schnappy.fullname" .)) }}
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.existingSecret | default (printf "%s-minio" (include "schnappy.fullname" .)) }}
+                  key: MINIO_ROOT_PASSWORD
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

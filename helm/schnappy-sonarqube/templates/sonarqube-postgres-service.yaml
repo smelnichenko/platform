@@ -11,7 +11,7 @@ spec:
     - port: 5432
       targetPort: postgres
       protocol: TCP
-      name: postgres
+      name: tcp-postgres
   selector:
     {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 4 }}
 {{- end }}
