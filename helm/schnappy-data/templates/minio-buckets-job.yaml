@@ -31,6 +31,8 @@ spec:
               mc mb local/{{ . }} --ignore-existing
               {{- end }}
               mc ls local/
+              # Signal istio-proxy sidecar to exit (required for Job completion)
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
           env:
             - name: MINIO_ROOT_USER
               valueFrom:

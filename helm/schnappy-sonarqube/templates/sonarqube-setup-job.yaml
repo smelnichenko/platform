@@ -131,6 +131,7 @@ spec:
               {{- end }}
 
               echo "SonarQube setup complete"
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

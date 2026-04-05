@@ -50,6 +50,7 @@ spec:
               /opt/kafka/bin/kafka-topics.sh --bootstrap-server {{ include "schnappy.kafka.serviceName" $ }}:9092 --create --if-not-exists --topic {{ .name }} --partitions {{ .partitions }} --replication-factor {{ .replicationFactor }}
               {{- end }}
               echo "Topics created successfully."
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
