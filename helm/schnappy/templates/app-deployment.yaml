@@ -63,6 +63,10 @@ spec:
           env:
             - name: SPRING_CONFIG_LOCATION
               value: "classpath:/,file:/app/config/"
+            - name: POSTGRES_HOST
+              value: {{ include "schnappy.postgres.serviceName" . }}
+            - name: SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES
+              value: "sslmode=disable"
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:

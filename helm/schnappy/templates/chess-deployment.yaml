@@ -62,6 +62,8 @@ spec:
               value: {{ .Values.chessService.javaOpts | default "-Xmx512m" | quote }}
             - name: DB_HOST
               value: {{ include "schnappy.postgres.serviceName" . }}
+            - name: SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES
+              value: "sslmode=disable"
             - name: DB_NAME
               value: "monitor_chess"
             - name: DB_USERNAME

@@ -39,7 +39,7 @@ spec:
           image: {{ .Values.sonarqube.image }}
           env:
             - name: SONAR_JDBC_URL
-              value: "jdbc:postgresql://{{ include "schnappy.sonarqube.postgres.serviceName" . }}:5432/sonarqube"
+              value: "jdbc:postgresql://{{ include "schnappy.sonarqube.postgres.serviceName" . }}:5432/sonarqube?sslmode=disable"
             - name: SONAR_JDBC_USERNAME
               value: sonarqube
             - name: SONAR_JDBC_PASSWORD
