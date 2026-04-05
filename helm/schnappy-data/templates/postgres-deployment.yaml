@@ -21,7 +21,7 @@ spec:
         backup.velero.io/backup-volumes: data
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-postgres
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 70
