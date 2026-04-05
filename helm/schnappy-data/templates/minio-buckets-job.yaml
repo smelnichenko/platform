@@ -26,7 +26,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              mc alias set local http://{{ include "schnappy.minio.serviceName" . }}:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              mc alias set local http://{{ include "schnappy.fullname" . }}-minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
               {{- range .Values.minio.buckets }}
               mc mb local/{{ . }} --ignore-existing
               {{- end }}
