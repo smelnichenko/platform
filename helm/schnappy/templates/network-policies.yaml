@@ -22,16 +22,6 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # Allow from gateway
-    {{- if eq (.Values.gateway.enabled | toString) "true" }}
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    {{- end }}
     # Allow from site (nginx proxy to API)
     {{- if .Values.site.enabled }}
     - from:
@@ -144,113 +134,6 @@ spec:
         - protocol: TCP
           port: 80
 ---
-{{- if eq (.Values.gateway.enabled | toString) "true" }}
----
-# Gateway network policy
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "schnappy.fullname" . }}-gateway
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-spec:
-  podSelector:
-    matchLabels:
-      {{- include "schnappy.gateway.selectorLabels" . | nindent 6 }}
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress:
-    # Allow from Traefik and Envoy proxy
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Allow from site (nginx proxy_pass)
-    {{- if .Values.site.enabled }}
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.site.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    {{- end }}
-    # Allow from Hyperfoil load/stress tests (bypass Envoy, direct to backends)
-    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: hyperfoil-load
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: hyperfoil-stress
-      ports:
-        - protocol: TCP
-          port: 8080
-    {{- end }}
-  egress:
-    # DNS
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-    # Gateway → App (core backend)
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Gateway → Admin (user service)
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Gateway → Chat microservice
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Gateway → Chess microservice
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Gateway → Pi Keycloak via VIP
-    - to:
-        - ipBlock:
-            cidr: 192.168.11.5/32
-      ports:
-        - protocol: TCP
-          port: 443
-        - protocol: TCP
-          port: 8080
-    # Gateway → Redis (rate limiting)
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 6379
-{{- end }}
 {{- if eq (.Values.admin.enabled | toString) "true" }}
 ---
 # Admin (user service) network policy
@@ -268,11 +151,9 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from gateway
     - from:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -378,11 +259,9 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from gateway
     - from:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -466,11 +345,9 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from gateway
     - from:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -583,7 +460,6 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.gateway.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
