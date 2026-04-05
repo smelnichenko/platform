@@ -19,9 +19,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-        - podSelector:
-            matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
       ports:
         - protocol: TCP
           port: 8080
@@ -169,9 +166,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-        - podSelector:
-            matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
       ports:
         - protocol: TCP
           port: 8080
@@ -286,9 +280,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-        - podSelector:
-            matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
       ports:
         - protocol: TCP
           port: 8080
@@ -398,9 +389,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-        - podSelector:
-            matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
       ports:
         - protocol: TCP
           port: 8080
@@ -489,9 +477,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-        - podSelector:
-            matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
       ports:
         - protocol: TCP
           port: 8080
@@ -580,9 +565,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-        - podSelector:
-            matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: {{ include "schnappy.fullname" . }}-gw
       ports:
         - protocol: TCP
           port: 80

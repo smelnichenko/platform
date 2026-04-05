@@ -193,12 +193,6 @@ keycloak:
   clients:
     adminService:
       enabled: false
-# Envoy Gateway (replaces Spring Cloud Gateway for JWT + routing)
-envoyGateway:
-  enabled: false
-  rateLimit:
-    requestsPerSecond: 50
-
 # Distributed tracing (OTLP → Tempo)
 tracing:
   enabled: false

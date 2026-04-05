@@ -80,7 +80,7 @@ spec:
                   key: REDIS_PASSWORD
             {{- end }}
             - name: JWKS_URI
-              value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080/realms/schnappy/protocol/openid-connect/certs"
+              value: "https://{{ .Values.keycloak.hostname }}/realms/schnappy/protocol/openid-connect/certs"
             - name: CORS_ALLOWED_ORIGINS
               value: {{ .Values.gateway.cors.allowedOrigins | default "*" | quote }}
           resources:

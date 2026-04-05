@@ -51,7 +51,7 @@ spec:
                 - name: CHESS_URL
                   value: "http://{{ include "schnappy.fullname" . }}-chess:8080"
                 - name: KEYCLOAK_URL
-                  value: "http://{{ include "schnappy.keycloak.serviceName" . }}:8080"
+                  value: "https://{{ .Values.keycloak.hostname }}"
                 {{- if .Values.hyperfoil.clientSecretName }}
                 - name: K6_CLIENT_SECRET
                   valueFrom:

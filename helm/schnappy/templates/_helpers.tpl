@@ -225,10 +225,6 @@ app.kubernetes.io/component: gateway
 {{- printf "%s-redis" (include "schnappy.fullname" .) }}
 {{- end }}
 
-{{- define "schnappy.keycloak.serviceName" -}}
-{{- printf "%s-keycloak" (include "schnappy.fullname" .) }}
-{{- end }}
-
 {{- define "schnappy.victoriametrics.serviceName" -}}
 {{- printf "%s-victoriametrics" (include "schnappy.fullname" .) }}
 {{- end }}
