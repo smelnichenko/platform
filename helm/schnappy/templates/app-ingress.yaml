@@ -37,11 +37,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                {{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
-                name: {{ include "schnappy.fullname" . }}-envoy-proxy
-                port:
-                  number: 8080
-                {{- else if eq (.Values.gateway.enabled | toString) "true" }}
+                {{- if eq (.Values.gateway.enabled | toString) "true" }}
                 name: {{ include "schnappy.gateway.serviceName" . }}
                 port:
                   number: {{ .Values.gateway.service.port }}
@@ -55,11 +51,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                {{- if eq (.Values.envoyGateway.enabled | toString) "true" }}
-                name: {{ include "schnappy.fullname" . }}-envoy-proxy
-                port:
-                  number: 8080
-                {{- else if eq (.Values.gateway.enabled | toString) "true" }}
+                {{- if eq (.Values.gateway.enabled | toString) "true" }}
                 name: {{ include "schnappy.gateway.serviceName" . }}
                 port:
                   number: {{ .Values.gateway.service.port }}
