@@ -131,19 +131,8 @@ app.kubernetes.io/component: chess
 
 {{/* ========== Gateway ========== */}}
 
-{{- define "schnappy.gateway.labels" -}}
-{{ include "schnappy.labels" . }}
-app.kubernetes.io/component: gateway
-{{- end }}
 
-{{- define "schnappy.gateway.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: gateway
-{{- end }}
 
-{{- define "schnappy.gateway.serviceName" -}}
-{{- printf "%s-gateway" (include "schnappy.fullname" .) }}
-{{- end }}
 
 {{/* ========== Secret name helpers (cross-chart references) ========== */}}
 

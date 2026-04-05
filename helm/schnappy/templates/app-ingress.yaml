@@ -37,29 +37,21 @@ spec:
             pathType: Prefix
             backend:
               service:
-                {{- if eq (.Values.gateway.enabled | toString) "true" }}
-                name: {{ include "schnappy.gateway.serviceName" . }}
-                port:
-                  number: {{ .Values.gateway.service.port }}
-                {{- else }}
+
                 name: {{ include "schnappy.monitor.serviceName" . }}
                 port:
                   number: {{ .Values.app.service.port }}
-                {{- end }}
+
           # WebSocket routes
           - path: /ws
             pathType: Prefix
             backend:
               service:
-                {{- if eq (.Values.gateway.enabled | toString) "true" }}
-                name: {{ include "schnappy.gateway.serviceName" . }}
-                port:
-                  number: {{ .Values.gateway.service.port }}
-                {{- else }}
+
                 name: {{ include "schnappy.monitor.serviceName" . }}
                 port:
                   number: {{ .Values.app.service.port }}
-                {{- end }}
+
           {{- if .Values.site.enabled }}
           # All other routes go to site
           - path: /

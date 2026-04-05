@@ -104,22 +104,6 @@ webhook:
   existingSecret: ""
 
 # API Gateway
-gateway:
-  enabled: false
-  image:
-    repository: git.pmon.dev/schnappy/api-gateway
-    tag: latest
-    pullPolicy: IfNotPresent
-  replicas: 1
-  javaOpts: "-Xmx256m"
-  resources:
-    requests: { memory: "256Mi", cpu: "100m" }
-    limits: { memory: "512Mi", cpu: "1000m" }
-  service:
-    type: ClusterIP
-    port: 8080
-  cors:
-    allowedOrigins: "*"
 
 # Admin / User Service
 admin:
