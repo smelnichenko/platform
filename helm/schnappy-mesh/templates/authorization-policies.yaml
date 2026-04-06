@@ -141,6 +141,14 @@ spec:
       to:
         - operation:
             ports: ["9200"]
+    # Fluent Bit has no sidecar (DaemonSet needs host log access),
+    # so it arrives without mTLS identity — allow plain HTTP on 9200
+    - from:
+        - source:
+            notPrincipals: ["*"]
+      to:
+        - operation:
+            ports: ["9200"]
 ---
 # SonarQube PostgreSQL — only sonarqube on port 5432
 apiVersion: security.istio.io/v1
