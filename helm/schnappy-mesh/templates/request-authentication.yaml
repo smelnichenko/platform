@@ -46,7 +46,7 @@ spec:
       patch:
         operation: MERGE
         value:
-          per_filter_config:
+          typed_per_filter_config:
             envoy.filters.http.jwt_authn:
               "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.PerRouteConfig
               disabled: true
