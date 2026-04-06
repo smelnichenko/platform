@@ -68,7 +68,7 @@ spec:
               if [ "$EXISTING" = "0" ]; then
                 echo "Generating analysis token..."
                 TOKEN=$(sq -X POST "${SQ_URL}/api/user_tokens/generate" \
-                  -d "name=ci&type=GLOBAL_ANALYSIS_TOKEN" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+                  -d "name=ci&type=USER_TOKEN" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
                 if [ -n "$TOKEN" ]; then
                   echo "Token generated, storing in secret..."
                   # Write token to a file for the sidecar/post-hook to pick up
