@@ -33,7 +33,7 @@ spec:
           containers:
             - name: hyperfoil
               image: {{ .Values.hyperfoil.image }}
-              command: ['/bin/sh', '/benchmarks/run.sh']
+              command: ['/bin/sh', '-c', '/benchmarks/run.sh; curl -sf -X POST http://localhost:15020/quitquitquit || true']
               resources:
                 requests: { cpu: 500m, memory: 1Gi }
                 limits: { cpu: 4000m, memory: 2Gi }
