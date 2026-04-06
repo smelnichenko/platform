@@ -41,9 +41,9 @@ spec:
             - name: BASE_URL
               value: {{ .Values.smokeTest.baseUrl | quote }}
             - name: KEYCLOAK_URL
-              value: {{ .Values.smokeTest.keycloakUrl | quote }}
+              value: "https://{{ .Values.keycloak.hostname }}"
             - name: KEYCLOAK_PUBLIC_URL
-              value: {{ .Values.smokeTest.keycloakUrl | quote }}
+              value: "https://{{ .Values.keycloak.hostname }}"
             {{- if .Values.smokeTest.clientSecretName }}
             - name: K6_CLIENT_SECRET
               valueFrom:
