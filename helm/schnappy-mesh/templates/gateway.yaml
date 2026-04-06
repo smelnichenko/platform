@@ -4,11 +4,11 @@ kind: Gateway
 metadata:
   name: {{ include "schnappy.fullname" . }}-gateway
   namespace: {{ .Release.Namespace }}
-  annotations:
-    cert-manager.io/cluster-issuer: {{ .Values.gateway.tls.clusterIssuer | default "letsencrypt-prod" }}
 spec:
   gatewayClassName: istio
-  # kube-proxy handles LoadBalancer VIP → gateway pods directly
+  addresses:
+    - type: IPAddress
+      value: {{ .Values.gateway.loadBalancerIP | quote }}
   infrastructure:
     labels:
       gateway.istio.io/managed: istio.io-gateway-controller
@@ -21,11 +21,10 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.app | replace "." "-" }}-tls
+          - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
           from: Same
-    # Keycloak removed — now on Pi HA (Caddy TLS)
     # HTTPS — Grafana
     - name: https-grafana
       hostname: {{ .Values.gateway.hosts.grafana | quote }}
@@ -34,7 +33,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.grafana | replace "." "-" }}-tls
+          - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
           from: Same
@@ -46,7 +45,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.logs | replace "." "-" }}-tls
+          - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
           from: Same
@@ -58,7 +57,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.reports | replace "." "-" }}-tls
+          - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
           from: Same
@@ -70,7 +69,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.sonar | replace "." "-" }}-tls
+          - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
           from: Same
@@ -82,11 +81,10 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.argocd | replace "." "-" }}-tls
+          - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
           from: All
-    # Forgejo removed — now on Pi HA (Caddy TLS)
     # HTTPS — Woodpecker CI
     - name: https-ci
       hostname: {{ .Values.gateway.hosts.ci | quote }}
@@ -95,7 +93,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: {{ .Values.gateway.hosts.ci | replace "." "-" }}-tls
+          - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
           from: All

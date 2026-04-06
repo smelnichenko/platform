@@ -1,21 +1,17 @@
 {{- if .Values.gateway.enabled }}
 {{- $fn := include "schnappy.fullname" . }}
-{{- $issuer := .Values.gateway.tls.clusterIssuer | default "letsencrypt-prod" }}
-# Cross-namespace host certificates (not auto-provisioned by cert-manager Gateway API)
-{{- range $key, $host := .Values.gateway.hosts }}
-{{- $name := $host | replace "." "-" }}
----
+# Single wildcard certificate for all *.pmon.dev hosts
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ $name }}-tls
-  namespace: {{ $.Release.Namespace }}
+  name: pmon-dev-wildcard-tls
+  namespace: {{ .Release.Namespace }}
 spec:
-  secretName: {{ $name }}-tls
+  secretName: pmon-dev-wildcard-tls
   issuerRef:
     name: letsencrypt-dns
     kind: ClusterIssuer
   dnsNames:
-    - {{ $host }}
-{{- end }}
+    - "*.pmon.dev"
+    - pmon.dev
 {{- end }}
