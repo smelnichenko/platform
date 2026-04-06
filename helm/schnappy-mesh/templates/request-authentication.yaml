@@ -23,9 +23,9 @@ spec:
         - header: x-user-email
           claim: email
 ---
-# EnvoyFilter: remove JWT filter from non-app virtual hosts
-# Forgejo registry, SonarQube, Woodpecker use Bearer tokens with
-# non-Keycloak issuers that would be rejected by the JWT filter.
+# EnvoyFilter: disable JWT validation on non-app virtual hosts
+# Gateway uses wildcard SNI (*.pmon.dev) so filter-chain-level removal
+# doesn't work. Instead, disable jwt_authn per virtual host route.
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
@@ -37,18 +37,18 @@ spec:
       gateway.networking.k8s.io/gateway-name: {{ $fn }}-gateway
   configPatches:
     {{- range $host := .Values.jwt.passthroughHosts | default list }}
-    - applyTo: HTTP_FILTER
+    - applyTo: VIRTUAL_HOST
       match:
         context: GATEWAY
-        listener:
-          portNumber: 443
-          filterChain:
-            filter:
-              name: envoy.filters.network.http_connection_manager
-              subFilter:
-                name: envoy.filters.http.jwt_authn
-            sni: {{ $host }}
+        routeConfiguration:
+          vhost:
+            name: {{ $host }}:443
       patch:
-        operation: REMOVE
+        operation: MERGE
+        value:
+          per_filter_config:
+            envoy.filters.http.jwt_authn:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.PerRouteConfig
+              disabled: true
     {{- end }}
 {{- end }}
