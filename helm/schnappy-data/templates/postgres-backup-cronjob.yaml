@@ -54,6 +54,8 @@ spec:
       activeDeadlineSeconds: 600
       template:
         metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
           labels:
             app.kubernetes.io/name: {{ include "schnappy.name" . }}
             app.kubernetes.io/instance: {{ .Release.Name }}

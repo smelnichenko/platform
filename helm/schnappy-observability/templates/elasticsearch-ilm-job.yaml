@@ -14,8 +14,6 @@ spec:
   activeDeadlineSeconds: 300
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
       labels:
         {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
@@ -95,8 +93,10 @@ spec:
                 echo "ILM setup complete"
               else
                 echo "ILM setup had errors — check output above"
+                curl -sf -X POST http://localhost:15020/quitquitquit || true
                 exit 1
               fi
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

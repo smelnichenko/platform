@@ -14,6 +14,8 @@ spec:
       ttlSecondsAfterFinished: 86400
       template:
         metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
           labels:
             app.kubernetes.io/component: k6-smoke
             app.kubernetes.io/part-of: schnappy
