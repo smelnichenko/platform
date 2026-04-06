@@ -34,6 +34,8 @@ spec:
               # Signal istio-proxy sidecar to exit (required for Job completion)
               curl -sf -X POST http://localhost:15020/quitquitquit || true
           env:
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
