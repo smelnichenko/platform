@@ -71,6 +71,13 @@ spec:
       to:
         - operation:
             ports: ["9092", "9093"]
+    # Setup job has no sidecar — allow plain TCP on 9092
+    - from:
+        - source:
+            notPrincipals: ["*"]
+      to:
+        - operation:
+            ports: ["9092"]
 ---
 # ScyllaDB — only monitor + chat on port 9042/7000
 apiVersion: security.istio.io/v1
@@ -93,6 +100,13 @@ spec:
       to:
         - operation:
             ports: ["9042", "7000"]
+    # Setup job has no sidecar — allow plain TCP on 9042
+    - from:
+        - source:
+            notPrincipals: ["*"]
+      to:
+        - operation:
+            ports: ["9042"]
 ---
 # MinIO — monitor + reports + mimir + tempo + hyperfoil + minio (buckets job) on port 9000
 apiVersion: security.istio.io/v1

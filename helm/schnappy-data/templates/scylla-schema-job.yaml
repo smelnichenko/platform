@@ -12,6 +12,8 @@ spec:
   backoffLimit: 10
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
       labels:
         app.kubernetes.io/name: scylla-job
         app.kubernetes.io/instance: {{ .Release.Name }}
@@ -117,6 +119,6 @@ spec:
               cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD user_uuid uuid;" 2>/dev/null || true
               cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD user_uuid uuid;" 2>/dev/null || true
               echo "Schema applied successfully."
-              wget -qO- --post-data= http://localhost:15020/quitquitquit 2>/dev/null || curl -sf -X POST http://localhost:15020/quitquitquit 2>/dev/null || true
+              echo "Done."
       restartPolicy: OnFailure
 {{- end }}

@@ -13,6 +13,8 @@ spec:
   activeDeadlineSeconds: 120
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
       labels:
         {{- include "schnappy.minio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: minio-buckets

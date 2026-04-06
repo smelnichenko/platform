@@ -12,6 +12,8 @@ spec:
   backoffLimit: 5
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
       labels:
         app.kubernetes.io/name: kafka-job
         app.kubernetes.io/instance: {{ .Release.Name }}
@@ -50,7 +52,7 @@ spec:
               /opt/kafka/bin/kafka-topics.sh --bootstrap-server {{ include "schnappy.kafka.serviceName" $ }}:9092 --create --if-not-exists --topic {{ .name }} --partitions {{ .partitions }} --replication-factor {{ .replicationFactor }}
               {{- end }}
               echo "Topics created successfully."
-              wget -qO- --post-data= http://localhost:15020/quitquitquit 2>/dev/null || curl -sf -X POST http://localhost:15020/quitquitquit 2>/dev/null || true
+              echo "Done."
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
