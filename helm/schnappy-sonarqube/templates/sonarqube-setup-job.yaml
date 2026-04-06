@@ -31,6 +31,13 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.sonarqube.secretName" . }}
                   key: SONARQUBE_ADMIN_PASSWORD
+            - name: VAULT_ADDR
+              value: {{ .Values.sonarqube.setup.vaultAddr | default "https://192.168.11.5:8200" | quote }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.fullname" . }}-vault-token
+                  key: token
           command:
             - /bin/sh
             - -c
@@ -70,14 +77,18 @@ spec:
                 TOKEN=$(sq -X POST "${SQ_URL}/api/user_tokens/generate" \
                   -d "name=ci&type=USER_TOKEN" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
                 if [ -n "$TOKEN" ]; then
-                  echo "Token generated, storing in secret..."
-                  # Write token to a file for the sidecar/post-hook to pick up
-                  # For now, patch the existing secret
-                  TOKEN_B64=$(echo -n "$TOKEN" | base64)
-                  cat > /tmp/patch.json << PATCH
-              {"data":{"SONARQUBE_TOKEN":"${TOKEN_B64}"}}
-              PATCH
-                  echo "Token stored (manual update needed for Woodpecker secret)"
+                  echo "Token generated, writing to Vault..."
+                  VAULT_RESP=$(curl -sk -X PATCH \
+                    -H "X-Vault-Token: ${VAULT_TOKEN}" \
+                    -H "Content-Type: application/merge-patch+json" \
+                    "${VAULT_ADDR}/v1/secret/data/schnappy/woodpecker-ci" \
+                    -d "{\"data\":{\"sonar_token\":\"${TOKEN}\"}}")
+                  if echo "$VAULT_RESP" | grep -q '"version"'; then
+                    echo "Token written to Vault successfully"
+                  else
+                    echo "WARNING: Failed to write token to Vault: ${VAULT_RESP}"
+                    FAIL=1
+                  fi
                 else
                   echo "WARNING: Token generation failed"
                 fi
