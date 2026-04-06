@@ -32,7 +32,7 @@ spec:
           initContainers:
             - name: mc-copy
               image: minio/mc:latest
-              command: ['sh', '-c', 'dd if=/usr/bin/mc of=/shared/mc bs=1M && chmod +x /shared/mc']
+              command: ['sh', '-c', 'cp /usr/bin/mc /shared/mc']
               volumeMounts:
                 - name: tmp
                   mountPath: /shared
