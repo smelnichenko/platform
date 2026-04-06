@@ -14,6 +14,8 @@ spec:
       labels:
         app.kubernetes.io/component: k6-smoke
         app.kubernetes.io/part-of: schnappy
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       securityContext:
         runAsNonRoot: true
