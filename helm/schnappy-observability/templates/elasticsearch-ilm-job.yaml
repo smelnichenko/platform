@@ -14,6 +14,8 @@ spec:
   activeDeadlineSeconds: 300
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
       labels:
         {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
