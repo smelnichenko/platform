@@ -39,6 +39,7 @@ data:
         K8S-Logging.Parser On
         Annotations       Off
         Labels            Off
+        Buffer_Size       256KB
 
     [FILTER]
         Name              grep
@@ -58,7 +59,7 @@ data:
         Suppress_Type_Name On
         tls               Off
         Retry_Limit       5
-        Buffer_Size       128KB
+        Buffer_Size       256KB
         Generate_ID       Off
         Workers           2
         Trace_Error       On
