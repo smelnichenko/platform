@@ -111,10 +111,11 @@ data:
         sharedConnections: 2500
 
     phases:
-      - ramp200:
-          always:
-            users: 200
-            duration: 90s
+      - rate100:
+          constantRate:
+            usersPerSec: 100
+            duration: 60s
+            maxSessions: 300
             scenario: &scenario
               - setup:
                   - set: { var: token, value: __TOKEN__ }
@@ -160,24 +161,27 @@ data:
                         x-user-uuid: ${uuid}
                         x-user-email: ${email}
 
-      - ramp500:
-          always:
-            users: 500
-            duration: 90s
-            startAfter: ramp200
+      - rate200:
+          constantRate:
+            usersPerSec: 200
+            duration: 60s
+            maxSessions: 600
+            startAfter: rate100
             scenario: *scenario
 
-      - ramp1000:
-          always:
-            users: 1000
-            duration: 90s
-            startAfter: ramp500
+      - rate400:
+          constantRate:
+            usersPerSec: 400
+            duration: 60s
+            maxSessions: 1200
+            startAfter: rate200
             scenario: *scenario
 
-      - ramp2000:
-          always:
-            users: 2000
-            duration: 90s
-            startAfter: ramp1000
+      - rate600:
+          constantRate:
+            usersPerSec: 600
+            duration: 60s
+            maxSessions: 2000
+            startAfter: rate400
             scenario: *scenario
 {{- end }}
