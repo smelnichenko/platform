@@ -117,6 +117,6 @@ spec:
               cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD user_uuid uuid;" 2>/dev/null || true
               cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD user_uuid uuid;" 2>/dev/null || true
               echo "Schema applied successfully."
-              curl -sf -X POST http://localhost:15020/quitquitquit || true
+              wget -qO- --post-data= http://localhost:15020/quitquitquit 2>/dev/null || curl -sf -X POST http://localhost:15020/quitquitquit 2>/dev/null || true
       restartPolicy: OnFailure
 {{- end }}
