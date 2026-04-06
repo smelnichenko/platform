@@ -64,8 +64,9 @@ data:
 
     # Upload report to MinIO
     if [ -f /tmp/report-dir/index.html ] && [ -n "$MINIO_USER" ]; then
+      echo "Downloading MinIO client..."
+      curl -sf -o /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x /tmp/mc
       if [ -x /tmp/mc ]; then
-        echo "Using pre-loaded MinIO client"
         export MC_CONFIG_DIR=/tmp/.mc
         /tmp/mc alias set minio http://{{ include "schnappy.fullname" . }}-minio:9000 "$MINIO_USER" "$MINIO_PASSWORD" --api S3v4
         /tmp/mc mb --ignore-existing minio/hyperfoil-reports

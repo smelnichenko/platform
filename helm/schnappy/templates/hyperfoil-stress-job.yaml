@@ -30,17 +30,6 @@ spec:
             runAsGroup: 1001
             seccompProfile:
               type: RuntimeDefault
-          initContainers:
-            - name: mc-copy
-              image: minio/mc:latest
-              command: ['sh', '-c', 'cp /usr/bin/mc /shared/mc']
-              volumeMounts:
-                - name: tmp
-                  mountPath: /shared
-              securityContext:
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop: [ALL]
           containers:
             - name: hyperfoil
               image: {{ .Values.hyperfoil.image }}
