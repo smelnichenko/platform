@@ -58,7 +58,7 @@ data:
         Suppress_Type_Name On
         tls               Off
         Retry_Limit       5
-        Buffer_Size       False
+        Buffer_Size       128KB
         Generate_ID       Off
         Workers           2
         Trace_Error       On
