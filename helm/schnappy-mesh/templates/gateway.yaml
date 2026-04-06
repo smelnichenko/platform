@@ -13,8 +13,8 @@ spec:
     labels:
       gateway.istio.io/managed: istio.io-gateway-controller
   listeners:
-    # HTTPS — main app
-    - name: https-app
+    # HTTPS — apex domain (*.pmon.dev doesn't match bare pmon.dev)
+    - name: https-apex
       hostname: {{ .Values.gateway.hosts.app | quote }}
       port: 443
       protocol: HTTPS
@@ -25,69 +25,10 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
-    # HTTPS — Grafana
-    - name: https-grafana
-      hostname: {{ .Values.gateway.hosts.grafana | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: pmon-dev-wildcard-tls
-      allowedRoutes:
-        namespaces:
-          from: Same
-    # HTTPS — Kibana
-    - name: https-logs
-      hostname: {{ .Values.gateway.hosts.logs | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: pmon-dev-wildcard-tls
-      allowedRoutes:
-        namespaces:
-          from: Same
-    # HTTPS — Reports
-    - name: https-reports
-      hostname: {{ .Values.gateway.hosts.reports | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: pmon-dev-wildcard-tls
-      allowedRoutes:
-        namespaces:
-          from: Same
-    # HTTPS — SonarQube
-    - name: https-sonar
-      hostname: {{ .Values.gateway.hosts.sonar | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: pmon-dev-wildcard-tls
-      allowedRoutes:
-        namespaces:
-          from: Same
-    # HTTPS — Argo CD
-    - name: https-argocd
-      hostname: {{ .Values.gateway.hosts.argocd | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: pmon-dev-wildcard-tls
-      allowedRoutes:
-        namespaces:
-          from: All
-    # HTTPS — Woodpecker CI
-    - name: https-ci
-      hostname: {{ .Values.gateway.hosts.ci | quote }}
+    # HTTPS — all subdomains (single wildcard listener prevents
+    # HTTP/2 connection coalescing 404s across subdomains)
+    - name: https
+      hostname: "*.pmon.dev"
       port: 443
       protocol: HTTPS
       tls:

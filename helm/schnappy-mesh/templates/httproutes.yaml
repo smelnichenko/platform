@@ -27,7 +27,7 @@ metadata:
 spec:
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-app
+      sectionName: https-apex
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api/auth }
@@ -48,7 +48,7 @@ metadata:
 spec:
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-app
+      sectionName: https-apex
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api/chat }
@@ -66,7 +66,7 @@ metadata:
 spec:
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-app
+      sectionName: https-apex
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api/chess }
@@ -84,7 +84,7 @@ metadata:
 spec:
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-app
+      sectionName: https-apex
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api }
@@ -101,7 +101,7 @@ metadata:
 spec:
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-app
+      sectionName: https-apex
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
@@ -117,9 +117,11 @@ metadata:
   name: {{ $fn }}-grafana-route
   namespace: {{ .Release.Namespace }}
 spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.grafana | quote }}
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-grafana
+      sectionName: https
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
@@ -134,9 +136,11 @@ metadata:
   name: {{ $fn }}-kibana-route
   namespace: {{ .Release.Namespace }}
 spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.logs | quote }}
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-logs
+      sectionName: https
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
@@ -151,9 +155,11 @@ metadata:
   name: {{ $fn }}-reports-route
   namespace: {{ .Release.Namespace }}
 spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.reports | quote }}
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-reports
+      sectionName: https
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
@@ -168,9 +174,11 @@ metadata:
   name: {{ $fn }}-sonarqube-route
   namespace: {{ .Release.Namespace }}
 spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.sonar | quote }}
   parentRefs:
     - name: {{ $gw }}
-      sectionName: https-sonar
+      sectionName: https
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
@@ -185,10 +193,12 @@ metadata:
   name: {{ $fn }}-argocd-route
   namespace: argocd
 spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.argocd | quote }}
   parentRefs:
     - name: {{ $gw }}
       namespace: {{ .Release.Namespace }}
-      sectionName: https-argocd
+      sectionName: https
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
@@ -204,10 +214,12 @@ metadata:
   name: {{ $fn }}-woodpecker-route
   namespace: woodpecker
 spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.ci | quote }}
   parentRefs:
     - name: {{ $gw }}
       namespace: {{ .Release.Namespace }}
-      sectionName: https-ci
+      sectionName: https
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
