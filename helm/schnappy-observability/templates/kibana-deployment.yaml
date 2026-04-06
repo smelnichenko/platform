@@ -12,6 +12,8 @@ spec:
       {{- include "schnappy.kibana.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/kibana-configmap.yaml") . | sha256sum }}
       labels:
         {{- include "schnappy.kibana.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy

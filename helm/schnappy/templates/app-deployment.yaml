@@ -16,6 +16,7 @@ spec:
         {{- include "schnappy.monitor.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/app-configmap.yaml") . | sha256sum }}
         prometheus.io/scrape: "true"
         prometheus.io/path: "/api/actuator/prometheus"
         prometheus.io/port: "8080"

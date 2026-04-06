@@ -14,6 +14,8 @@ spec:
       {{- include "schnappy.keycloak.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/keycloak-realm-configmap.yaml") . | sha256sum }}
       labels:
         {{- include "schnappy.keycloak.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy

@@ -17,6 +17,7 @@ spec:
         {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/elasticsearch-configmap.yaml") . | sha256sum }}
         backup.velero.io/backup-volumes: data
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-elasticsearch
