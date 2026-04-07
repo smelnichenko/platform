@@ -55,14 +55,19 @@ spec:
           port: 443
         - protocol: TCP
           port: 6443
-    # MinIO (CNPG backup)
+    {{- if .Values.cnpg.backup }}
+    # Pi MinIO (CNPG off-site backup)
     - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.minio.selectorLabels" . | nindent 14 }}
+        - ipBlock:
+            cidr: 192.168.11.4/32
+        - ipBlock:
+            cidr: 192.168.11.5/32
+        - ipBlock:
+            cidr: 192.168.11.6/32
       ports:
         - protocol: TCP
           port: 9000
+    {{- end }}
 {{- end }}
 {{- if .Values.redis.enabled }}
 ---
@@ -185,14 +190,6 @@ spec:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
               app.kubernetes.io/component: tempo
-      ports:
-        - protocol: TCP
-          port: 9000
-    # CNPG backup
-    - from:
-        - podSelector:
-            matchLabels:
-              cnpg.io/cluster: schnappy-postgres
       ports:
         - protocol: TCP
           port: 9000

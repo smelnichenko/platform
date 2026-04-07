@@ -132,3 +132,5 @@ cnpg:
   enabled: false
   import: false
   backup: false
+  backupEndpoint: ""
+  backupSecret: ""

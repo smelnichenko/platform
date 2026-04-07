@@ -89,14 +89,14 @@ spec:
   {{- if .Values.cnpg.backup }}
   backup:
     barmanObjectStore:
-      destinationPath: s3://postgres-backups/
-      endpointURL: http://{{ include "schnappy.fullname" . }}-minio:9000
+      destinationPath: {{ .Values.cnpg.backupDestination | default "s3://postgres-backups/" }}
+      endpointURL: {{ .Values.cnpg.backupEndpoint }}
       s3Credentials:
         accessKeyId:
-          name: {{ .Values.minio.existingSecret | default "schnappy-minio" }}
+          name: {{ .Values.cnpg.backupSecret }}
           key: MINIO_ROOT_USER
         secretAccessKey:
-          name: {{ .Values.minio.existingSecret | default "schnappy-minio" }}
+          name: {{ .Values.cnpg.backupSecret }}
           key: MINIO_ROOT_PASSWORD
       wal:
         compression: gzip
