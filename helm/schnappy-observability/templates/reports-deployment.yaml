@@ -16,6 +16,7 @@ spec:
         {{- include "schnappy.reports.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
       annotations:
+        sidecar.istio.io/inject: "false"
         checksum/config: {{ include (print $.Template.BasePath "/reports-configmap.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-reports

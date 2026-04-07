@@ -16,6 +16,8 @@ spec:
       labels:
         {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-sonarqube-postgres
       securityContext:

@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/component: tempo
         app.kubernetes.io/part-of: schnappy
       annotations:
+        sidecar.istio.io/inject: "false"
         checksum/config: {{ include (print $.Template.BasePath "/tempo-configmap.yaml") . | sha256sum }}
         backup.velero.io/backup-volumes: data
         prometheus.io/scrape: "true"

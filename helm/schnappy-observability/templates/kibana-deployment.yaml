@@ -13,6 +13,7 @@ spec:
   template:
     metadata:
       annotations:
+        sidecar.istio.io/inject: "false"
         checksum/config: {{ include (print $.Template.BasePath "/kibana-configmap.yaml") . | sha256sum }}
       labels:
         {{- include "schnappy.kibana.selectorLabels" . | nindent 8 }}
