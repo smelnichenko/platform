@@ -173,6 +173,8 @@ kafka:
   enabled: true
 strimzi:
   enabled: false
+cnpg:
+  enabled: false
 keycloak:
   enabled: false
   hostname: auth.pmon.dev

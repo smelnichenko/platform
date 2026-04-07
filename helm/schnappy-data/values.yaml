@@ -127,3 +127,9 @@ aptCache:
 # Strimzi Kafka operator (replaces custom kafka StatefulSet)
 strimzi:
   enabled: false
+
+# CloudNativePG operator (replaces custom postgres Deployment)
+cnpg:
+  enabled: false
+  import: false
+  backup: false

@@ -48,8 +48,12 @@ app.kubernetes.io/component: postgres
 {{- end }}
 
 {{- define "schnappy.postgres.selectorLabels" -}}
+{{- if eq (.Values.cnpg.enabled | toString) "true" }}
+cnpg.io/cluster: schnappy-postgres
+{{- else }}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: postgres
+{{- end }}
 {{- end }}
 
 {{- define "schnappy.postgres.serviceName" -}}

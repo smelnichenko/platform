@@ -1,7 +1,7 @@
 {{- if .Values.networkPolicies.enabled -}}
 {{- if .Values.postgres.enabled }}
 ---
-# PostgreSQL network policy
+# PostgreSQL network policy (custom Deployment)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -11,7 +11,8 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      {{- include "schnappy.postgres.selectorLabels" . | nindent 6 }}
+      {{ include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
   policyTypes:
     - Ingress
     - Egress
@@ -51,6 +52,16 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
+    {{- if eq (.Values.cnpg.enabled | toString) "true" }}
+    # CNPG import migration
+    - from:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: schnappy-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
   egress:
     # DNS
     - ports:
@@ -89,6 +100,86 @@ spec:
         - protocol: TCP
           port: 6443
 ---
+{{- end }}
+{{- if eq (.Values.cnpg.enabled | toString) "true" }}
+---
+# CNPG PostgreSQL network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-cnpg-postgres
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: schnappy-postgres
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # CNPG operator (cross-namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Kubernetes API (leader election, status updates)
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    # Old PostgreSQL (import migration)
+    {{- if .Values.postgres.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "schnappy.name" . }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    # MinIO (CNPG backup)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.minio.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
 {{- end }}
 {{- if .Values.redis.enabled }}
 # Redis network policy

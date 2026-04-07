@@ -1,0 +1,105 @@
+{{- if eq (.Values.cnpg.enabled | toString) "true" }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: schnappy-postgres
+  labels:
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: schnappy-postgres-superuser
+
+  postgresql:
+    parameters:
+      shared_buffers: {{ .Values.postgres.sharedBuffers | default "512MB" | quote }}
+      effective_cache_size: {{ .Values.postgres.effectiveCacheSize | default "1536MB" | quote }}
+      work_mem: {{ .Values.postgres.workMem | default "16MB" | quote }}
+      maintenance_work_mem: {{ .Values.postgres.maintenanceWorkMem | default "128MB" | quote }}
+      max_parallel_workers_per_gather: {{ .Values.postgres.maxParallelWorkersPerGather | default 2 | quote }}
+      max_parallel_workers: {{ .Values.postgres.maxParallelWorkers | default 8 | quote }}
+      max_worker_processes: {{ .Values.postgres.maxWorkerProcesses | default 8 | quote }}
+      effective_io_concurrency: {{ .Values.postgres.effectiveIoConcurrency | default 1 | quote }}
+      random_page_cost: {{ .Values.postgres.randomPageCost | default "4.0" | quote }}
+
+  bootstrap:
+    {{- if .Values.cnpg.import }}
+    initdb:
+      database: {{ .Values.postgres.database | default "monitor" }}
+      owner: postgres
+      secret:
+        name: schnappy-postgres-superuser
+      import:
+        type: monolith
+        databases:
+          - {{ .Values.postgres.database | default "monitor" }}
+          {{- range .Values.postgres.extraDatabases }}
+          - {{ . }}
+          {{- end }}
+        roles:
+          - postgres
+        source:
+          externalCluster: old-postgres
+    {{- else }}
+    initdb:
+      database: {{ .Values.postgres.database | default "monitor" }}
+      owner: postgres
+      secret:
+        name: schnappy-postgres-superuser
+      {{- if .Values.postgres.extraDatabases }}
+      postInitSQL:
+        {{- range .Values.postgres.extraDatabases }}
+        - CREATE DATABASE {{ . }};
+        {{- end }}
+      {{- end }}
+    {{- end }}
+
+  {{- if .Values.cnpg.import }}
+  externalClusters:
+    - name: old-postgres
+      connectionParameters:
+        host: {{ include "schnappy.postgres.serviceName" . }}
+        user: postgres
+        dbname: postgres
+        port: "5432"
+      password:
+        name: {{ include "schnappy.postgres.secretName" . }}
+        key: POSTGRES_PASSWORD
+  {{- end }}
+
+  storage:
+    size: {{ .Values.postgres.storage.size | default "20Gi" }}
+    {{- if .Values.postgres.storage.storageClass }}
+    storageClass: {{ .Values.postgres.storage.storageClass }}
+    {{- end }}
+
+  resources:
+    {{- toYaml .Values.postgres.resources | nindent 4 }}
+
+  inheritedMetadata:
+    annotations:
+      backup.velero.io/backup-volumes: pgdata
+      traffic.sidecar.istio.io/excludeInboundPorts: "8000"
+
+  {{- if .Values.cnpg.backup }}
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://postgres-backups/
+      endpointURL: http://{{ include "schnappy.fullname" . }}-minio:9000
+      s3Credentials:
+        accessKeyId:
+          name: {{ .Values.minio.existingSecret | default "schnappy-minio" }}
+          key: MINIO_ROOT_USER
+        secretAccessKey:
+          name: {{ .Values.minio.existingSecret | default "schnappy-minio" }}
+          key: MINIO_ROOT_PASSWORD
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+      retentionPolicy: "7d"
+  {{- end }}
+{{- end }}

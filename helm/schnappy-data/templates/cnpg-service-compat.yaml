@@ -1,0 +1,11 @@
+{{- if and (eq (.Values.cnpg.enabled | toString) "true") (ne (.Values.postgres.enabled | toString) "true") }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.postgres.serviceName" . }}
+  labels:
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: schnappy-postgres-rw.{{ .Release.Namespace }}.svc.cluster.local
+{{- end }}

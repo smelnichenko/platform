@@ -230,8 +230,12 @@ app.kubernetes.io/component: chess
 {{/* Cross-chart selector labels (for NPs referencing pods in other charts) */}}
 
 {{- define "schnappy.postgres.selectorLabels" -}}
+{{- if eq (.Values.cnpg.enabled | toString) "true" }}
+cnpg.io/cluster: schnappy-postgres
+{{- else }}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: postgres
+{{- end }}
 {{- end }}
 
 {{- define "schnappy.redis.selectorLabels" -}}
