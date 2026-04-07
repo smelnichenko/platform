@@ -43,7 +43,7 @@ spec:
                     - ALL
               env:
                 - name: JAVA_OPTS
-                  value: "-Xmx256m -XX:+UseZGC"
+                  value: "-Xmx256m -XX:+UseZGC -Dio.hyperfoil.cpu.threshold=90"
                 - name: MONITOR_URL
                   value: "http://{{ include "schnappy.fullname" . }}-monitor:8080"
                 - name: CHAT_URL
