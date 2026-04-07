@@ -1,0 +1,11 @@
+{{- if and (eq (.Values.strimzi.enabled | toString) "true") (ne (.Values.kafka.enabled | toString) "true") }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.kafka.serviceName" . }}
+  labels:
+    {{- include "schnappy.kafka.labels" . | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: schnappy-kafka-bootstrap.{{ .Release.Namespace }}.svc.cluster.local
+{{- end }}

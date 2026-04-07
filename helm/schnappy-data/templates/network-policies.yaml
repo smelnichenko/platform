@@ -308,6 +308,119 @@ spec:
         - protocol: TCP
           port: 9092
 {{- end }}
+{{- if eq (.Values.strimzi.enabled | toString) "true" }}
+---
+# Strimzi Kafka broker network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-strimzi-kafka
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      strimzi.io/cluster: schnappy
+      strimzi.io/kind: Kafka
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
+        # Strimzi Entity Operator
+        - podSelector:
+            matchLabels:
+              strimzi.io/cluster: schnappy
+              strimzi.io/kind: entity-operator
+        # Strimzi broker self (KRaft)
+        - podSelector:
+            matchLabels:
+              strimzi.io/cluster: schnappy
+              strimzi.io/kind: Kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Strimzi operator (cross-namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: strimzi
+      ports:
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 9093
+        - protocol: TCP
+          port: 9404
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # KRaft controller + broker self
+    - to:
+        - podSelector:
+            matchLabels:
+              strimzi.io/cluster: schnappy
+              strimzi.io/kind: Kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 9093
+---
+# Strimzi Entity Operator network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-strimzi-entity-operator
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      strimzi.io/cluster: schnappy
+      strimzi.io/kind: entity-operator
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Kafka broker
+    - to:
+        - podSelector:
+            matchLabels:
+              strimzi.io/cluster: schnappy
+              strimzi.io/kind: Kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Kubernetes API (topic management)
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+{{- end }}
 {{- if eq (.Values.scylla.enabled | toString) "true" }}
 ---
 # ScyllaDB network policy

@@ -123,3 +123,7 @@ aptCache:
   storage:
     size: 5Gi
     storageClass: ""
+
+# Strimzi Kafka operator (replaces custom kafka StatefulSet)
+strimzi:
+  enabled: false

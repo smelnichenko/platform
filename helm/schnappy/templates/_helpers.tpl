@@ -240,8 +240,13 @@ app.kubernetes.io/component: redis
 {{- end }}
 
 {{- define "schnappy.kafka.selectorLabels" -}}
+{{- if eq (.Values.strimzi.enabled | toString) "true" }}
+strimzi.io/cluster: schnappy
+strimzi.io/kind: Kafka
+{{- else }}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: kafka
+{{- end }}
 {{- end }}
 
 {{- define "schnappy.scylla.selectorLabels" -}}
