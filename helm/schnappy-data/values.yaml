@@ -20,7 +20,6 @@ postgres:
     - monitor_admin
     - monitor_chat
     - monitor_chess
-    - keycloak
   sharedBuffers: "512MB"
   effectiveCacheSize: "1536MB"
   workMem: "16MB"
