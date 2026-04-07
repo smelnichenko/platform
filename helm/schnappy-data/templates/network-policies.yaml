@@ -352,16 +352,22 @@ spec:
       ports:
         - protocol: TCP
           port: 9092
-    # Strimzi operator (cross-namespace)
+    # Strimzi operator (cross-namespace) — control plane + metrics
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: strimzi
       ports:
         - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 9091
+        - protocol: TCP
           port: 9092
         - protocol: TCP
           port: 9093
+        - protocol: TCP
+          port: 8443
         - protocol: TCP
           port: 9404
   egress:
@@ -371,13 +377,17 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # KRaft controller + broker self
+    # KRaft controller + broker self (all internal ports)
     - to:
         - podSelector:
             matchLabels:
               strimzi.io/cluster: schnappy
               strimzi.io/kind: Kafka
       ports:
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 9091
         - protocol: TCP
           port: 9092
         - protocol: TCP
@@ -405,13 +415,15 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Kafka broker
+    # Kafka broker (client + internal control)
     - to:
         - podSelector:
             matchLabels:
               strimzi.io/cluster: schnappy
               strimzi.io/kind: Kafka
       ports:
+        - protocol: TCP
+          port: 9091
         - protocol: TCP
           port: 9092
     # Kubernetes API (topic management)

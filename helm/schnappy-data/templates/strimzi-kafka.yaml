@@ -2,7 +2,7 @@
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
-  name: schnappy
+  name: kafka
   labels:
     strimzi.io/cluster: schnappy
     {{- include "schnappy.labels" . | nindent 4 }}
