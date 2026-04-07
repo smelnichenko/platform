@@ -75,26 +75,10 @@ spec:
   portLevelMtls:
     9092:
       mode: PERMISSIVE
+{{- if ne (.Values.scyllaOperator.enabled | toString) "true" }}
 ---
 # ScyllaDB accepts plaintext on port 9042 for CQL binary protocol
-{{- if eq (.Values.scyllaOperator.enabled | toString) "true" }}
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: {{ include "schnappy.fullname" . }}-scylla
-  namespace: {{ .Release.Namespace }}
-spec:
-  selector:
-    matchLabels:
-      scylla/cluster: {{ include "schnappy.fullname" . }}-scylla
-  mtls:
-    mode: {{ .Values.peerAuthentication.mode }}
-  portLevelMtls:
-    9042:
-      mode: PERMISSIVE
-    10001:
-      mode: PERMISSIVE
-{{- else }}
+# (only needed when ScyllaDB has an Istio sidecar — operator mode disables it)
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
