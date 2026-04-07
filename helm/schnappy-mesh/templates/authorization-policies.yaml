@@ -132,6 +132,13 @@ spec:
       to:
         - operation:
             ports: ["9000"]
+    # Tempo, Mimir, reports, and buckets job have no sidecar — allow plain TCP on 9000
+    - from:
+        - source:
+            notPrincipals: ["*"]
+      to:
+        - operation:
+            ports: ["9000"]
 ---
 # Elasticsearch — monitor + kibana + fluentbit on port 9200
 apiVersion: security.istio.io/v1
