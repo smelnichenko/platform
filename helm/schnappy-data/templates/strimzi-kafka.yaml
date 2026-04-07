@@ -60,5 +60,5 @@ spec:
       pod:
         metadata:
           annotations:
-            traffic.sidecar.istio.io/excludeOutboundPorts: "9091"
+            sidecar.istio.io/inject: "false"
 {{- end }}
