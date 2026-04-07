@@ -175,6 +175,8 @@ strimzi:
   enabled: false
 cnpg:
   enabled: false
+scyllaOperator:
+  enabled: false
 keycloak:
   enabled: false
   hostname: auth.pmon.dev
