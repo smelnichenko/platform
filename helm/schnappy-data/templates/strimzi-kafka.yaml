@@ -27,6 +27,7 @@ spec:
       metadata:
         annotations:
           backup.velero.io/backup-volumes: data-0
+          traffic.sidecar.istio.io/excludeInboundPorts: "9090,9091,9093,8443"
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
@@ -55,4 +56,9 @@ spec:
       min.insync.replicas: 1
   entityOperator:
     topicOperator: {}
+    template:
+      pod:
+        metadata:
+          annotations:
+            traffic.sidecar.istio.io/excludeOutboundPorts: "9091"
 {{- end }}
