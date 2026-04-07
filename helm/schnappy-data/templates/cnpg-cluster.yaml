@@ -65,6 +65,7 @@ spec:
         user: postgres
         dbname: postgres
         port: "5432"
+        sslmode: disable
       password:
         name: {{ include "schnappy.postgres.secretName" . }}
         key: POSTGRES_PASSWORD
