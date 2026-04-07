@@ -85,6 +85,7 @@ spec:
     annotations:
       backup.velero.io/backup-volumes: pgdata
       traffic.sidecar.istio.io/excludeInboundPorts: "8000"
+      traffic.sidecar.istio.io/excludeOutboundPorts: "9000"
 
   {{- if .Values.cnpg.backup }}
   backup:
