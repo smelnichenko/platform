@@ -12,7 +12,7 @@ postgres:
   enabled: true
   image: postgres:17-alpine
   database: monitor
-  username: postgres
+  username: monitor
   password: ""
   existingSecret: ""
   # Extra databases to create on init (unconditional)

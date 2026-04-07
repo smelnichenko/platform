@@ -46,15 +46,16 @@ spec:
     {{- else }}
     initdb:
       database: {{ .Values.postgres.database | default "monitor" }}
-      owner: postgres
+      owner: {{ .Values.postgres.username | default "monitor" }}
       secret:
-        name: schnappy-postgres-superuser
-      {{- if .Values.postgres.extraDatabases }}
+        name: schnappy-postgres-app
       postInitSQL:
         {{- range .Values.postgres.extraDatabases }}
         - CREATE DATABASE {{ . }};
         {{- end }}
-      {{- end }}
+        {{- range .Values.postgres.extraDatabases }}
+        - GRANT ALL PRIVILEGES ON DATABASE {{ . }} TO {{ $.Values.postgres.username | default "monitor" }};
+        {{- end }}
     {{- end }}
 
   {{- if .Values.cnpg.import }}
