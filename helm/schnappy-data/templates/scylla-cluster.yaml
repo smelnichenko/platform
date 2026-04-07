@@ -34,7 +34,7 @@ spec:
   podMetadata:
     annotations:
       backup.velero.io/backup-volumes: data
-      traffic.sidecar.istio.io/excludeInboundPorts: "7000,7001"
+      traffic.sidecar.istio.io/excludeInboundPorts: "7000,7001,10001"
       traffic.sidecar.istio.io/excludeOutboundPorts: "7000,7001,9000"
 
   {{- if .Values.scyllaOperator.backups }}
