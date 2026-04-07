@@ -102,6 +102,5 @@ spec:
         compression: gzip
       data:
         compression: gzip
-      retentionPolicy: "7d"
   {{- end }}
 {{- end }}
