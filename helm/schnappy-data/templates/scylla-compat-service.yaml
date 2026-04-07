@@ -1,0 +1,13 @@
+{{- if and (eq (.Values.scyllaOperator.enabled | toString) "true") (not (eq (.Values.scylla.enabled | toString) "true")) }}
+# Compatibility service: schnappy-scylla → operator-generated client service
+# The operator creates a client service named {cluster}-client
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.scylla.serviceName" . }}
+  labels:
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ include "schnappy.scylla.serviceName" . }}-client.{{ .Release.Namespace }}.svc.cluster.local
+{{- end }}

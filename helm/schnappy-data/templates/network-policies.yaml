@@ -327,7 +327,7 @@ spec:
         - protocol: TCP
           port: 6443
 {{- end }}
-{{- if eq (.Values.scylla.enabled | toString) "true" }}
+{{- if or (eq (.Values.scylla.enabled | toString) "true") (eq (.Values.scyllaOperator.enabled | toString) "true") }}
 ---
 # ScyllaDB network policy
 apiVersion: networking.k8s.io/v1
@@ -357,13 +357,62 @@ spec:
       ports:
         - protocol: TCP
           port: 9042
+    {{- if eq (.Values.scyllaOperator.enabled | toString) "true" }}
+    # ScyllaDB operator (cross-namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: scylla-operator
+      ports:
+        - protocol: TCP
+          port: 9042
+        - protocol: TCP
+          port: 7000
+        - protocol: TCP
+          port: 7001
+        - protocol: TCP
+          port: 10001
+    # ScyllaDB manager (cross-namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: scylla-manager
+      ports:
+        - protocol: TCP
+          port: 9042
+        - protocol: TCP
+          port: 10001
+    {{- end }}
   egress:
-    # DNS only
+    # DNS
     - ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+    {{- if eq (.Values.scyllaOperator.enabled | toString) "true" }}
+    # Inter-node (KRaft-like clustering)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.scylla.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 7000
+        - protocol: TCP
+          port: 7001
+    # Pi MinIO (backup)
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.4/32
+        - ipBlock:
+            cidr: 192.168.11.5/32
+        - ipBlock:
+            cidr: 192.168.11.6/32
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- end }}
 ---
 # ScyllaDB schema job network policy
 apiVersion: networking.k8s.io/v1

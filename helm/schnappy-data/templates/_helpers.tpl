@@ -129,8 +129,12 @@ app.kubernetes.io/component: scylla
 {{- end }}
 
 {{- define "schnappy.scylla.selectorLabels" -}}
+{{- if eq (.Values.scyllaOperator.enabled | toString) "true" }}
+scylla/cluster: {{ include "schnappy.scylla.serviceName" . }}
+{{- else }}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: scylla
+{{- end }}
 {{- end }}
 
 {{- define "schnappy.scylla.serviceName" -}}

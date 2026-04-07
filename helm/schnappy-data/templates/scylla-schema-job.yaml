@@ -1,4 +1,4 @@
-{{- if and (eq (.Values.scylla.enabled | toString) "true") (gt (int .Values.scylla.replicas) 0) }}
+{{- if or (and (eq (.Values.scylla.enabled | toString) "true") (gt (int .Values.scylla.replicas) 0)) (eq (.Values.scyllaOperator.enabled | toString) "true") }}
 apiVersion: batch/v1
 kind: Job
 metadata:

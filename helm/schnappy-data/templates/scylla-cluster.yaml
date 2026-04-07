@@ -1,0 +1,43 @@
+{{- if eq (.Values.scyllaOperator.enabled | toString) "true" }}
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: {{ include "schnappy.scylla.serviceName" . }}
+  labels:
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
+spec:
+  repository: {{ .Values.scyllaOperator.repository | default "docker.io/scylladb/scylla" }}
+  version: {{ .Values.scyllaOperator.version | default "6.2" | quote }}
+  agentVersion: {{ .Values.scyllaOperator.agentVersion | default "3.9.0" | quote }}
+  developerMode: {{ .Values.scyllaOperator.developerMode | default true }}
+
+  datacenter:
+    name: {{ .Values.scylla.datacenter | default "datacenter1" }}
+    racks:
+      - name: rack1
+        members: {{ .Values.scylla.replicas | default 1 }}
+        storage:
+          capacity: {{ .Values.scylla.storage.size | default "20Gi" }}
+          {{- if .Values.scylla.storage.storageClass }}
+          storageClassName: {{ .Values.scylla.storage.storageClass }}
+          {{- end }}
+        resources:
+          {{- toYaml .Values.scylla.resources | nindent 10 }}
+        agentResources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+  inheritedMetadata:
+    annotations:
+      backup.velero.io/backup-volumes: data
+      traffic.sidecar.istio.io/excludeOutboundPorts: "9000"
+
+  {{- if .Values.scyllaOperator.backups }}
+  backups:
+    {{- toYaml .Values.scyllaOperator.backups | nindent 4 }}
+  {{- end }}
+{{- end }}

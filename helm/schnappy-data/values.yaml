@@ -128,6 +128,15 @@ strimzi:
   enabled: false
 
 # CloudNativePG operator (replaces custom postgres Deployment)
+# ScyllaDB Operator (replaces manual scylla StatefulSet)
+scyllaOperator:
+  enabled: false
+  repository: docker.io/scylladb/scylla
+  version: "6.2"
+  agentVersion: "3.9.0"
+  developerMode: true
+  backups: []
+
 cnpg:
   enabled: false
   import: false
