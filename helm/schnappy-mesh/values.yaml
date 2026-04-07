@@ -1,5 +1,8 @@
 nameOverride: schnappy
 
+scyllaOperator:
+  enabled: false
+
 # Strict mTLS for all pod-to-pod traffic
 peerAuthentication:
   enabled: true
