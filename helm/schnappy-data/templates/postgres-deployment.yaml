@@ -11,11 +11,13 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "schnappy.postgres.selectorLabels" . | nindent 6 }}
+      {{ include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
   template:
     metadata:
       labels:
-        {{- include "schnappy.postgres.selectorLabels" . | nindent 8 }}
+        {{ include "schnappy.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres
         app.kubernetes.io/part-of: schnappy
       annotations:
         backup.velero.io/backup-volumes: data

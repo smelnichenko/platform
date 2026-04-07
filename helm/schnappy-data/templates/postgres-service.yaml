@@ -13,5 +13,6 @@ spec:
       protocol: TCP
       name: tcp-postgres
   selector:
-    {{- include "schnappy.postgres.selectorLabels" . | nindent 4 }}
+    {{ include "schnappy.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
 {{- end }}
