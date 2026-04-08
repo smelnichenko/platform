@@ -11,7 +11,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      cnpg.io/cluster: schnappy-postgres
+      cnpg.io/cluster: {{ include "schnappy.postgres.serviceName" . }}
   policyTypes:
     - Ingress
     - Egress
@@ -214,7 +214,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      strimzi.io/cluster: schnappy
+      strimzi.io/cluster: {{ include "schnappy.fullname" . }}
       strimzi.io/kind: Kafka
   policyTypes:
     - Ingress
@@ -236,12 +236,12 @@ spec:
         # Strimzi Entity Operator
         - podSelector:
             matchLabels:
-              strimzi.io/cluster: schnappy
+              strimzi.io/cluster: {{ include "schnappy.fullname" . }}
               strimzi.io/kind: entity-operator
         # Strimzi broker self (KRaft)
         - podSelector:
             matchLabels:
-              strimzi.io/cluster: schnappy
+              strimzi.io/cluster: {{ include "schnappy.fullname" . }}
               strimzi.io/kind: Kafka
       ports:
         - protocol: TCP
@@ -275,7 +275,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              strimzi.io/cluster: schnappy
+              strimzi.io/cluster: {{ include "schnappy.fullname" . }}
               strimzi.io/kind: Kafka
       ports:
         - protocol: TCP
@@ -297,7 +297,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      strimzi.io/cluster: schnappy
+      strimzi.io/cluster: {{ include "schnappy.fullname" . }}
       strimzi.io/kind: entity-operator
   policyTypes:
     - Ingress
@@ -313,7 +313,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              strimzi.io/cluster: schnappy
+              strimzi.io/cluster: {{ include "schnappy.fullname" . }}
               strimzi.io/kind: Kafka
       ports:
         - protocol: TCP

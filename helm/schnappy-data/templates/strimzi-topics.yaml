@@ -6,7 +6,7 @@ kind: KafkaTopic
 metadata:
   name: {{ .name | replace "." "-" }}
   labels:
-    strimzi.io/cluster: schnappy
+    strimzi.io/cluster: {{ include "schnappy.fullname" $ }}
 spec:
   topicName: {{ .name }}
   partitions: {{ .partitions }}

@@ -3,6 +3,7 @@ nameOverride: schnappy
 
 vault:
   secretsEnabled: false
+  secretPathPrefix: "secret/data/schnappy"
 
 networkPolicies:
   enabled: true

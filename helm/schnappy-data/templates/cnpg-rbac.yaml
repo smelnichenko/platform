@@ -24,6 +24,6 @@ roleRef:
   name: cnpg-backup-secrets
 subjects:
   - kind: ServiceAccount
-    name: schnappy-postgres
+    name: {{ include "schnappy.postgres.serviceName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

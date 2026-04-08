@@ -49,7 +49,7 @@ app.kubernetes.io/component: postgres
 
 {{- define "schnappy.postgres.selectorLabels" -}}
 {{- if eq (.Values.cnpg.enabled | toString) "true" }}
-cnpg.io/cluster: schnappy-postgres
+cnpg.io/cluster: {{ include "schnappy.postgres.serviceName" . }}
 {{- else }}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: postgres
@@ -101,7 +101,7 @@ app.kubernetes.io/component: kafka
 
 {{- define "schnappy.kafka.selectorLabels" -}}
 {{- if eq (.Values.strimzi.enabled | toString) "true" }}
-strimzi.io/cluster: schnappy
+strimzi.io/cluster: {{ include "schnappy.fullname" . }}
 strimzi.io/kind: Kafka
 {{- else }}
 {{ include "schnappy.selectorLabels" . }}

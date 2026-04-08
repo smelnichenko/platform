@@ -7,5 +7,5 @@ metadata:
     {{- include "schnappy.postgres.labels" . | nindent 4 }}
 spec:
   type: ExternalName
-  externalName: schnappy-postgres-rw.{{ .Release.Namespace }}.svc.cluster.local
+  externalName: {{ include "schnappy.postgres.serviceName" . }}-rw.{{ .Release.Namespace }}.svc.cluster.local
 {{- end }}

@@ -2,7 +2,7 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: schnappy-postgres
+  name: {{ include "schnappy.postgres.serviceName" . }}
   labels:
     {{- include "schnappy.postgres.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
 
   enableSuperuserAccess: true
   superuserSecret:
-    name: schnappy-postgres-superuser
+    name: {{ include "schnappy.postgres.serviceName" . }}-superuser
 
   postgresql:
     parameters:
@@ -31,7 +31,7 @@ spec:
       database: {{ .Values.postgres.database | default "monitor" }}
       owner: postgres
       secret:
-        name: schnappy-postgres-superuser
+        name: {{ include "schnappy.postgres.serviceName" . }}-superuser
       import:
         type: monolith
         databases:
@@ -48,7 +48,7 @@ spec:
       database: {{ .Values.postgres.database | default "monitor" }}
       owner: {{ .Values.postgres.username | default "monitor" }}
       secret:
-        name: schnappy-postgres-app
+        name: {{ include "schnappy.postgres.serviceName" . }}-app
       postInitSQL:
         {{- range .Values.postgres.extraDatabases }}
         - CREATE DATABASE {{ . }};

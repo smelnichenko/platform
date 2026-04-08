@@ -104,7 +104,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      cnpg.io/cluster: schnappy-postgres
+      cnpg.io/cluster: {{ include "schnappy.fullname" . }}-postgres
   mtls:
     mode: {{ .Values.peerAuthentication.mode }}
   portLevelMtls:

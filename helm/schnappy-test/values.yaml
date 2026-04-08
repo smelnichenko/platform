@@ -8,3 +8,4 @@ smokeTest:
 
 vault:
   secretsEnabled: false
+  secretPathPrefix: "secret/data/schnappy"

@@ -81,7 +81,7 @@ spec:
                   VAULT_RESP=$(curl -sk -X PATCH \
                     -H "X-Vault-Token: ${VAULT_TOKEN}" \
                     -H "Content-Type: application/merge-patch+json" \
-                    "${VAULT_ADDR}/v1/secret/data/schnappy/woodpecker-ci" \
+                    "${VAULT_ADDR}/v1/{{ .Values.vault.secretPathPrefix }}/woodpecker-ci" \
                     -d "{\"data\":{\"sonar_token\":\"${TOKEN}\"}}")
                   if echo "$VAULT_RESP" | grep -q '"version"'; then
                     echo "Token written to Vault successfully"
