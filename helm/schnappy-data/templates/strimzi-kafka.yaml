@@ -38,6 +38,14 @@ metadata:
   annotations:
     strimzi.io/kraft: enabled
     strimzi.io/node-pools: enabled
+    {{- if .Values.kafka.clusterId }}
+    strimzi.io/kraft-cluster-id: {{ .Values.kafka.clusterId | quote }}
+    {{- else }}
+    {{- $secret := (lookup "v1" "Secret" .Release.Namespace (include "schnappy.kafka.secretName" .)) }}
+    {{- if $secret }}
+    strimzi.io/kraft-cluster-id: {{ index $secret.data "KAFKA_CLUSTER_ID" | b64dec | quote }}
+    {{- end }}
+    {{- end }}
 spec:
   kafka:
     version: 4.2.0
