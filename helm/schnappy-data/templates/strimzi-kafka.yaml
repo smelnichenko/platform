@@ -63,7 +63,14 @@ spec:
       default.replication.factor: 1
       min.insync.replicas: 1
   entityOperator:
-    topicOperator: {}
+    topicOperator:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
     template:
       pod:
         metadata:
