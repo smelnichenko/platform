@@ -53,6 +53,7 @@ spec:
       secret:
         name: {{ include "schnappy.postgres.serviceName" . }}-app
       postInitSQL:
+        - GRANT ALL ON SCHEMA public TO {{ .Values.postgres.username | default "monitor" }};
         {{- range .Values.postgres.extraDatabases }}
         - CREATE DATABASE {{ . }};
         {{- end }}
