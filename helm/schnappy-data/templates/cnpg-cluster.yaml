@@ -26,7 +26,10 @@ spec:
       random_page_cost: {{ .Values.postgres.randomPageCost | default "4.0" | quote }}
 
   bootstrap:
-    {{- if .Values.cnpg.import }}
+    {{- if .Values.cnpg.recovery }}
+    recovery:
+      source: backup-source
+    {{- else if .Values.cnpg.import }}
     initdb:
       database: {{ .Values.postgres.database | default "monitor" }}
       owner: postgres
@@ -58,7 +61,23 @@ spec:
         {{- end }}
     {{- end }}
 
-  {{- if .Values.cnpg.import }}
+  {{- if .Values.cnpg.recovery }}
+  externalClusters:
+    - name: backup-source
+      barmanObjectStore:
+        destinationPath: {{ .Values.cnpg.backupDestination | default "s3://postgres-backups/" }}
+        endpointURL: {{ .Values.cnpg.backupEndpoint }}
+        serverName: {{ include "schnappy.postgres.serviceName" . }}
+        s3Credentials:
+          accessKeyId:
+            name: {{ .Values.cnpg.backupSecret }}
+            key: MINIO_ROOT_USER
+          secretAccessKey:
+            name: {{ .Values.cnpg.backupSecret }}
+            key: MINIO_ROOT_PASSWORD
+        wal:
+          maxParallel: 4
+  {{- else if .Values.cnpg.import }}
   externalClusters:
     - name: old-postgres
       connectionParameters:
