@@ -1,16 +1,5 @@
 {{- if .Values.gateway.enabled }}
 {{- $fn := include "schnappy.fullname" . }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ $fn }}-gateway-params
-  namespace: {{ .Release.Namespace }}
-data:
-  service: |
-    spec:
-      externalIPs:
-        - {{ .Values.gateway.loadBalancerIP | quote }}
----
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -23,10 +12,6 @@ spec:
   infrastructure:
     labels:
       gateway.istio.io/managed: istio.io-gateway-controller
-    parametersRef:
-      group: ""
-      kind: ConfigMap
-      name: {{ $fn }}-gateway-params
   listeners:
     # HTTPS — apex domain (*.pmon.dev doesn't match bare pmon.dev)
     - name: https-apex
@@ -60,4 +45,35 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+---
+# Pre-create gateway service with externalIPs so Istio adopts it.
+# Istio manages the service but preserves externalIPs we set here.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fn }}-gateway-istio
+  namespace: {{ .Release.Namespace }}
+  labels:
+    gateway.istio.io/managed: istio.io-gateway-controller
+  annotations:
+    networking.istio.io/service-type: ClusterIP
+spec:
+  type: ClusterIP
+  selector:
+    istio.io/gateway-name: {{ $fn }}-gateway
+  ports:
+    - name: status-port
+      port: 15021
+      protocol: TCP
+      targetPort: 15021
+    - name: https-apex
+      port: 443
+      protocol: TCP
+      targetPort: 443
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  externalIPs:
+    - {{ .Values.gateway.loadBalancerIP | quote }}
 {{- end }}
