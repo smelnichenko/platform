@@ -250,7 +250,7 @@ spec:
 {{- end }}
 {{- if .Values.gateway.hosts.forgejo }}
 ---
-# Forgejo (Pi proxy — temporary until schnappy.io migration)
+# Forgejo (Pi proxy)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -271,7 +271,7 @@ spec:
 {{- end }}
 {{- if .Values.gateway.hosts.auth }}
 ---
-# Keycloak (Pi proxy — temporary until schnappy.io migration)
+# Keycloak (Pi proxy)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
