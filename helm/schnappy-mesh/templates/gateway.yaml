@@ -46,34 +46,67 @@ spec:
         namespaces:
           from: All
 ---
-# Pre-create gateway service with externalIPs so Istio adopts it.
-# Istio manages the service but preserves externalIPs we set here.
-apiVersion: v1
-kind: Service
+# Patch gateway service with externalIPs after Istio creates it
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: {{ $fn }}-gateway-istio
+  name: {{ $fn }}-gateway-patch
   namespace: {{ .Release.Namespace }}
-  labels:
-    gateway.istio.io/managed: istio.io-gateway-controller
   annotations:
-    networking.istio.io/service-type: ClusterIP
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "5"
 spec:
-  type: ClusterIP
-  selector:
-    istio.io/gateway-name: {{ $fn }}-gateway
-  ports:
-    - name: status-port
-      port: 15021
-      protocol: TCP
-      targetPort: 15021
-    - name: https-apex
-      port: 443
-      protocol: TCP
-      targetPort: 443
-    - name: http
-      port: 80
-      protocol: TCP
-      targetPort: 80
-  externalIPs:
-    - {{ .Values.gateway.loadBalancerIP | quote }}
+  backoffLimit: 5
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: {{ $fn }}-gateway-patch
+      restartPolicy: OnFailure
+      containers:
+        - name: patch
+          image: bitnami/kubectl:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Waiting for gateway service..."
+              until kubectl get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null; do
+                sleep 2
+              done
+              echo "Patching externalIPs..."
+              kubectl patch svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} \
+                --type merge -p '{"spec":{"externalIPs":["{{ .Values.gateway.loadBalancerIP }}"]}}'
+              echo "Done."
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $fn }}-gateway-patch
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $fn }}-gateway-patch
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $fn }}-gateway-patch
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $fn }}-gateway-patch
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ $fn }}-gateway-patch
+  apiGroup: rbac.authorization.k8s.io
 {{- end }}
