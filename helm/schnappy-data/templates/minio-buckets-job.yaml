@@ -24,6 +24,9 @@ spec:
       containers:
         - name: create-buckets
           image: minio/mc:latest
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
           command:
             - /bin/sh
             - -c
