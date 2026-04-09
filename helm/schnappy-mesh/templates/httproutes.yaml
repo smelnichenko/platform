@@ -248,4 +248,46 @@ spec:
         - name: hubble-ui
           port: 80
 {{- end }}
+{{- if .Values.gateway.hosts.forgejo }}
+---
+# Forgejo (Pi proxy — temporary until schnappy.io migration)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-forgejo-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.forgejo | quote }}
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-pi-forgejo
+          port: 3000
+{{- end }}
+{{- if .Values.gateway.hosts.auth }}
+---
+# Keycloak (Pi proxy — temporary until schnappy.io migration)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-keycloak-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.auth | quote }}
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-pi-keycloak
+          port: 8080
+{{- end }}
 {{- end }}
