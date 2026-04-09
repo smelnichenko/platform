@@ -28,6 +28,7 @@ gateway:
     argocd: cd.pmon.dev
     forgejo: git.pmon.dev
     ci: ci.pmon.dev
+    hubble: ""
 
 # JWT validation on app routes only (not sonar/ci/git/auth)
 jwt:
