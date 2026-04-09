@@ -1,0 +1,110 @@
+{{- if and (not .Values.gateway.enabled) .Values.gateway.external.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $gwName := .Values.gateway.external.gatewayName }}
+{{- $gwNamespace := .Values.gateway.external.gatewayNamespace }}
+{{- $hostname := .Values.gateway.external.hostname }}
+# Routes for environments without their own gateway.
+# Traffic enters via prod gateway, routed by hostname.
+---
+# App routes (admin, chat, chess, core API, site)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-admin-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ $hostname | quote }}
+  parentRefs:
+    - name: {{ $gwName }}
+      namespace: {{ $gwNamespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/auth }
+        - path: { type: PathPrefix, value: /api/captcha }
+        - path: { type: PathPrefix, value: /api/user }
+        - path: { type: PathPrefix, value: /api/permissions }
+        - path: { type: PathPrefix, value: /api/admin }
+      backendRefs:
+        - name: {{ $fn }}-admin
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-chat-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ $hostname | quote }}
+  parentRefs:
+    - name: {{ $gwName }}
+      namespace: {{ $gwNamespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/chat }
+        - path: { type: PathPrefix, value: /ws/chat }
+      backendRefs:
+        - name: {{ $fn }}-chat
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-chess-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ $hostname | quote }}
+  parentRefs:
+    - name: {{ $gwName }}
+      namespace: {{ $gwNamespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/chess }
+        - path: { type: PathPrefix, value: /ws/chess }
+      backendRefs:
+        - name: {{ $fn }}-chess
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-core-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ $hostname | quote }}
+  parentRefs:
+    - name: {{ $gwName }}
+      namespace: {{ $gwNamespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api }
+      backendRefs:
+        - name: {{ $fn }}-monitor
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-site-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ $hostname | quote }}
+  parentRefs:
+    - name: {{ $gwName }}
+      namespace: {{ $gwNamespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-site
+          port: 8080
+{{- end }}

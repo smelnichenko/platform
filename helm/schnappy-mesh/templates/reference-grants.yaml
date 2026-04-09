@@ -17,6 +17,11 @@ spec:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       namespace: kube-system
+    {{- range .Values.gateway.allowedNamespaces }}
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: {{ . }}
+    {{- end }}
   to:
     - group: gateway.networking.k8s.io
       kind: Gateway
