@@ -57,16 +57,21 @@ spec:
               value: {{ include "schnappy.postgres.serviceName" . }}
             - name: SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES
               value: "sslmode=disable"
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.fullname" . }}-postgres-monitor
+                  key: DB_NAME
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.postgres.secretName" . }}
-                  key: POSTGRES_USER
+                  name: {{ include "schnappy.fullname" . }}-postgres-monitor
+                  key: DB_USERNAME
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.postgres.secretName" . }}
-                  key: POSTGRES_PASSWORD
+                  name: {{ include "schnappy.fullname" . }}-postgres-monitor
+                  key: DB_PASSWORD
             - name: JAVA_OPTS
               value: {{ .Values.app.javaOpts | default "-Xmx1536m" | quote }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}

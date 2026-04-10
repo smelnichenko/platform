@@ -39,8 +39,8 @@ spec:
         type: monolith
         databases:
           - {{ .Values.postgres.database | default "monitor" }}
-          {{- range .Values.postgres.extraDatabases }}
-          - {{ . }}
+          {{- range .Values.postgres.databases }}
+          - {{ .name }}
           {{- end }}
         roles:
           - postgres
@@ -54,11 +54,8 @@ spec:
         name: {{ include "schnappy.postgres.serviceName" . }}-app
       postInitSQL:
         - GRANT ALL ON SCHEMA public TO {{ .Values.postgres.username | default "monitor" }};
-        {{- range .Values.postgres.extraDatabases }}
-        - CREATE DATABASE {{ . }};
-        {{- end }}
-        {{- range .Values.postgres.extraDatabases }}
-        - GRANT ALL PRIVILEGES ON DATABASE {{ . }} TO {{ $.Values.postgres.username | default "monitor" }};
+        {{- range .Values.postgres.databases }}
+        - CREATE DATABASE {{ .name }};
         {{- end }}
     {{- end }}
 

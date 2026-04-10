@@ -1,0 +1,70 @@
+{{- if and (eq (.Values.cnpg.enabled | toString) "true") .Values.postgres.databases }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "schnappy.postgres.serviceName" . }}-init-users
+  labels:
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app.kubernetes.io/name: postgres-init-users
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "schnappy.fullname" . }}-scylla
+      automountServiceAccountToken: false
+      containers:
+        - name: init-users
+          image: ghcr.io/cloudnative-pg/postgresql:17
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: PGHOST
+              value: {{ include "schnappy.postgres.serviceName" . }}-rw
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.postgres.serviceName" . }}-superuser
+                  key: password
+            {{- range .Values.postgres.databases }}
+            - name: DB_PASSWORD_{{ .name | upper }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.fullname" $ }}-postgres-{{ .name }}
+                  key: DB_PASSWORD
+            {{- end }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Waiting for PostgreSQL..."
+              until psql -c "SELECT 1" 2>/dev/null; do
+                echo "Not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "PostgreSQL is ready. Creating per-service users and databases..."
+              {{- range .Values.postgres.databases }}
+
+              # --- {{ .name }} ---
+              psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN PASSWORD '$(printenv DB_PASSWORD_{{ .name | upper }})'; END IF; END \$\$;"
+              psql -c "ALTER ROLE {{ .name }} PASSWORD '$(printenv DB_PASSWORD_{{ .name | upper }})';"
+              psql -c "CREATE DATABASE {{ .name }} OWNER {{ .name }};" 2>/dev/null || psql -c "ALTER DATABASE {{ .name }} OWNER TO {{ .name }};"
+              psql -d {{ .name }} -c "GRANT ALL ON SCHEMA public TO {{ .name }};"
+              {{- end }}
+
+              echo "Per-service users and databases configured."
+{{- end }}

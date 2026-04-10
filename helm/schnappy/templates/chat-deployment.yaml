@@ -54,18 +54,20 @@ spec:
             - name: SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES
               value: "sslmode=disable"
             - name: DB_NAME
-              value: "monitor_chat"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.fullname" . }}-postgres-chat
+                  key: DB_NAME
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.postgres.secretName" . }}
-                  key: POSTGRES_USER
-                  optional: true
+                  name: {{ include "schnappy.fullname" . }}-postgres-chat
+                  key: DB_USERNAME
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.postgres.secretName" . }}
-                  key: POSTGRES_PASSWORD
+                  name: {{ include "schnappy.fullname" . }}-postgres-chat
+                  key: DB_PASSWORD
             - name: REDIS_HOST
               value: {{ include "schnappy.redis.serviceName" . }}
             {{- if or .Values.redis.password .Values.redis.existingSecret }}

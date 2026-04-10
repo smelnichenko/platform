@@ -16,11 +16,11 @@ postgres:
   username: monitor
   password: ""
   existingSecret: ""
-  # Extra databases to create on init (unconditional)
-  extraDatabases:
-    - monitor_admin
-    - monitor_chat
-    - monitor_chess
+  # Per-service databases: each gets own user and credentials
+  databases:
+    - name: admin
+    - name: chat
+    - name: chess
   sharedBuffers: "512MB"
   effectiveCacheSize: "1536MB"
   workMem: "16MB"
