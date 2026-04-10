@@ -64,5 +64,5 @@ spec:
               {{- end }}
 
               echo "Per-service users and databases configured."
-              curl -sf -X POST http://localhost:15020/quitquitquit || true
+              wget -qO- --post-data= http://localhost:15020/quitquitquit || true
 {{- end }}
