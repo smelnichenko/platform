@@ -8,6 +8,15 @@ vault:
 networkPolicies:
   enabled: true
 
+gateway:
+  enabled: false
+  name: ""
+  namespace: ""
+  hosts:
+    grafana: ""
+    logs: ""
+    reports: ""
+
 # ELK Stack
 elk:
   enabled: false

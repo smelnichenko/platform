@@ -8,6 +8,13 @@ vault:
 networkPolicies:
   enabled: true
 
+gateway:
+  enabled: false
+  name: ""
+  namespace: ""
+  hosts:
+    sonar: ""
+
 sonarqube:
   enabled: false
   image: sonarqube:26.3.0.120487-community
