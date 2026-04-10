@@ -50,7 +50,7 @@ data:
           path: /data/wal
         s3:
           bucket: tempo-traces
-          endpoint: {{ include "schnappy.fullname" . }}-minio.{{ .Release.Namespace }}.svc:9000
+          endpoint: {{ .Values.tempo.minioEndpoint | default (printf "%s-minio.%s.svc:9000" (include "schnappy.fullname" .) .Release.Namespace) }}
           access_key: ${MINIO_ROOT_USER}
           secret_key: ${MINIO_ROOT_PASSWORD}
           insecure: true

@@ -68,7 +68,7 @@ spec:
       barmanObjectStore:
         destinationPath: {{ .Values.cnpg.backupDestination | default "s3://postgres-backups/" }}
         endpointURL: {{ .Values.cnpg.backupEndpoint }}
-        serverName: {{ include "schnappy.postgres.serviceName" . }}
+        serverName: {{ .Values.cnpg.recoveryServerName | default (include "schnappy.postgres.serviceName" .) }}
         s3Credentials:
           accessKeyId:
             name: {{ .Values.cnpg.backupSecret }}

@@ -19,7 +19,7 @@ data:
       storage:
         backend: s3
         s3:
-          endpoint: {{ include "schnappy.fullname" . }}-minio.{{ .Release.Namespace }}.svc:9000
+          endpoint: {{ .Values.mimir.minioEndpoint | default (printf "%s-minio.%s.svc:9000" (include "schnappy.fullname" .) .Release.Namespace) }}
           access_key_id: ${MINIO_ROOT_USER}
           secret_access_key: ${MINIO_ROOT_PASSWORD}
           insecure: true
