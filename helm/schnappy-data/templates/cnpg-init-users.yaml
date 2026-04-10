@@ -12,8 +12,6 @@ spec:
   activeDeadlineSeconds: 120
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
       labels:
         app.kubernetes.io/name: postgres-init-users
         app.kubernetes.io/instance: {{ .Release.Name }}
@@ -66,4 +64,5 @@ spec:
               {{- end }}
 
               echo "Per-service users and databases configured."
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
 {{- end }}
