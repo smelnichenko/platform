@@ -64,5 +64,5 @@ spec:
               {{- end }}
 
               echo "Per-service users and databases configured."
-              wget -qO- --post-data= http://localhost:15020/quitquitquit || true
+              printf 'POST /quitquitquit HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n' | nc localhost 15020 || true
 {{- end }}
