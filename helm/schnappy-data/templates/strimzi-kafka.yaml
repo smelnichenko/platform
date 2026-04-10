@@ -1,5 +1,5 @@
 {{- if eq (.Values.strimzi.enabled | toString) "true" }}
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
   name: kafka
@@ -29,7 +29,7 @@ spec:
           backup.velero.io/backup-volumes: data-0
           traffic.sidecar.istio.io/excludeInboundPorts: "9090,9091,9093,8443"
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: {{ include "schnappy.fullname" . }}
