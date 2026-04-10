@@ -14,11 +14,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from Traefik and Envoy proxy
+    # Gateway (cross-namespace)
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              gateway: "true"
+          podSelector:
+            matchLabels:
+              gateway.istio.io/managed: istio.io-gateway-controller
       ports:
         - protocol: TCP
           port: 8080
@@ -151,17 +154,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Allow from Traefik and Envoy proxy
+    # Gateway (cross-namespace)
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              gateway: "true"
+          podSelector:
+            matchLabels:
+              gateway.istio.io/managed: istio.io-gateway-controller
       ports:
         - protocol: TCP
           port: 8080
@@ -259,17 +259,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Allow from Traefik and Envoy proxy
+    # Gateway (cross-namespace)
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              gateway: "true"
+          podSelector:
+            matchLabels:
+              gateway.istio.io/managed: istio.io-gateway-controller
       ports:
         - protocol: TCP
           port: 8080
@@ -345,17 +342,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-      ports:
-        - protocol: TCP
-          port: 8080
-    # Allow from Traefik and Envoy proxy
+    # Gateway (cross-namespace)
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              gateway: "true"
+          podSelector:
+            matchLabels:
+              gateway.istio.io/managed: istio.io-gateway-controller
       ports:
         - protocol: TCP
           port: 8080
@@ -439,11 +433,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from Traefik and Envoy proxy
+    # Gateway (cross-namespace)
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              gateway: "true"
+          podSelector:
+            matchLabels:
+              gateway.istio.io/managed: istio.io-gateway-controller
       ports:
         - protocol: TCP
           port: 80
@@ -456,10 +453,20 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Frontend → Gateway (nginx proxy_pass)
+    # Frontend → backend services (nginx proxy_pass)
     - to:
         - podSelector:
             matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080

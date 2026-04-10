@@ -71,13 +71,6 @@ spec:
       to:
         - operation:
             ports: ["9092", "9093"]
-    # Setup job has no sidecar — allow plain TCP on 9092
-    - from:
-        - source:
-            notPrincipals: ["*"]
-      to:
-        - operation:
-            ports: ["9092"]
 ---
 # ScyllaDB — only monitor + chat on port 9042/7000
 apiVersion: security.istio.io/v1
@@ -100,13 +93,6 @@ spec:
       to:
         - operation:
             ports: ["9042", "7000"]
-    # Setup job has no sidecar — allow plain TCP on 9042
-    - from:
-        - source:
-            notPrincipals: ["*"]
-      to:
-        - operation:
-            ports: ["9042"]
 ---
 # MinIO — monitor + reports + mimir + tempo + hyperfoil + minio (buckets job) on port 9000
 apiVersion: security.istio.io/v1
@@ -132,13 +118,6 @@ spec:
       to:
         - operation:
             ports: ["9000"]
-    # Tempo, Mimir, reports, and buckets job have no sidecar — allow plain TCP on 9000
-    - from:
-        - source:
-            notPrincipals: ["*"]
-      to:
-        - operation:
-            ports: ["9000"]
 ---
 # Elasticsearch — monitor + kibana + fluentbit on port 9200
 apiVersion: security.istio.io/v1
@@ -159,14 +138,6 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kibana
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-fluentbit
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-elasticsearch
-      to:
-        - operation:
-            ports: ["9200"]
-    # Fluent Bit has no sidecar (DaemonSet needs host log access),
-    # so it arrives without mTLS identity — allow plain HTTP on 9200
-    - from:
-        - source:
-            notPrincipals: ["*"]
       to:
         - operation:
             ports: ["9200"]

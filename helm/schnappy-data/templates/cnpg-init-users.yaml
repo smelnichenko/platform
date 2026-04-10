@@ -25,9 +25,13 @@ spec:
             requests: { cpu: 25m, memory: 64Mi }
             limits: { cpu: 200m, memory: 128Mi }
           securityContext:
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           env:
             - name: PGHOST
               value: {{ include "schnappy.postgres.serviceName" . }}-rw
@@ -65,4 +69,7 @@ spec:
 
               echo "Per-service users and databases configured."
               wget -qO- --post-data= http://localhost:15020/quitquitquit || true
+      volumes:
+        - name: tmp
+          emptyDir: {}
 {{- end }}
