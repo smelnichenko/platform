@@ -29,6 +29,10 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres-init-users
+              app.kubernetes.io/instance: {{ .Release.Name }}
       ports:
         - protocol: TCP
           port: 5432
@@ -443,6 +447,38 @@ spec:
       ports:
         - protocol: TCP
           port: 9042
+{{- end }}
+{{- if eq (.Values.cnpg.enabled | toString) "true" }}
+---
+# Postgres init-users job network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-postgres-init-users
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-init-users
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.postgres.serviceName" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
 {{- end }}
 {{- if eq (.Values.aptCache.enabled | toString) "true" }}
 ---
