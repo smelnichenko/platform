@@ -65,11 +65,6 @@ spec:
               psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN PASSWORD '$(printenv DB_PASSWORD_{{ .name | upper }})'; END IF; END \$\$;"
               psql -c "ALTER ROLE {{ .name }} PASSWORD '$(printenv DB_PASSWORD_{{ .name | upper }})';"
               psql -c "CREATE DATABASE {{ .name }} OWNER {{ .name }};" 2>/dev/null || psql -c "ALTER DATABASE {{ .name }} OWNER TO {{ .name }};"
-              psql -d {{ .name }} -c "GRANT ALL ON SCHEMA public TO {{ .name }};"
-              psql -d {{ .name }} -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ .name }};"
-              psql -d {{ .name }} -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {{ .name }};"
-              psql -d {{ .name }} -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .name }};"
-              psql -d {{ .name }} -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .name }};"
               {{- end }}
 
               echo "Per-service users and databases configured."
