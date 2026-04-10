@@ -18,7 +18,7 @@ spec:
   parentRefs:
     - name: {{ $gwName }}
       namespace: {{ $gwNamespace }}
-      sectionName: https
+      sectionName: {{ .Values.gateway.external.sectionName | default "https" }}
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api/auth }
@@ -41,7 +41,7 @@ spec:
   parentRefs:
     - name: {{ $gwName }}
       namespace: {{ $gwNamespace }}
-      sectionName: https
+      sectionName: {{ .Values.gateway.external.sectionName | default "https" }}
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api/chat }
@@ -61,7 +61,7 @@ spec:
   parentRefs:
     - name: {{ $gwName }}
       namespace: {{ $gwNamespace }}
-      sectionName: https
+      sectionName: {{ .Values.gateway.external.sectionName | default "https" }}
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api/chess }
@@ -81,7 +81,7 @@ spec:
   parentRefs:
     - name: {{ $gwName }}
       namespace: {{ $gwNamespace }}
-      sectionName: https
+      sectionName: {{ .Values.gateway.external.sectionName | default "https" }}
   rules:
     - matches:
         - path: { type: PathPrefix, value: /api }
@@ -100,7 +100,7 @@ spec:
   parentRefs:
     - name: {{ $gwName }}
       namespace: {{ $gwNamespace }}
-      sectionName: https
+      sectionName: {{ .Values.gateway.external.sectionName | default "https" }}
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }
