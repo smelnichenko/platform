@@ -1,0 +1,124 @@
+{{- if .Values.gateway.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $gw := printf "%s-gateway" $fn }}
+# HTTP → HTTPS redirect
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-http-redirect
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+---
+# Argo CD
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-argocd-route
+  namespace: argocd
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.argocd | quote }}
+  parentRefs:
+    - name: {{ $gw }}
+      namespace: {{ .Release.Namespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: argocd-server
+          port: 80
+---
+# Woodpecker CI
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-woodpecker-route
+  namespace: woodpecker
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.ci | quote }}
+  parentRefs:
+    - name: {{ $gw }}
+      namespace: {{ .Release.Namespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: woodpecker-server
+          port: 80
+{{- if .Values.gateway.hosts.hubble }}
+---
+# Hubble UI
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-hubble-route
+  namespace: kube-system
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.hubble | quote }}
+  parentRefs:
+    - name: {{ $gw }}
+      namespace: {{ .Release.Namespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: hubble-ui
+          port: 80
+{{- end }}
+{{- if .Values.gateway.hosts.forgejo }}
+---
+# Forgejo (Pi proxy)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-forgejo-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.forgejo | quote }}
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-pi-forgejo
+          port: 3000
+{{- end }}
+{{- if .Values.gateway.hosts.auth }}
+---
+# Keycloak (Pi proxy)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-keycloak-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.auth | quote }}
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-pi-keycloak
+          port: 8080
+{{- end }}
+{{- end }}
