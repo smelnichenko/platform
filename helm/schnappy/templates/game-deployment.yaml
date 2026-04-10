@@ -22,6 +22,10 @@ spec:
         app.kubernetes.io/component: {{ .name }}
     spec:
       serviceAccountName: {{ include "schnappy.fullname" $ }}-{{ .name }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       imagePullSecrets:
         - name: forgejo-registry
       containers:
