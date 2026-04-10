@@ -6,8 +6,6 @@ metadata:
   labels:
     {{- include "schnappy.minio.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
