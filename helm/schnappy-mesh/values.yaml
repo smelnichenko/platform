@@ -23,6 +23,8 @@ gateway:
     gatewayName: ""
     gatewayNamespace: ""
     hostname: ""
+    hosts:
+      reports: ""
   tls:
     clusterIssuer: letsencrypt-prod
   hosts:
