@@ -24,7 +24,7 @@ spec:
           - name: pmon-dev-wildcard-tls
       allowedRoutes:
         namespaces:
-          from: Same
+          from: All
     # HTTPS — all subdomains (single wildcard listener prevents
     # HTTP/2 connection coalescing 404s across subdomains)
     - name: https
