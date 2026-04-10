@@ -20,7 +20,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: init-users
-          image: ghcr.io/cloudnative-pg/postgresql:17
+          image: postgres:17-alpine
           resources:
             requests: { cpu: 25m, memory: 64Mi }
             limits: { cpu: 200m, memory: 128Mi }
@@ -64,5 +64,5 @@ spec:
               {{- end }}
 
               echo "Per-service users and databases configured."
-              printf 'POST /quitquitquit HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n' | nc localhost 15020 || true
+              wget -qO- --post-data= http://localhost:15020/quitquitquit || true
 {{- end }}
