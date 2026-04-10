@@ -111,6 +111,9 @@ spec:
     barmanObjectStore:
       destinationPath: {{ .Values.cnpg.backupDestination | default "s3://postgres-backups/" }}
       endpointURL: {{ .Values.cnpg.backupEndpoint }}
+      {{- if .Values.cnpg.backupServerName }}
+      serverName: {{ .Values.cnpg.backupServerName }}
+      {{- end }}
       s3Credentials:
         accessKeyId:
           name: {{ .Values.cnpg.backupSecret }}
