@@ -34,15 +34,75 @@ data:
           - to: '{{ .Values.alertmanager.alertEmailTo }}'
             send_resolved: true
             headers:
-              Subject: '{{`{{ if eq .Status "firing" }}🔥{{ else }}✅{{ end }} [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}`}}'
-            html: '{{`{{ range .Alerts }}
-            <div style="font-family:monospace;margin-bottom:16px;padding:12px;border:1px solid #ddd;border-radius:4px;{{ if eq .Status "firing" }}border-left:4px solid #d32f2f{{ else }}border-left:4px solid #388e3c{{ end }}">
-              <strong>{{ .Labels.alertname }}</strong> — {{ .Labels.severity }}<br>
-              <small>{{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</small><br><br>
-              {{ .Annotations.summary }}<br>
-              <small style="color:#888">namespace={{ .Labels.namespace }} job={{ .Labels.job }}</small>
-            </div>
-            {{ end }}`}}'
+              Subject: '{{`{{ if eq .Status "firing" }}🔥 [FIRING:{{ .Alerts.Firing | len }}]{{ else }}✅ [RESOLVED:{{ .Alerts.Resolved | len }}]{{ end }} {{ .CommonLabels.alertname }} ({{ .CommonLabels.namespace }})`}}'
+            html: |
+              {{`<!DOCTYPE html>
+              <html>
+              <head><meta charset="utf-8"></head>
+              <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#333;max-width:700px;margin:0 auto;padding:16px">
+                <h2 style="margin:0 0 4px">
+                  {{ if eq .Status "firing" }}🔥{{ else }}✅{{ end }}
+                  {{ .CommonLabels.alertname }}
+                </h2>
+                <p style="margin:0 0 16px;color:#666">
+                  {{ if eq .Status "firing" }}{{ .Alerts.Firing | len }} firing{{ end }}
+                  {{ if eq .Status "resolved" }}{{ .Alerts.Resolved | len }} resolved{{ end }}
+                  · {{ .CommonLabels.namespace }}
+                  {{ if .CommonLabels.severity }}· {{ .CommonLabels.severity }}{{ end }}
+                </p>
+
+                {{ range .Alerts }}
+                <table style="width:100%;border-collapse:collapse;margin-bottom:16px;border:1px solid #e0e0e0;border-radius:4px;{{ if eq .Status "firing" }}border-left:4px solid #d32f2f{{ else }}border-left:4px solid #388e3c{{ end }}">
+                  <tr style="background:#f8f9fa">
+                    <td style="padding:8px 12px;font-weight:bold" colspan="2">
+                      {{ .Labels.alertname }}
+                      <span style="color:#888;font-weight:normal;font-size:13px">{{ .Labels.severity }}</span>
+                    </td>
+                  </tr>
+                  {{ if .Annotations.summary }}
+                  <tr>
+                    <td style="padding:6px 12px;color:#888;width:100px;vertical-align:top">Summary</td>
+                    <td style="padding:6px 12px">{{ .Annotations.summary }}</td>
+                  </tr>
+                  {{ end }}
+                  {{ if .Annotations.description }}
+                  <tr>
+                    <td style="padding:6px 12px;color:#888;vertical-align:top">Description</td>
+                    <td style="padding:6px 12px">{{ .Annotations.description }}</td>
+                  </tr>
+                  {{ end }}
+                  <tr>
+                    <td style="padding:6px 12px;color:#888;vertical-align:top">Started</td>
+                    <td style="padding:6px 12px;font-family:monospace;font-size:13px">{{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</td>
+                  </tr>
+                  {{ if eq .Status "resolved" }}
+                  <tr>
+                    <td style="padding:6px 12px;color:#888;vertical-align:top">Resolved</td>
+                    <td style="padding:6px 12px;font-family:monospace;font-size:13px">{{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}</td>
+                  </tr>
+                  {{ end }}
+                  <tr>
+                    <td style="padding:6px 12px;color:#888;vertical-align:top">Labels</td>
+                    <td style="padding:6px 12px;font-family:monospace;font-size:12px">
+                      {{ range .Labels.SortedPairs }}{{ .Name }}={{ .Value }}<br>{{ end }}
+                    </td>
+                  </tr>
+                  {{ if .GeneratorURL }}
+                  <tr>
+                    <td style="padding:6px 12px;color:#888;vertical-align:top">Source</td>
+                    <td style="padding:6px 12px"><a href="{{ .GeneratorURL }}" style="color:#1976d2">View in Prometheus</a></td>
+                  </tr>
+                  {{ end }}
+                </table>
+                {{ end }}
+
+                <p style="font-size:12px;color:#999;margin-top:24px;border-top:1px solid #eee;padding-top:12px">
+                  <a href="{{ .ExternalURL }}" style="color:#999">Alertmanager</a> ·
+                  {{ .Alerts | len }} alert{{ if gt (.Alerts | len) 1 }}s{{ end }} ·
+                  Group: {{ .GroupLabels.SortedPairs.Values | join ", " }}
+                </p>
+              </body>
+              </html>`}}'
     inhibit_rules:
       - source_match:
           severity: critical
