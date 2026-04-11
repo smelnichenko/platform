@@ -158,6 +158,18 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+    {{- if .Values.minio.allowCrossNamespace }}
+    # Cross-namespace access (Hyperfoil from production, reports from infra)
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - key: environment
+                operator: In
+                values: ["production", "test"]
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- end }}
   egress:
     # DNS only
     - ports:
