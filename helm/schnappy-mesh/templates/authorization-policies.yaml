@@ -94,7 +94,7 @@ spec:
         - operation:
             ports: ["9042", "7000"]
 ---
-# MinIO — monitor + reports + mimir + tempo + hyperfoil + minio (buckets job) on port 9000
+# MinIO — monitor + minio (buckets job) on port 9000
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -110,10 +110,6 @@ spec:
         - source:
             principals:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-reports
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-hyperfoil
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-mimir
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-tempo
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-minio
       to:
         - operation:

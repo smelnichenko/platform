@@ -568,11 +568,13 @@ spec:
       ports:
         - protocol: TCP
           port: 2003
-    # Hyperfoil → MinIO (report upload)
+    # Hyperfoil → infra MinIO (report upload)
     - to:
-        - podSelector:
+        - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/part-of: schnappy
+              gateway: "true"
+          podSelector:
+            matchLabels:
               app.kubernetes.io/component: minio
       ports:
         - protocol: TCP
@@ -635,11 +637,13 @@ spec:
       ports:
         - protocol: TCP
           port: 2003
-    # Hyperfoil → MinIO (report upload)
+    # Hyperfoil → infra MinIO (report upload)
     - to:
-        - podSelector:
+        - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/part-of: schnappy
+              gateway: "true"
+          podSelector:
+            matchLabels:
               app.kubernetes.io/component: minio
       ports:
         - protocol: TCP

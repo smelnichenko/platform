@@ -68,7 +68,7 @@ data:
       curl -sf -o /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x /tmp/mc
       if [ -x /tmp/mc ]; then
         export MC_CONFIG_DIR=/tmp/.mc
-        /tmp/mc alias set minio http://{{ include "schnappy.fullname" . }}-minio:9000 "$MINIO_USER" "$MINIO_PASSWORD" --api S3v4
+        /tmp/mc alias set minio http://{{ .Values.hyperfoil.minioEndpoint | default (printf "%s-minio:9000" (include "schnappy.fullname" .)) }} "$MINIO_USER" "$MINIO_PASSWORD" --api S3v4
         /tmp/mc mb --ignore-existing minio/hyperfoil-reports
         /tmp/mc anonymous set download minio/hyperfoil-reports
 

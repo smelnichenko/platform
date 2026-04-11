@@ -150,50 +150,11 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # Monitor app (email attachments)
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9000
-    # Hyperfoil report upload
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: hyperfoil-load
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: hyperfoil-stress
-      ports:
-        - protocol: TCP
-          port: 9000
-    # Reports server (Nginx proxy)
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: reports
-      ports:
-        - protocol: TCP
-          port: 9000
-    # Mimir (long-term metrics storage)
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: mimir
-      ports:
-        - protocol: TCP
-          port: 9000
-    # Tempo (trace storage)
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: tempo
       ports:
         - protocol: TCP
           port: 9000
