@@ -42,7 +42,9 @@ spec:
             - '--config.file=/etc/alertmanager/alertmanager.yml'
             - '--storage.path=/alertmanager'
             - '--web.listen-address=:9093'
-            - '--web.external-url=https://grafana.pmon.dev/alerting/list'
+            {{- if .Values.gateway.hosts.alerts }}
+            - '--web.external-url=https://{{ .Values.gateway.hosts.alerts }}'
+            {{- end }}
           ports:
             - containerPort: 9093
               name: http
