@@ -1,6 +1,6 @@
 {{- if .Values.prometheus.enabled }}
 apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+kind: PodMonitor
 metadata:
   name: {{ include "schnappy.fullname" . }}-app
   labels:
@@ -10,8 +10,8 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ include "schnappy.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-  endpoints:
-    - port: http
-      path: /actuator/prometheus
+  podMetricsEndpoints:
+    - targetPort: 15020
+      path: /stats/prometheus
       interval: 15s
 {{- end }}
