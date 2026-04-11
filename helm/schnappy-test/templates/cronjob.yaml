@@ -44,7 +44,7 @@ spec:
                 - name: KEYCLOAK_PUBLIC_URL
                   value: {{ .Values.smokeTest.keycloakUrl | quote }}
                 - name: K6_PROMETHEUS_RW_SERVER_URL
-                  value: "http://schnappy-mimir.schnappy.svc:9009/api/v1/push"
+                  value: "http://schnappy-mimir.schnappy-infra.svc:9009/api/v1/push"
                 - name: K6_PROMETHEUS_RW_TREND_STATS
                   value: "p(95),p(99),avg,min,max,med"
                 - name: K6_DNS
