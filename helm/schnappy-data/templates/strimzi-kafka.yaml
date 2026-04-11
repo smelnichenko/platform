@@ -24,6 +24,7 @@ spec:
     -Xmx: 1024m
   template:
     pod:
+      priorityClassName: data-critical
       metadata:
         annotations:
           backup.velero.io/backup-volumes: data-0

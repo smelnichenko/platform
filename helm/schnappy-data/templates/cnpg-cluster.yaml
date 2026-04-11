@@ -8,6 +8,7 @@ metadata:
 spec:
   instances: 1
   imageName: ghcr.io/cloudnative-pg/postgresql:17
+  priorityClassName: data-critical
 
   enableSuperuserAccess: true
   superuserSecret:

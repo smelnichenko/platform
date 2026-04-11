@@ -23,6 +23,7 @@ spec:
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-apt-cache
       automountServiceAccountToken: false
+      priorityClassName: infra-critical
       securityContext:
         runAsNonRoot: true
         runAsUser: 100

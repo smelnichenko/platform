@@ -19,6 +19,7 @@ spec:
         backup.velero.io/backup-volumes: data
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-minio
+      priorityClassName: data-critical
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
