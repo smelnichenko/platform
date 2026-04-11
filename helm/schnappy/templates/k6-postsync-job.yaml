@@ -2,10 +2,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: schnappy-k6-postsync
+  name: {{ include "schnappy.fullname" . }}-k6-smoke
   annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: Delete=true
 spec:
   backoffLimit: 3
   ttlSecondsAfterFinished: 86400
