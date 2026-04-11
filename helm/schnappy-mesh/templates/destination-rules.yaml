@@ -1,0 +1,30 @@
+{{- $fn := include "schnappy.fullname" . }}
+{{- $ns := .Release.Namespace }}
+{{- if not .Values.gateway.infraOnly }}
+{{- range list "monitor" "admin" "chat" "chess" "site" }}
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ $fn }}-{{ . }}
+  namespace: {{ $ns }}
+spec:
+  host: {{ $fn }}-{{ . }}.{{ $ns }}.svc.cluster.local
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        connectTimeout: 5s
+        tcpKeepalive:
+          time: 300s
+          interval: 60s
+          probes: 3
+      http:
+        h2UpgradePolicy: DEFAULT
+        idleTimeout: 3600s
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+{{- end }}
+{{- end }}
