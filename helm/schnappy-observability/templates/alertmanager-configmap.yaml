@@ -33,6 +33,16 @@ data:
         email_configs:
           - to: '{{ .Values.alertmanager.alertEmailTo }}'
             send_resolved: true
+            headers:
+              Subject: '{{`{{ if eq .Status "firing" }}🔥{{ else }}✅{{ end }} [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}`}}'
+            html: '{{`{{ range .Alerts }}
+            <div style="font-family:monospace;margin-bottom:16px;padding:12px;border:1px solid #ddd;border-radius:4px;{{ if eq .Status "firing" }}border-left:4px solid #d32f2f{{ else }}border-left:4px solid #388e3c{{ end }}">
+              <strong>{{ .Labels.alertname }}</strong> — {{ .Labels.severity }}<br>
+              <small>{{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</small><br><br>
+              {{ .Annotations.summary }}<br>
+              <small style="color:#888">namespace={{ .Labels.namespace }} job={{ .Labels.job }}</small>
+            </div>
+            {{ end }}`}}'
     inhibit_rules:
       - source_match:
           severity: critical
