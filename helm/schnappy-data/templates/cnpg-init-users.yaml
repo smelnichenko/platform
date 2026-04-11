@@ -7,15 +7,10 @@ metadata:
     {{- include "schnappy.postgres.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    argocd.argoproj.io/sync-options: Replace=true
+    argocd.argoproj.io/sync-options: Delete=true
 spec:
   backoffLimit: 5
   activeDeadlineSeconds: 120
-  manualSelector: true
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: postgres-init-users
-      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
