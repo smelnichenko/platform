@@ -37,7 +37,7 @@ spec:
             - name: K6_DNS
               value: "ttl=5s,select=first,policy=preferIPv4"
             - name: K6_PROMETHEUS_RW_SERVER_URL
-              value: "http://schnappy-mimir.schnappy.svc:9009/api/v1/push"
+              value: "http://schnappy-mimir.schnappy-infra.svc:9009/api/v1/push"
             - name: K6_PROMETHEUS_RW_TREND_STATS
               value: "p(95),p(99),avg,min,max,med"
             - name: BASE_URL
