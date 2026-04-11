@@ -8,6 +8,12 @@ vault:
 networkPolicies:
   enabled: true
 
+prometheus:
+  enabled: true
+
+alerts:
+  enabled: false
+
 # Frontend
 site:
   enabled: true

@@ -1,0 +1,84 @@
+{{- if and .Values.alerts .Values.alerts.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $ns := .Release.Namespace }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $fn }}-data-alerts
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: {{ $ns }}-database
+      rules:
+        {{- if eq (.Values.cnpg.enabled | toString) "true" }}
+        - alert: PostgreSQLDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-postgres-\\d+", pod!~".*backup.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "PostgreSQL {{"{{"}} $labels.pod {{"}}"}} is down"
+        {{- end }}
+        {{- if eq (.Values.strimzi.enabled | toString) "true" }}
+        - alert: KafkaBrokerDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~".*kafka-\\d+$"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "Kafka broker {{"{{"}} $labels.pod {{"}}"}} is down"
+        {{- end }}
+        {{- if or (eq (.Values.scylla.enabled | toString) "true") (eq (.Values.scyllaOperator.enabled | toString) "true") }}
+        - alert: ScyllaDBDown
+          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-scylla-.*-\\d+$"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "ScyllaDB {{"{{"}} $labels.pod {{"}}"}} is down"
+        {{- end }}
+
+    {{- if .Values.cnpg.backup }}
+    - name: {{ $ns }}-backups
+      rules:
+        - alert: PostgresBackupFailed
+          expr: kube_job_status_failed{namespace="{{ $ns }}", job_name=~".*postgres-backup.*"} > 0
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "PostgreSQL backup job failed"
+        - alert: PostgresBackupMissed
+          expr: time() - max(kube_job_status_completion_time{namespace="{{ $ns }}", job_name=~".*postgres-backup.*"}) > 26 * 3600
+          for: 1h
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "PostgreSQL backup missed"
+    {{- end }}
+
+    - name: {{ $ns }}-pvc
+      rules:
+        - alert: PVCUsageHigh
+          expr: kubelet_volume_stats_used_bytes{namespace="{{ $ns }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ $ns }}"} > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage high"
+        - alert: PVCUsageCritical
+          expr: kubelet_volume_stats_used_bytes{namespace="{{ $ns }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ $ns }}"} > 0.9
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage critical"
+{{- end }}

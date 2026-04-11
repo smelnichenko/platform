@@ -1,0 +1,126 @@
+{{- if and .Values.prometheus.enabled .Values.alerts.enabled }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $ns := .Release.Namespace }}
+{{- $job := printf "%s-app" $fn }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $fn }}-app-alerts
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: {{ $ns }}-infrastructure
+      rules:
+        - alert: PodRestartingFrequently
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="{{ $ns }}"}[1h]) > 3
+            unless on(pod, namespace) kube_pod_owner{namespace="{{ $ns }}", owner_kind="Job"}
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "Pod {{"{{"}} $labels.pod {{"}}"}} restarting frequently"
+        - alert: ContainerOOMKilled
+          expr: kube_pod_container_status_last_terminated_reason{namespace="{{ $ns }}", reason="OOMKilled"} == 1
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "Container {{"{{"}} $labels.container {{"}}"}} in {{"{{"}} $labels.pod {{"}}"}} was OOM killed"
+        - alert: PodCrashLoopBackOff
+          expr: kube_pod_container_status_waiting_reason{namespace="{{ $ns }}", reason="CrashLoopBackOff"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "Pod {{"{{"}} $labels.pod {{"}}"}} in CrashLoopBackOff"
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="{{ $ns }}", condition="true"} == 0
+            unless on(pod, namespace) kube_pod_status_phase{phase=~"Succeeded|Failed"} == 1
+            unless on(pod, namespace) kube_pod_owner{namespace="{{ $ns }}", owner_kind="Job"}
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "Pod {{"{{"}} $labels.pod {{"}}"}} not ready"
+
+    - name: {{ $ns }}-application
+      rules:
+        - alert: AppDown
+          expr: up{job="{{ $job }}"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "App {{"{{"}} $labels.instance {{"}}"}} is down"
+        - alert: HighHTTPErrorRate
+          expr: |
+            sum(rate(http_server_requests_seconds_count{job="{{ $job }}", status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count{job="{{ $job }}"}[5m]))
+            > 0.05
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "High HTTP 5xx error rate ({{"{{"}} $value | humanizePercentage {{"}}"}})"
+        - alert: HighRequestLatency
+          expr: http_server_requests_seconds_max{job="{{ $job }}"} > 5
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "High request latency (max > 5s)"
+        - alert: HikariPoolExhausted
+          expr: hikaricp_connections_active{job="{{ $job }}"} / hikaricp_connections_max{job="{{ $job }}"} > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "HikariCP connection pool nearly exhausted"
+        - alert: JVMHeapHigh
+          expr: jvm_memory_used_bytes{job="{{ $job }}", area="heap"} / jvm_memory_max_bytes{job="{{ $job }}", area="heap"} > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "JVM heap usage high"
+        - alert: JvmMemoryHigh
+          expr: |
+            sum(jvm_memory_used_bytes{job="{{ $job }}"})
+            / sum(jvm_memory_max_bytes{job="{{ $job }}"})
+            > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "JVM memory usage high ({{"{{"}} $value | humanizePercentage {{"}}"}})"
+        - alert: ProcessCPUHigh
+          expr: process_cpu_usage{job="{{ $job }}"} > 0.9
+          for: 15m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            summary: "Process CPU usage high"
+
+    - name: {{ $ns }}-smoke-tests
+      rules:
+        - alert: K6SmokeTestFailing
+          expr: k6_checks{namespace="{{ $ns }}"} < 1
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            summary: "k6 smoke test check failing ({{"{{"}} $labels.check {{"}}"}})"
+{{- end }}
