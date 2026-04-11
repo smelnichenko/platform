@@ -203,7 +203,7 @@ smokeTest:
 # Hyperfoil load/stress tests (bypass Envoy, hit backends directly)
 hyperfoil:
   enabled: false
-  image: quay.io/hyperfoil/hyperfoil:0.28.0
+  image: git.pmon.dev/schnappy/hyperfoil:latest
   reportsUrl: ""             # URL for report links in logs (e.g. https://reports.pmon.dev)
   clientSecretName: ""       # ExternalSecret name for Keycloak service account
   load:
