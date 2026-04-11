@@ -22,6 +22,8 @@ spec:
           claim: sub
         - header: x-user-email
           claim: email
+        - header: x-user-roles
+          claim: realm_access.roles
 ---
 # EnvoyFilter: disable JWT validation on non-app virtual hosts
 # Gateway uses wildcard SNI (*.pmon.dev) so filter-chain-level removal
