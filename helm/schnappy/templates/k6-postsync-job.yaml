@@ -2,11 +2,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "schnappy.fullname" . }}-k6-smoke
+  {{- $hash := printf "%s-%s-%s-%s-%s" (.Values.app.image.tag | default "") (.Values.admin.image.tag | default "") (.Values.chatService.image.tag | default "") (.Values.chessService.image.tag | default "") (.Values.site.image.tag | default "") | sha256sum | trunc 8 }}
+  name: {{ include "schnappy.fullname" . }}-k6-smoke-{{ $hash }}
   annotations:
     argocd.argoproj.io/sync-wave: "20"
-    argocd.argoproj.io/sync-options: Delete=true
-    checksum/app-versions: {{ printf "%s-%s-%s-%s-%s" (.Values.app.image.tag | default "") (.Values.admin.image.tag | default "") (.Values.chatService.image.tag | default "") (.Values.chessService.image.tag | default "") (.Values.site.image.tag | default "") | sha256sum | trunc 8 }}
 spec:
   backoffLimit: 3
   ttlSecondsAfterFinished: 86400
