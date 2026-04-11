@@ -86,7 +86,7 @@ app.kubernetes.io/component: keycloak
 
 {{- define "schnappy.monitor.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: app
+app.kubernetes.io/component: monitor
 {{- end }}
 
 {{- define "schnappy.gateway.selectorLabels" -}}

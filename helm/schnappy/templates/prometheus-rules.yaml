@@ -1,7 +1,7 @@
 {{- if and .Values.prometheus.enabled .Values.alerts.enabled }}
 {{- $fn := include "schnappy.fullname" . }}
 {{- $ns := .Release.Namespace }}
-{{- $job := printf "%s-app" $fn }}
+{{- $jobRegex := "schnappy-(monitor|admin|chat|chess|game-scp|site)" }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -52,7 +52,7 @@ spec:
     - name: {{ $ns }}-application
       rules:
         - alert: AppDown
-          expr: up{job="{{ $job }}"} == 0
+          expr: up{job=~"{{ $jobRegex }}"} == 0
           for: 2m
           labels:
             severity: critical
@@ -61,8 +61,8 @@ spec:
             summary: "App {{"{{"}} $labels.instance {{"}}"}} is down"
         - alert: HighHTTPErrorRate
           expr: |
-            sum(rate(http_server_requests_seconds_count{job="{{ $job }}", status=~"5.."}[5m]))
-            / sum(rate(http_server_requests_seconds_count{job="{{ $job }}"}[5m]))
+            sum(rate(http_server_requests_seconds_count{job=~"{{ $jobRegex }}", status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count{job=~"{{ $jobRegex }}"}[5m]))
             > 0.05
           for: 5m
           labels:
@@ -71,7 +71,7 @@ spec:
           annotations:
             summary: "High HTTP 5xx error rate ({{"{{"}} $value | humanizePercentage {{"}}"}})"
         - alert: HighRequestLatency
-          expr: http_server_requests_seconds_max{job="{{ $job }}"} > 5
+          expr: http_server_requests_seconds_max{job=~"{{ $jobRegex }}"} > 5
           for: 10m
           labels:
             severity: warning
@@ -79,7 +79,7 @@ spec:
           annotations:
             summary: "High request latency (max > 5s)"
         - alert: HikariPoolExhausted
-          expr: hikaricp_connections_active{job="{{ $job }}"} / hikaricp_connections_max{job="{{ $job }}"} > 0.8
+          expr: hikaricp_connections_active{job=~"{{ $jobRegex }}"} / hikaricp_connections_max{job=~"{{ $jobRegex }}"} > 0.8
           for: 5m
           labels:
             severity: warning
@@ -87,7 +87,7 @@ spec:
           annotations:
             summary: "HikariCP connection pool nearly exhausted"
         - alert: JVMHeapHigh
-          expr: jvm_memory_used_bytes{job="{{ $job }}", area="heap"} / jvm_memory_max_bytes{job="{{ $job }}", area="heap"} > 0.85
+          expr: jvm_memory_used_bytes{job=~"{{ $jobRegex }}", area="heap"} / jvm_memory_max_bytes{job=~"{{ $jobRegex }}", area="heap"} > 0.85
           for: 10m
           labels:
             severity: warning
@@ -96,8 +96,8 @@ spec:
             summary: "JVM heap usage high"
         - alert: JvmMemoryHigh
           expr: |
-            sum(jvm_memory_used_bytes{job="{{ $job }}"})
-            / sum(jvm_memory_max_bytes{job="{{ $job }}"})
+            sum(jvm_memory_used_bytes{job=~"{{ $jobRegex }}"})
+            / sum(jvm_memory_max_bytes{job=~"{{ $jobRegex }}"})
             > 0.85
           for: 10m
           labels:
@@ -106,7 +106,7 @@ spec:
           annotations:
             summary: "JVM memory usage high ({{"{{"}} $value | humanizePercentage {{"}}"}})"
         - alert: ProcessCPUHigh
-          expr: process_cpu_usage{job="{{ $job }}"} > 0.9
+          expr: process_cpu_usage{job=~"{{ $jobRegex }}"} > 0.9
           for: 15m
           labels:
             severity: warning

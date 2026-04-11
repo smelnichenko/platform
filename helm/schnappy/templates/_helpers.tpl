@@ -53,12 +53,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{- define "schnappy.monitor.labels" -}}
 {{ include "schnappy.labels" . }}
-app.kubernetes.io/component: app
+app.kubernetes.io/component: monitor
 {{- end }}
 
 {{- define "schnappy.monitor.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: app
+app.kubernetes.io/component: monitor
 {{- end }}
 
 {{- define "schnappy.monitor.serviceName" -}}

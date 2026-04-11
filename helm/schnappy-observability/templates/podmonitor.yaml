@@ -13,7 +13,11 @@ metadata:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   namespaceSelector:
-    matchNames: [{{ .Release.Namespace }}]
+    matchNames:
+      - {{ .Release.Namespace }}
+      {{- range .Values.prometheus.scrapeNamespaces | default list }}
+      - {{ . }}
+      {{- end }}
   selector:
     matchExpressions:
       - key: security.istio.io/tlsMode

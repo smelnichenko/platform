@@ -177,7 +177,7 @@ app.kubernetes.io/component: apt-cache
 
 {{- define "schnappy.monitor.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: app
+app.kubernetes.io/component: monitor
 {{- end }}
 
 {{- define "schnappy.admin.selectorLabels" -}}

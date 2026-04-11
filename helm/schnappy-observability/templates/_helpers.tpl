@@ -213,7 +213,7 @@ app.kubernetes.io/component: reports
 
 {{- define "schnappy.monitor.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: app
+app.kubernetes.io/component: monitor
 {{- end }}
 
 {{- define "schnappy.keycloak.selectorLabels" -}}
