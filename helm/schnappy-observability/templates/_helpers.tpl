@@ -220,3 +220,13 @@ app.kubernetes.io/component: app
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: keycloak
 {{- end }}
+
+{{- define "schnappy.reports.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: reports
+{{- end }}
+
+{{- define "schnappy.reports.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: reports
+{{- end }}

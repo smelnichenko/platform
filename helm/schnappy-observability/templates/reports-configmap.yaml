@@ -30,8 +30,8 @@ data:
 
         # Directory paths → append index.html
         location ~ /$ {
-          proxy_pass http://{{ include "schnappy.fullname" . }}-minio:9000/hyperfoil-reports/${uri}index.html;
-          proxy_set_header Host {{ include "schnappy.fullname" . }}-minio:9000;
+          proxy_pass http://{{ .Values.reports.minioEndpoint }}/hyperfoil-reports/${uri}index.html;
+          proxy_set_header Host {{ .Values.reports.minioEndpoint }};
           proxy_hide_header x-amz-request-id;
           proxy_hide_header x-amz-id-2;
           proxy_intercept_errors on;
@@ -39,8 +39,8 @@ data:
         }
 
         location / {
-          proxy_pass http://{{ include "schnappy.fullname" . }}-minio:9000/hyperfoil-reports/;
-          proxy_set_header Host {{ include "schnappy.fullname" . }}-minio:9000;
+          proxy_pass http://{{ .Values.reports.minioEndpoint }}/hyperfoil-reports/;
+          proxy_set_header Host {{ .Values.reports.minioEndpoint }};
           proxy_hide_header x-amz-request-id;
           proxy_hide_header x-amz-id-2;
         }

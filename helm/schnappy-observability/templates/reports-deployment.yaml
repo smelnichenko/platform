@@ -19,7 +19,7 @@ spec:
         sidecar.istio.io/inject: "false"
         checksum/config: {{ include (print $.Template.BasePath "/reports-configmap.yaml") . | sha256sum }}
     spec:
-      serviceAccountName: {{ include "schnappy.fullname" . }}-reports
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 101
