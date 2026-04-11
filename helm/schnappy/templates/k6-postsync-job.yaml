@@ -27,6 +27,9 @@ spec:
         - name: k6
           image: {{ .Values.smokeTest.image }}
           command: ['k6', 'run', '--no-usage-report', '--out', 'experimental-prometheus-rw', '/scripts/smoke-test.js']
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 1000m, memory: 512Mi }
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
