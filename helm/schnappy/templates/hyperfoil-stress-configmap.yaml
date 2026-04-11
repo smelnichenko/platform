@@ -169,12 +169,28 @@ data:
             startAfter: rate100
             scenario: *scenario
 
+      - rate300:
+          constantRate:
+            usersPerSec: 300
+            duration: 60s
+            maxSessions: 900
+            startAfter: rate200
+            scenario: *scenario
+
       - rate400:
           constantRate:
             usersPerSec: 400
             duration: 60s
             maxSessions: 1200
-            startAfter: rate200
+            startAfter: rate300
+            scenario: *scenario
+
+      - rate500:
+          constantRate:
+            usersPerSec: 500
+            duration: 60s
+            maxSessions: 1500
+            startAfter: rate400
             scenario: *scenario
 
       - rate600:
@@ -182,6 +198,38 @@ data:
             usersPerSec: 600
             duration: 60s
             maxSessions: 2000
-            startAfter: rate400
+            startAfter: rate500
+            scenario: *scenario
+
+      - rate700:
+          constantRate:
+            usersPerSec: 700
+            duration: 60s
+            maxSessions: 2500
+            startAfter: rate600
+            scenario: *scenario
+
+      - rate800:
+          constantRate:
+            usersPerSec: 800
+            duration: 60s
+            maxSessions: 3000
+            startAfter: rate700
+            scenario: *scenario
+
+      - rate900:
+          constantRate:
+            usersPerSec: 900
+            duration: 60s
+            maxSessions: 3500
+            startAfter: rate800
+            scenario: *scenario
+
+      - rate1000:
+          constantRate:
+            usersPerSec: 1000
+            duration: 60s
+            maxSessions: 4000
+            startAfter: rate900
             scenario: *scenario
 {{- end }}
