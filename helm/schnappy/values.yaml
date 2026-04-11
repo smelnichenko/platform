@@ -195,7 +195,7 @@ tracing:
 
 # k6 smoke tests (PostSync hook + daily CronJob)
 smokeTest:
-  enabled: false
+  enabled: true
   image: grafana/k6:1.7.1
   schedule: "0 6 * * *"
   baseUrl: ""                # Defaults to https://<app.ingress.host>
