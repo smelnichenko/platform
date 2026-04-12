@@ -157,73 +157,73 @@ data:
 
       - rate200:
           constantRate:
+            startAfter: rate100
             usersPerSec: 200
             duration: 60s
             maxSessions: 600
             scenario: *scenario
-          startAfter: rate100
 
       - rate300:
           constantRate:
+            startAfter: rate200
             usersPerSec: 300
             duration: 60s
             maxSessions: 900
             scenario: *scenario
-          startAfter: rate200
 
       - rate400:
           constantRate:
+            startAfter: rate300
             usersPerSec: 400
             duration: 60s
             maxSessions: 1200
             scenario: *scenario
-          startAfter: rate300
 
       - rate500:
           constantRate:
+            startAfter: rate400
             usersPerSec: 500
             duration: 60s
             maxSessions: 1500
             scenario: *scenario
-          startAfter: rate400
 
       - rate600:
           constantRate:
+            startAfter: rate500
             usersPerSec: 600
             duration: 60s
             maxSessions: 2000
             scenario: *scenario
-          startAfter: rate500
 
       - rate700:
           constantRate:
+            startAfter: rate600
             usersPerSec: 700
             duration: 60s
             maxSessions: 2500
             scenario: *scenario
-          startAfter: rate600
 
       - rate800:
           constantRate:
+            startAfter: rate700
             usersPerSec: 800
             duration: 60s
             maxSessions: 3000
             scenario: *scenario
-          startAfter: rate700
 
       - rate900:
           constantRate:
+            startAfter: rate800
             usersPerSec: 900
             duration: 60s
             maxSessions: 3500
             scenario: *scenario
-          startAfter: rate800
 
       - rate1000:
           constantRate:
+            startAfter: rate900
             usersPerSec: 1000
             duration: 60s
             maxSessions: 4000
             scenario: *scenario
-          startAfter: rate900
 {{- end }}
