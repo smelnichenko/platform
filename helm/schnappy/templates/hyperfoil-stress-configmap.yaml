@@ -160,70 +160,70 @@ data:
             usersPerSec: 200
             duration: 60s
             maxSessions: 600
-            startAfter: rate100
             scenario: *scenario
+          startAfter: rate100
 
       - rate300:
           constantRate:
             usersPerSec: 300
             duration: 60s
             maxSessions: 900
-            startAfter: rate200
             scenario: *scenario
+          startAfter: rate200
 
       - rate400:
           constantRate:
             usersPerSec: 400
             duration: 60s
             maxSessions: 1200
-            startAfter: rate300
             scenario: *scenario
+          startAfter: rate300
 
       - rate500:
           constantRate:
             usersPerSec: 500
             duration: 60s
             maxSessions: 1500
-            startAfter: rate400
             scenario: *scenario
+          startAfter: rate400
 
       - rate600:
           constantRate:
             usersPerSec: 600
             duration: 60s
             maxSessions: 2000
-            startAfter: rate500
             scenario: *scenario
+          startAfter: rate500
 
       - rate700:
           constantRate:
             usersPerSec: 700
             duration: 60s
             maxSessions: 2500
-            startAfter: rate600
             scenario: *scenario
+          startAfter: rate600
 
       - rate800:
           constantRate:
             usersPerSec: 800
             duration: 60s
             maxSessions: 3000
-            startAfter: rate700
             scenario: *scenario
+          startAfter: rate700
 
       - rate900:
           constantRate:
             usersPerSec: 900
             duration: 60s
             maxSessions: 3500
-            startAfter: rate800
             scenario: *scenario
+          startAfter: rate800
 
       - rate1000:
           constantRate:
             usersPerSec: 1000
             duration: 60s
             maxSessions: 4000
-            startAfter: rate900
             scenario: *scenario
+          startAfter: rate900
 {{- end }}
