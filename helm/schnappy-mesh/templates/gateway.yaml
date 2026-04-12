@@ -13,22 +13,11 @@ spec:
     labels:
       gateway.istio.io/managed: istio.io-gateway-controller
   listeners:
-    # HTTPS — apex domain (*.pmon.dev doesn't match bare pmon.dev)
-    - name: https-apex
-      hostname: {{ .Values.gateway.hosts.app | quote }}
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: pmon-dev-wildcard-tls
-      allowedRoutes:
-        namespaces:
-          from: All
-    # HTTPS — all subdomains (single wildcard listener prevents
-    # HTTP/2 connection coalescing 404s across subdomains)
+    # Single HTTPS listener — no hostname constraint so any SNI
+    # matching the wildcard cert SANs (pmon.dev, *.pmon.dev) lands
+    # on the same route table. Prevents HTTP/2 connection coalescing
+    # 404s when browsers reuse an idle connection across subdomains.
     - name: https
-      hostname: "*.pmon.dev"
       port: 443
       protocol: HTTPS
       tls:
@@ -38,7 +27,6 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    # HTTP → HTTPS redirect
     - name: http
       port: 80
       protocol: HTTP
