@@ -23,6 +23,8 @@ spec:
             app.kubernetes.io/part-of: schnappy
         spec:
           serviceAccountName: {{ include "schnappy.fullname" . }}-hyperfoil
+          imagePullSecrets:
+            - name: forgejo-registry
           securityContext:
             runAsNonRoot: true
             runAsUser: 1001
