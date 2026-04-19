@@ -1,0 +1,116 @@
+{{- if eq (.Values.prometheus.enabled | toString) "true" }}
+{{- $fn := include "schnappy.fullname" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fn }}-blackbox-exporter
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+data:
+  blackbox.yml: |
+    modules:
+      # Vault /sys/health returns 200 active, 429 standby, 473 perf standby,
+      # 503 sealed, 501 uninitialized. Treat 200/429/473 as healthy.
+      http_2xx_429_vault:
+        prober: http
+        timeout: 10s
+        http:
+          valid_status_codes: [200, 429, 473]
+          method: GET
+          tls_config:
+            insecure_skip_verify: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fn }}-blackbox-exporter
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blackbox-exporter
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+        - name: blackbox
+          image: prom/blackbox-exporter:v0.27.0
+          args:
+            - --config.file=/etc/blackbox/blackbox.yml
+            - --web.listen-address=:9115
+          ports:
+            - containerPort: 9115
+              name: http
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits:   { cpu: 100m, memory: 64Mi }
+          readinessProbe:
+            httpGet: { path: /-/healthy, port: 9115 }
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+            runAsNonRoot: true
+            runAsUser: 65534
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $fn }}-blackbox-exporter
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fn }}-blackbox-exporter
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: 9115
+      targetPort: 9115
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fn }}-blackbox-exporter
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # Prometheus scrapes our /metrics on 9115
+    - ports:
+        - port: 9115
+          protocol: TCP
+  egress:
+    # DNS
+    - ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    # Pi Vault on the private LAN
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.0/24
+      ports:
+        - port: 8200
+          protocol: TCP
+{{- end }}

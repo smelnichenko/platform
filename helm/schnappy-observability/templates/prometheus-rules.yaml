@@ -27,21 +27,21 @@ spec:
           labels:
             severity: critical
           annotations:
-            summary: "Elasticsearch {{"{{"}} $labels.pod {{"}}"}} is down"
+            summary: "Elasticsearch {{ "{{" }} $labels.pod {{ "}}" }} is down"
         - alert: FluentbitDown
           expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-fluentbit-.*"} == 0
           for: 10m
           labels:
             severity: warning
           annotations:
-            summary: "Fluent-bit {{"{{"}} $labels.pod {{"}}"}} is down"
+            summary: "Fluent-bit {{ "{{" }} $labels.pod {{ "}}" }} is down"
         - alert: KibanaDown
           expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-kibana-.*"} == 0
           for: 10m
           labels:
             severity: warning
           annotations:
-            summary: "Kibana {{"{{"}} $labels.pod {{"}}"}} is down"
+            summary: "Kibana {{ "{{" }} $labels.pod {{ "}}" }} is down"
 
     - name: infra-certificates
       rules:
@@ -51,14 +51,14 @@ spec:
           labels:
             severity: warning
           annotations:
-            summary: "Certificate {{"{{"}} $labels.namespace {{"}}"}}/{{"{{"}} $labels.name {{"}}"}} expiring in less than 30 days"
+            summary: "Certificate {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }} expiring in less than 30 days"
         - alert: CertExpiringIn7Days
           expr: certmanager_certificate_expiration_timestamp_seconds - time() < 7 * 24 * 3600
           for: 30m
           labels:
             severity: critical
           annotations:
-            summary: "Certificate {{"{{"}} $labels.namespace {{"}}"}}/{{"{{"}} $labels.name {{"}}"}} expiring in less than 7 days"
+            summary: "Certificate {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }} expiring in less than 7 days"
 
     - name: infra-pvc
       rules:
@@ -68,12 +68,77 @@ spec:
           labels:
             severity: warning
           annotations:
-            summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage high"
+            summary: "PVC {{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} usage high"
         - alert: PVCUsageCritical
           expr: kubelet_volume_stats_used_bytes{namespace="{{ $ns }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ $ns }}"} > 0.9
           for: 5m
           labels:
             severity: critical
           annotations:
-            summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage critical"
+            summary: "PVC {{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} usage critical"
+
+    - name: infra-vault
+      rules:
+        - alert: VaultSealed
+          expr: probe_http_status_code{job="blackbox-vault"} == 503 or probe_success{job="blackbox-vault"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Vault at {{ "{{" }} $labels.instance {{ "}}" }} is sealed or unreachable"
+            description: "Pi Vault returned 503 (sealed) or was unreachable for 2m. ESO will fail to refresh any ExternalSecret."
+
+    - name: infra-eso
+      rules:
+        - alert: ClusterSecretStoreNotReady
+          expr: external_secrets_cluster_secret_store_condition{condition="Ready", status="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ClusterSecretStore {{ "{{" }} $labels.name {{ "}}" }} not Ready"
+            description: "ESO cannot reach its backing store. All ExternalSecrets sourced from it will stop refreshing."
+        - alert: ExternalSecretSyncFailing
+          expr: sum by (namespace, name) (rate(externalsecret_sync_calls_error[10m])) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ExternalSecret {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }} sync failing"
+
+    - name: infra-argocd
+      rules:
+        - alert: ArgoCDAppDegraded
+          expr: argocd_app_info{health_status="Degraded"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} Degraded"
+            description: "Application has been Degraded for 15m. Check resource tree for the failing child."
+        - alert: ArgoCDAppOutOfSync
+          expr: argocd_app_info{sync_status!="Synced"} == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} OutOfSync 30m+"
+
+    - name: infra-velero
+      rules:
+        - alert: VeleroBSLUnavailable
+          expr: velero_backup_last_status{schedule!=""} == 0 or absent(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"} > time() - 30 * 3600)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Velero daily backup missing or failed"
+            description: "No successful schnappy-daily backup in the last 30h."
+        - alert: VeleroBackupFailing
+          expr: increase(velero_backup_failure_total[1h]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Velero backup failed"
 {{- end }}

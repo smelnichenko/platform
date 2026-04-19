@@ -1,0 +1,80 @@
+{{- if eq (.Values.prometheus.enabled | toString) "true" }}
+{{- $fn := include "schnappy.fullname" . }}
+# Non-istio cluster infra that exposes /metrics but doesn't have a sidecar:
+# external-secrets, argocd, velero. Pi Vault is reached via blackbox Probe.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ $fn }}-external-secrets
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [external-secrets]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-secrets
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ $fn }}-argocd
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [argocd]
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [argocd-application-controller, argocd-server, argocd-repo-server]
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ $fn }}-velero
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames: [velero]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: velero
+  podMetricsEndpoints:
+    - port: http-monitoring
+      path: /metrics
+      interval: 30s
+---
+# Blackbox probe of Pi Vault. Vault's /sys/health returns 503 when sealed,
+# 429 on standby, 200 when active+unsealed. We treat 200 and 429 as healthy,
+# everything else (incl. 503/connection refused) as VaultSealed.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: {{ $fn }}-vault-pi
+  labels:
+    release: schnappy
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  jobName: blackbox-vault
+  interval: 30s
+  module: http_2xx_429_vault
+  prober:
+    url: {{ $fn }}-blackbox-exporter:9115
+  targets:
+    staticConfig:
+      static:
+        - https://192.168.11.4:8200/v1/sys/health
+        - https://192.168.11.5:8200/v1/sys/health
+        - https://192.168.11.6:8200/v1/sys/health
+{{- end }}

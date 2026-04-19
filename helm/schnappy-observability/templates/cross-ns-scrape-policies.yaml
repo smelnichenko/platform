@@ -1,0 +1,63 @@
+{{- if eq (.Values.prometheus.enabled | toString) "true" }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $promNs := .Release.Namespace }}
+# Permit prometheus (in {{ $promNs }}) to scrape metrics endpoints in
+# argocd, velero, and external-secrets namespaces. Each of those has a
+# default-deny policy; this adds a sibling allow-rule.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: argocd
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $promNs }}
+      ports:
+        - { port: 8080, protocol: TCP }   # argocd-server metrics/grpc
+        - { port: 8082, protocol: TCP }   # application-controller
+        - { port: 8083, protocol: TCP }   # argocd-server
+        - { port: 8084, protocol: TCP }   # repo-server
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: velero
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $promNs }}
+      ports:
+        - { port: 8085, protocol: TCP }   # velero http-monitoring
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: external-secrets
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $promNs }}
+      ports:
+        - { port: 8080, protocol: TCP }   # ESO metrics
+{{- end }}
