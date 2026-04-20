@@ -97,7 +97,7 @@ spec:
   targets:
     staticConfig:
       static:
-        {{- range .Values.prometheus.publicProbeUrls | default (list "https://pmon.dev" "https://test.pmon.dev" "https://auth.pmon.dev" "https://cd.pmon.dev" "https://grafana.pmon.dev" "https://logs.pmon.dev") }}
+        {{- range .Values.prometheus.publicProbeUrls | default (list "https://pmon.dev" "https://test.pmon.dev" "https://auth.pmon.dev/realms/master" "https://cd.pmon.dev" "https://grafana.pmon.dev" "https://logs.pmon.dev") }}
         - {{ . }}
         {{- end }}
 {{- end }}
