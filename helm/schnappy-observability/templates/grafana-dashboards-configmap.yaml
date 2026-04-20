@@ -16,4 +16,6 @@ data:
 {{ .Files.Get "dashboards/k6-smoke-dashboard.json" | indent 4 }}
   load-test-dashboard.json: |-
 {{ .Files.Get "dashboards/load-test-dashboard.json" | indent 4 }}
+  reliability-dashboard.json: |-
+{{ .Files.Get "dashboards/reliability-dashboard.json" | indent 4 }}
 {{- end }}
