@@ -61,14 +61,8 @@ app:
     type: ClusterIP
     port: 8080
   ingress:
-    enabled: true
-    className: traefik
-    host: monitor.local
-    annotations: {}
-    tls:
-      enabled: false
-      secretName: ""
-      clusterIssuer: "letsencrypt-prod"
+    # Production uses Istio HTTPRoute (schnappy-mesh chart); keep this off.
+    enabled: false
 
 # Authentication
 auth:

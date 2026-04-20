@@ -14,14 +14,11 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from Traefik and Envoy proxy
+    # Allow from the Istio-managed gateway pod (Gateway API standard label)
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
         - podSelector:
             matchLabels:
-              gateway.envoyproxy.io/owning-gateway-name: schnappy-gw
+              gateway.networking.k8s.io/gateway-name: schnappy-infra-gateway
       ports:
         - protocol: TCP
           port: 8080
