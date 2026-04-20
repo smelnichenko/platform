@@ -71,6 +71,12 @@ data:
                     <td style="padding:6px 12px">{{ .Annotations.description }}</td>
                   </tr>
                   {{ end }}
+                  {{ if .Annotations.runbook_url }}
+                  <tr>
+                    <td style="padding:6px 12px;color:#888;vertical-align:top">Runbook</td>
+                    <td style="padding:6px 12px"><a href="{{ .Annotations.runbook_url }}" style="color:#1976d2">{{ .Labels.alertname }}</a></td>
+                  </tr>
+                  {{ end }}
                   <tr>
                     <td style="padding:6px 12px;color:#888;vertical-align:top">Started</td>
                     <td style="padding:6px 12px;font-family:monospace;font-size:13px">{{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</td>
