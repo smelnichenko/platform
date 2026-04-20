@@ -42,6 +42,7 @@ spec:
             - '--config.file=/etc/alertmanager/alertmanager.yml'
             - '--storage.path=/alertmanager'
             - '--web.listen-address=:9093'
+            - '--log.level={{ .Values.alertmanager.logLevel | default "info" }}'
             {{- if .Values.gateway.hosts.alerts }}
             - '--web.external-url=https://{{ .Values.gateway.hosts.alerts }}'
             {{- end }}
