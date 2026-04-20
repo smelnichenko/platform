@@ -141,4 +141,82 @@ spec:
             severity: warning
           annotations:
             summary: "Velero backup failed"
+
+    - name: infra-public-urls
+      rules:
+        - alert: PublicEndpointDown
+          expr: probe_success{job="blackbox-public"} == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Public URL {{ "{{" }} $labels.instance {{ "}}" }} is down"
+            description: "Blackbox probe failed for 3m. Check gateway, route binding, upstream."
+        - alert: PublicEndpointSlow
+          expr: probe_duration_seconds{job="blackbox-public"} > 3
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Public URL {{ "{{" }} $labels.instance {{ "}}" }} slow"
+            description: "End-to-end probe > 3s for 10m."
+        - alert: PublicSSLCertExpiringSoon
+          expr: (probe_ssl_earliest_cert_expiry{job="blackbox-public"} - time()) / 86400 < 14
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Public cert at {{ "{{" }} $labels.instance {{ "}}" }} expiring soon"
+            description: "Serving cert < 14d from expiry."
+
+    - name: infra-certmanager
+      rules:
+        - alert: CertManagerRenewalFailing
+          expr: certmanager_certificate_ready_status{condition="False"} == 1
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "cert-manager failed to renew {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }}"
+            description: "Certificate not Ready for 1h. ACME challenge, DNS-01 webhook, or CA issuer may be broken."
+        - alert: CertManagerOrderFailing
+          expr: increase(certmanager_http_acme_client_request_count{status=~"4..|5.."}[30m]) > 5
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "cert-manager ACME requests failing"
+
+    - name: infra-prometheus
+      rules:
+        - alert: PrometheusTargetMissing
+          expr: up == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Target {{ "{{" }} $labels.job {{ "}}" }}/{{ "{{" }} $labels.instance {{ "}}" }} is down"
+        - alert: PrometheusRuleFailures
+          expr: increase(prometheus_rule_evaluation_failures_total[10m]) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus rule evaluation failing"
+            description: "A rule is returning errors — invalid expression or missing series."
+        - alert: PrometheusNotificationsFailing
+          expr: rate(alertmanager_notifications_failed_total[10m]) > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Alertmanager notifications failing ({{ "{{" }} $labels.integration {{ "}}" }})"
+            description: "SMTP or webhook delivery is erroring. Check secrets, network, credentials."
+        - alert: PrometheusScrapeDurationSlow
+          expr: scrape_duration_seconds > 10
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Slow scrape: {{ "{{" }} $labels.job {{ "}}" }}/{{ "{{" }} $labels.instance {{ "}}" }}"
 {{- end }}

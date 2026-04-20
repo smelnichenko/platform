@@ -77,4 +77,27 @@ spec:
         - https://192.168.11.4:8200/v1/sys/health
         - https://192.168.11.5:8200/v1/sys/health
         - https://192.168.11.6:8200/v1/sys/health
+---
+# Blackbox probe of public HTTPS endpoints. Catches gateway regressions
+# (route mis-binding, cert expiry, HTTP/2 coalescing, upstream down) within
+# one minute end-to-end.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: {{ $fn }}-public-urls
+  labels:
+    release: schnappy
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  jobName: blackbox-public
+  interval: 60s
+  module: http_2xx_public
+  prober:
+    url: {{ $fn }}-blackbox-exporter:9115
+  targets:
+    staticConfig:
+      static:
+        {{- range .Values.prometheus.publicProbeUrls | default (list "https://pmon.dev" "https://test.pmon.dev" "https://auth.pmon.dev" "https://cd.pmon.dev" "https://grafana.pmon.dev" "https://logs.pmon.dev") }}
+        - {{ . }}
+        {{- end }}
 {{- end }}

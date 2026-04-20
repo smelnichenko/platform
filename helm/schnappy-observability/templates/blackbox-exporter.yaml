@@ -19,6 +19,18 @@ data:
           method: GET
           tls_config:
             insecure_skip_verify: true
+      # Public endpoints: follow redirects, require 200. Expose TLS cert
+      # expiry via probe_ssl_earliest_cert_expiry.
+      http_2xx_public:
+        prober: http
+        timeout: 10s
+        http:
+          preferred_ip_protocol: ip4
+          valid_status_codes: [200, 302, 401]
+          follow_redirects: true
+          method: GET
+          fail_if_ssl: false
+          fail_if_not_ssl: true
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -106,11 +118,11 @@ spec:
     - ports:
         - { port: 53, protocol: UDP }
         - { port: 53, protocol: TCP }
-    # Pi Vault on the private LAN
+    # Pi Vault + public HTTPS URLs on the private LAN (ten gateway on .2)
     - to:
         - ipBlock:
             cidr: 192.168.11.0/24
       ports:
-        - port: 8200
-          protocol: TCP
+        - { port: 8200, protocol: TCP }
+        - { port: 443, protocol: TCP }
 {{- end }}
