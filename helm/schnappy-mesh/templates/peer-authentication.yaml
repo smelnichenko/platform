@@ -25,6 +25,24 @@ spec:
     9009:
       mode: PERMISSIVE
 ---
+# Alertmanager accepts plaintext on port 9093 for Prometheus alert POSTs
+# (Prometheus runs without an Istio sidecar; STRICT mTLS would drop the
+# plaintext connection and no alerts would ever be delivered)
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "schnappy.fullname" . }}-alertmanager
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: alertmanager
+  mtls:
+    mode: {{ .Values.peerAuthentication.mode }}
+  portLevelMtls:
+    9093:
+      mode: PERMISSIVE
+---
 # MinIO accepts plaintext on port 9000 for Tempo and Mimir S3 access
 # (Tempo has no sidecar — Envoy breaks S3 Signature V4)
 apiVersion: security.istio.io/v1
