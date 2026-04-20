@@ -21,6 +21,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PodRestartingFrequently.md"
             summary: "Pod {{"{{"}} $labels.pod {{"}}"}} restarting frequently"
         - alert: ContainerOOMKilled
           expr: kube_pod_container_status_last_terminated_reason{namespace="{{ $ns }}", reason="OOMKilled"} == 1
@@ -28,6 +29,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ContainerOOMKilled.md"
             summary: "Container {{"{{"}} $labels.container {{"}}"}} in {{"{{"}} $labels.pod {{"}}"}} was OOM killed"
         - alert: PodCrashLoopBackOff
           expr: kube_pod_container_status_waiting_reason{namespace="{{ $ns }}", reason="CrashLoopBackOff"} == 1
@@ -36,6 +38,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PodCrashLoopBackOff.md"
             summary: "Pod {{"{{"}} $labels.pod {{"}}"}} in CrashLoopBackOff"
         - alert: PodNotReady
           expr: |
@@ -47,6 +50,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PodNotReady.md"
             summary: "Pod {{"{{"}} $labels.pod {{"}}"}} not ready"
 
     - name: {{ $ns }}-application
@@ -58,6 +62,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/AppDown.md"
             summary: "App {{"{{"}} $labels.instance {{"}}"}} is down"
         - alert: HighHTTPErrorRate
           expr: |
@@ -69,6 +74,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/HighHTTPErrorRate.md"
             summary: "High HTTP 5xx error rate ({{"{{"}} $value | humanizePercentage {{"}}"}})"
         - alert: HighRequestLatency
           expr: http_server_requests_seconds_max{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"} > 5
@@ -77,6 +83,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/HighRequestLatency.md"
             summary: "High request latency (max > 5s)"
         - alert: HikariPoolExhausted
           expr: hikaricp_connections_active{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"} / hikaricp_connections_max{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"} > 0.8
@@ -85,6 +92,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/HikariPoolExhausted.md"
             summary: "HikariCP connection pool nearly exhausted"
         - alert: JVMHeapHigh
           expr: jvm_memory_used_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", area="heap"} / jvm_memory_max_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", area="heap"} > 0.85
@@ -93,6 +101,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/JVMHeapHigh.md"
             summary: "JVM heap usage high"
         - alert: JvmMemoryHigh
           expr: |
@@ -104,6 +113,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/JvmMemoryHigh.md"
             summary: "JVM memory usage high ({{"{{"}} $value | humanizePercentage {{"}}"}})"
         - alert: ProcessCPUHigh
           expr: process_cpu_usage{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"} > 0.9
@@ -112,6 +122,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ProcessCPUHigh.md"
             summary: "Process CPU usage high"
 
     - name: {{ $ns }}-smoke-tests
@@ -122,5 +133,6 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/K6SmokeTestFailing.md"
             summary: "k6 smoke test check failing ({{"{{"}} $labels.check {{"}}"}})"
 {{- end }}

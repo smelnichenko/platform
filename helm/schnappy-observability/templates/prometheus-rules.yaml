@@ -16,6 +16,7 @@ spec:
           labels:
             severity: none
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/Watchdog.md"
             summary: "Watchdog alert (always firing)"
             description: "Dead man's switch. If not firing, the alerting pipeline is broken."
 
@@ -27,6 +28,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ElasticsearchDown.md"
             summary: "Elasticsearch {{ "{{" }} $labels.pod {{ "}}" }} is down"
         - alert: FluentbitDown
           expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-fluentbit-.*"} == 0
@@ -34,6 +36,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/FluentbitDown.md"
             summary: "Fluent-bit {{ "{{" }} $labels.pod {{ "}}" }} is down"
         - alert: KibanaDown
           expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-kibana-.*"} == 0
@@ -41,6 +44,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/KibanaDown.md"
             summary: "Kibana {{ "{{" }} $labels.pod {{ "}}" }} is down"
 
     - name: infra-certificates
@@ -51,6 +55,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/CertExpiringIn30Days.md"
             summary: "Certificate {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }} expiring in less than 30 days"
         - alert: CertExpiringIn7Days
           expr: certmanager_certificate_expiration_timestamp_seconds - time() < 7 * 24 * 3600
@@ -58,6 +63,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/CertExpiringIn7Days.md"
             summary: "Certificate {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }} expiring in less than 7 days"
 
     - name: infra-pvc
@@ -68,6 +74,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PVCUsageHigh.md"
             summary: "PVC {{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} usage high"
         - alert: PVCUsageCritical
           expr: kubelet_volume_stats_used_bytes{namespace="{{ $ns }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ $ns }}"} > 0.9
@@ -75,6 +82,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PVCUsageCritical.md"
             summary: "PVC {{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} usage critical"
 
     - name: infra-vault
@@ -85,6 +93,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/VaultSealed.md"
             summary: "Vault at {{ "{{" }} $labels.instance {{ "}}" }} is sealed or unreachable"
             description: "Pi Vault returned 503 (sealed) or was unreachable for 2m. ESO will fail to refresh any ExternalSecret."
 
@@ -96,6 +105,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ClusterSecretStoreNotReady.md"
             summary: "ClusterSecretStore {{ "{{" }} $labels.name {{ "}}" }} not Ready"
             description: "ESO cannot reach its backing store. All ExternalSecrets sourced from it will stop refreshing."
         - alert: ExternalSecretSyncFailing
@@ -104,6 +114,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ExternalSecretSyncFailing.md"
             summary: "ExternalSecret {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }} sync failing"
 
     - name: infra-argocd
@@ -114,6 +125,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ArgoCDAppDegraded.md"
             summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} Degraded"
             description: "Application has been Degraded for 15m. Check resource tree for the failing child."
         - alert: ArgoCDAppOutOfSync
@@ -122,6 +134,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ArgoCDAppOutOfSync.md"
             summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} OutOfSync 30m+"
 
     - name: infra-velero
@@ -132,6 +145,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/VeleroBSLUnavailable.md"
             summary: "Velero daily backup missing or failed"
             description: "No successful schnappy-daily backup in the last 30h."
         - alert: VeleroBackupFailing
@@ -140,6 +154,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/VeleroBackupFailing.md"
             summary: "Velero backup failed"
 
     - name: infra-public-urls
@@ -150,6 +165,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PublicEndpointDown.md"
             summary: "Public URL {{ "{{" }} $labels.instance {{ "}}" }} is down"
             description: "Blackbox probe failed for 3m. Check gateway, route binding, upstream."
         - alert: PublicEndpointSlow
@@ -158,6 +174,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PublicEndpointSlow.md"
             summary: "Public URL {{ "{{" }} $labels.instance {{ "}}" }} slow"
             description: "End-to-end probe > 3s for 10m."
         - alert: PublicSSLCertExpiringSoon
@@ -166,6 +183,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PublicSSLCertExpiringSoon.md"
             summary: "Public cert at {{ "{{" }} $labels.instance {{ "}}" }} expiring soon"
             description: "Serving cert < 14d from expiry."
 
@@ -177,6 +195,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/CertManagerRenewalFailing.md"
             summary: "cert-manager failed to renew {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }}"
             description: "Certificate not Ready for 1h. ACME challenge, DNS-01 webhook, or CA issuer may be broken."
         - alert: CertManagerOrderFailing
@@ -185,6 +204,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/CertManagerOrderFailing.md"
             summary: "cert-manager ACME requests failing"
 
     - name: infra-prometheus
@@ -195,6 +215,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PrometheusTargetMissing.md"
             summary: "Target {{ "{{" }} $labels.job {{ "}}" }}/{{ "{{" }} $labels.instance {{ "}}" }} is down"
         - alert: PrometheusRuleFailures
           expr: increase(prometheus_rule_evaluation_failures_total[10m]) > 0
@@ -202,6 +223,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PrometheusRuleFailures.md"
             summary: "Prometheus rule evaluation failing"
             description: "A rule is returning errors — invalid expression or missing series."
         - alert: PrometheusNotificationsFailing
@@ -210,6 +232,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PrometheusNotificationsFailing.md"
             summary: "Alertmanager notifications failing ({{ "{{" }} $labels.integration {{ "}}" }})"
             description: "SMTP or webhook delivery is erroring. Check secrets, network, credentials."
         - alert: PrometheusScrapeDurationSlow
@@ -218,5 +241,6 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PrometheusScrapeDurationSlow.md"
             summary: "Slow scrape: {{ "{{" }} $labels.job {{ "}}" }}/{{ "{{" }} $labels.instance {{ "}}" }}"
 {{- end }}

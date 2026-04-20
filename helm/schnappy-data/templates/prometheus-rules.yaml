@@ -19,6 +19,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PostgreSQLDown.md"
             summary: "PostgreSQL {{"{{"}} $labels.pod {{"}}"}} is down"
         {{- end }}
         {{- if eq (.Values.strimzi.enabled | toString) "true" }}
@@ -29,6 +30,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/KafkaBrokerDown.md"
             summary: "Kafka broker {{"{{"}} $labels.pod {{"}}"}} is down"
         {{- end }}
         {{- if or (eq (.Values.scylla.enabled | toString) "true") (eq (.Values.scyllaOperator.enabled | toString) "true") }}
@@ -39,6 +41,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/ScyllaDBDown.md"
             summary: "ScyllaDB {{"{{"}} $labels.pod {{"}}"}} is down"
         {{- end }}
 
@@ -52,6 +55,7 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PostgresBackupFailed.md"
             summary: "PostgreSQL backup job failed"
         - alert: PostgresBackupMissed
           expr: time() - max(kube_job_status_completion_time{namespace="{{ $ns }}", job_name=~".*postgres-backup.*"}) > 26 * 3600
@@ -60,6 +64,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PostgresBackupMissed.md"
             summary: "PostgreSQL backup missed"
     {{- end }}
 
@@ -72,6 +77,7 @@ spec:
             severity: warning
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PVCUsageHigh.md"
             summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage high"
         - alert: PVCUsageCritical
           expr: kubelet_volume_stats_used_bytes{namespace="{{ $ns }}"} / kubelet_volume_stats_capacity_bytes{namespace="{{ $ns }}"} > 0.9
@@ -80,5 +86,6 @@ spec:
             severity: critical
             namespace: {{ $ns }}
           annotations:
+            runbook_url: "https://git.pmon.dev/schnappy/ops/src/branch/main/docs/runbooks/PVCUsageCritical.md"
             summary: "PVC {{"{{"}} $labels.persistentvolumeclaim {{"}}"}} usage critical"
 {{- end }}
