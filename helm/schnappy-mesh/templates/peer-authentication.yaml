@@ -25,9 +25,22 @@ spec:
     9009:
       mode: PERMISSIVE
 ---
-# Alertmanager accepts plaintext on port 9093 for Prometheus alert POSTs
-# (Prometheus runs without an Istio sidecar; STRICT mTLS would drop the
-# plaintext connection and no alerts would ever be delivered)
+# Alertmanager accepts plaintext on port 9093 for Prometheus alert POSTs.
+#
+# Prometheus runs WITHOUT an Istio sidecar by design. Putting it in the
+# mesh would require a DestinationRule(tls.mode=DISABLE) for every
+# non-injected scrape target — today that's 7+ (external-secrets, argocd
+# [3 pods], velero, blackbox-exporter, kube-state-metrics, apiserver,
+# prometheus-operator) plus every future non-mesh target.
+#
+# The sole benefit would be removing this one PeerAuth exception. Net
+# trade: 1 exception → 7+ DestinationRules + ~50% resource overhead on
+# the Prom pod + an extra Envoy hop per scrape. Keeping the sidecar off
+# and scoping mTLS laxity to this one port on this one workload is the
+# smaller blast radius.
+#
+# See also: this was the cause of the 2026-04-20 "silent alerts for
+# weeks" incident — fixed in commit bf77e2e.
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
