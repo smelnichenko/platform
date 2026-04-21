@@ -162,6 +162,13 @@ reports:
       clusterIssuer: letsencrypt-dns
       secretName: ""
 
+# Runbooks server (Nginx serving bundled .md files from chart)
+# The runbook_url annotation on each alert points at this service; on-call
+# can open it from an alert email without logging into Forgejo.
+runbooks:
+  enabled: false
+  image: nginx:1.27-alpine
+
 # Cross-chart references
 app:
   service:

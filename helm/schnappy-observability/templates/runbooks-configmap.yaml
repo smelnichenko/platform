@@ -1,0 +1,67 @@
+{{- if and .Values.runbooks .Values.runbooks.enabled -}}
+{{- $fn := include "schnappy.fullname" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fn }}-runbooks-nginx
+  labels:
+    {{- include "schnappy.runbooks.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log /tmp/error.log warn;
+    pid /tmp/nginx.pid;
+    events { worker_connections 64; }
+    http {
+      include /etc/nginx/mime.types;
+      # Serve .md files inline as text/plain so browsers display them.
+      types { text/plain md; }
+      default_type application/octet-stream;
+      access_log /tmp/access.log;
+      client_body_temp_path /tmp/client_body;
+      proxy_temp_path /tmp/proxy;
+      fastcgi_temp_path /tmp/fastcgi;
+      uwsgi_temp_path /tmp/uwsgi;
+      scgi_temp_path /tmp/scgi;
+      server {
+        listen 8080;
+        root /usr/share/nginx/html;
+        charset utf-8;
+        # /AlertName → /AlertName.md (no need to remember extension)
+        location ~ ^/([A-Za-z0-9][A-Za-z0-9_-]*)/?$ {
+          try_files /$1.md /$1/README.md /index.html =404;
+        }
+        location = / {
+          try_files /index.html =404;
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fn }}-runbooks-content
+  labels:
+    {{- include "schnappy.runbooks.labels" . | nindent 4 }}
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html><head><meta charset="utf-8"><title>schnappy runbooks</title>
+    <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#222}h1{border-bottom:2px solid #eee;padding-bottom:8px}ul{line-height:1.9}a{color:#1976d2;text-decoration:none}a:hover{text-decoration:underline}.muted{color:#888;font-size:13px}</style>
+    </head><body>
+    <h1>Schnappy Runbooks</h1>
+    <p class="muted">One page per alertname. Linked from every alert email (<code>runbook_url</code> annotation).</p>
+    <ul>
+    {{- range $path, $_ := .Files.Glob "runbooks/*.md" }}
+    {{- $name := base $path | trimSuffix ".md" }}
+    {{- if ne $name "README" }}
+      <li><a href="/{{ $name }}">{{ $name }}</a></li>
+    {{- end }}
+    {{- end }}
+    </ul>
+    </body></html>
+{{- range $path, $_ := .Files.Glob "runbooks/*.md" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

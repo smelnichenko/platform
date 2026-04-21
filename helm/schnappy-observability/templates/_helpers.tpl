@@ -203,6 +203,16 @@ app.kubernetes.io/component: reports
 app.kubernetes.io/component: reports
 {{- end }}
 
+{{- define "schnappy.runbooks.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: runbooks
+{{- end }}
+
+{{- define "schnappy.runbooks.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: runbooks
+{{- end }}
+
 {{/* ========== Cross-chart service name helpers ========== */}}
 
 {{- define "schnappy.monitor.serviceName" -}}

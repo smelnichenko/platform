@@ -1,0 +1,108 @@
+{{- if and .Values.runbooks .Values.runbooks.enabled -}}
+{{- $fn := include "schnappy.fullname" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fn }}-runbooks
+  labels:
+    {{- include "schnappy.runbooks.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.runbooks.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.runbooks.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+      annotations:
+        checksum/nginx: {{ include (print $.Template.BasePath "/runbooks-configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: nginx
+          image: {{ .Values.runbooks.image | default "nginx:1.27-alpine" }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            readOnlyRootFilesystem: true
+          ports:
+            - { containerPort: 8080, name: http }
+          volumeMounts:
+            - { name: conf, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf }
+            - { name: content, mountPath: /usr/share/nginx/html }
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits:   { cpu: 100m, memory: 32Mi }
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            periodSeconds: 5
+      volumes:
+        - name: conf
+          configMap: { name: {{ $fn }}-runbooks-nginx }
+        - name: content
+          configMap: { name: {{ $fn }}-runbooks-content }
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fn }}-runbooks
+  labels:
+    {{- include "schnappy.runbooks.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - { port: 8080, targetPort: http, name: http }
+  selector:
+    {{- include "schnappy.runbooks.selectorLabels" . | nindent 4 }}
+---
+{{- if .Values.gateway.hosts.runbooks }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-runbooks-route
+  labels:
+    {{- include "schnappy.runbooks.labels" . | nindent 4 }}
+spec:
+  hostnames: [{{ .Values.gateway.hosts.runbooks | quote }}]
+  parentRefs:
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ $fn }}-runbooks
+          port: 8080
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fn }}-runbooks
+  labels:
+    {{- include "schnappy.runbooks.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.runbooks.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    # Istio gateway (cross-namespace routing)
+    - from:
+        - podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: schnappy-infra-gateway
+      ports:
+        - { port: 8080, protocol: TCP }
+{{- end }}
