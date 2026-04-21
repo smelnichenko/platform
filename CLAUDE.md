@@ -8,7 +8,7 @@ Helm charts for all schnappy components. Deployed via Argo CD GitOps from the `s
 |---|---|---|---|
 | `schnappy` | `helm/schnappy` | `schnappy` | Code pushes (daily) — app, admin, chat, chess, site, game |
 | `schnappy-data` | `helm/schnappy-data` | `schnappy-data` | Version bumps (monthly) — postgres, redis, kafka, scylla, minio, apt-cache |
-| `schnappy-auth` | `helm/schnappy-auth` | `schnappy-auth` | Auth config (rare) — keycloak |
+| `schnappy-auth` | `helm/schnappy-auth` | — | **TEST-ONLY** (Vagrant E2E in-cluster Keycloak). Production Keycloak is bare-metal on Pis. |
 | `schnappy-observability` | `helm/schnappy-observability` | `schnappy-observability` | Dashboard/config (weekly) — ELK, prometheus, grafana, alertmanager |
 | `schnappy-sonarqube` | `helm/schnappy-sonarqube` | `schnappy-sonarqube` | QG/rule changes (rare) — sonarqube |
 | `schnappy-mesh` | `helm/schnappy-mesh` | `schnappy-mesh` | Mesh config (rare) — Istio gateway, HTTPRoutes, ServiceAccounts, AuthorizationPolicies |

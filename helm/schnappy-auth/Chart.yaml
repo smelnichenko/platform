@@ -1,6 +1,6 @@
 apiVersion: v2
 name: schnappy-auth
-description: Authentication (Keycloak SSO)
+description: "[TEST-ONLY] In-cluster Keycloak for Vagrant E2E. Production Keycloak is bare-metal on Pis — see README.md."
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
