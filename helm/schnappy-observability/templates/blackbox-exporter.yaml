@@ -118,11 +118,16 @@ spec:
     - ports:
         - { port: 53, protocol: UDP }
         - { port: 53, protocol: TCP }
-    # Pi Vault + public HTTPS URLs on the private LAN (ten gateway on .2)
+    # Pi Vault seal probes — pi1, VIP, pi2 on :8200
     - to:
-        - ipBlock:
-            cidr: 192.168.11.0/24
+        - ipBlock: { cidr: 192.168.11.4/32 }
+        - ipBlock: { cidr: 192.168.11.5/32 }
+        - ipBlock: { cidr: 192.168.11.6/32 }
       ports:
         - { port: 8200, protocol: TCP }
+    # Public HTTPS probes (pmon.dev, auth.pmon.dev, …) — ten gateway only
+    - to:
+        - ipBlock: { cidr: 192.168.11.2/32 }
+      ports:
         - { port: 443, protocol: TCP }
 {{- end }}
