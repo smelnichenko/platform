@@ -1,0 +1,166 @@
+{{- if and .Values.previewMode .Values.previewNumber -}}
+# Plan 067 §"Data backend cleanup hooks" — pre-delete hook that prunes
+# per-PR shared resources that the chart created prefixes for but
+# doesn't own the lifecycle of (Kafka topics on the shared cluster,
+# Scylla keyspaces, MinIO bucket, Keycloak client).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "schnappy.fullname" . }}-preview-cleanup
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "schnappy.fullname" . }}-preview-cleanup
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkatopics"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "schnappy.fullname" . }}-preview-cleanup
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "schnappy.fullname" . }}-preview-cleanup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "schnappy.fullname" . }}-preview-cleanup
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "schnappy.fullname" . }}-preview-cleanup
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "schnappy.fullname" . }}-preview-cleanup
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: cleanup
+          image: alpine/k8s:1.34.0
+          env:
+            - name: PR_NUMBER
+              value: {{ .Values.previewNumber | quote }}
+            - name: SHARED_KAFKA_NS
+              value: {{ .Values.preview.sharedNamespace | default "schnappy-production" | quote }}
+            - name: MINIO_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-minio
+                  key: MINIO_ENDPOINT
+                  optional: true
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-minio
+                  key: MINIO_ACCESS_KEY
+                  optional: true
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-minio
+                  key: MINIO_SECRET_KEY
+                  optional: true
+            - name: SCYLLA_CONTACT_POINTS
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-scylla
+                  key: SCYLLA_CONTACT_POINTS
+                  optional: true
+            - name: SCYLLA_USER
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-scylla
+                  key: SCYLLA_USER
+                  optional: true
+            - name: SCYLLA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-scylla
+                  key: SCYLLA_PASSWORD
+                  optional: true
+            - name: KEYCLOAK_REALM_URL
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-keycloak
+                  key: KEYCLOAK_REALM_URL
+                  optional: true
+            - name: KEYCLOAK_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: schnappy-shared-keycloak
+                  key: KEYCLOAK_ADMIN_TOKEN
+                  optional: true
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              # Kafka topics — KafkaTopic CRs prefixed pr-${PR_NUMBER}-
+              if kubectl auth can-i list kafkatopics -n "$SHARED_KAFKA_NS" >/dev/null 2>&1; then
+                kubectl -n "$SHARED_KAFKA_NS" get kafkatopics -o name 2>/dev/null \
+                  | grep "kafkatopic.*pr-${PR_NUMBER}-" \
+                  | xargs -r kubectl -n "$SHARED_KAFKA_NS" delete \
+                  || true
+              fi
+              # MinIO bucket
+              if [ -n "${MINIO_ENDPOINT:-}" ]; then
+                wget -qO /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc \
+                  && chmod +x /tmp/mc \
+                  && /tmp/mc alias set prod "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" >/dev/null \
+                  && /tmp/mc rb --force "prod/pr-${PR_NUMBER}" \
+                  || echo "minio cleanup skipped/failed (non-fatal)"
+              fi
+              # Scylla keyspace
+              if [ -n "${SCYLLA_CONTACT_POINTS:-}" ]; then
+                # cqlsh isn't in alpine/k8s; use a one-shot cqlsh image as a sidecar
+                # in a follow-up if this becomes load-bearing. For now just log.
+                echo "[note] scylla keyspace pr_${PR_NUMBER}_ left for manual cleanup"
+              fi
+              # Keycloak client
+              if [ -n "${KEYCLOAK_REALM_URL:-}" ] && [ -n "${KEYCLOAK_ADMIN_TOKEN:-}" ]; then
+                CLIENT_ID="preview-pr-${PR_NUMBER}"
+                cid=$(wget -qO- --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
+                  "$KEYCLOAK_REALM_URL/clients?clientId=$CLIENT_ID" \
+                  | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+                if [ -n "$cid" ]; then
+                  wget -qO- --method=DELETE --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
+                    "$KEYCLOAK_REALM_URL/clients/$cid" || true
+                fi
+              fi
+              echo "preview cleanup done for pr-${PR_NUMBER}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+{{- end }}

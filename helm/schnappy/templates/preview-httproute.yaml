@@ -1,0 +1,37 @@
+{{- if and .Values.previewMode .Values.ingress.host -}}
+# Plan 067 — per-PR preview HTTPRoute. Wildcard cert
+# `preview-pmon-dev-tls` already covers `*.preview.pmon.dev` from the
+# istio-system namespace; this just attaches a host-routing rule to
+# the existing prod Istio gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "schnappy.fullname" . }}-preview
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    preview-env: "true"
+spec:
+  hostnames:
+    - {{ .Values.ingress.host | quote }}
+  parentRefs:
+    - name: {{ .Values.ingress.gatewayName }}
+      namespace: {{ .Values.ingress.gatewayNamespace }}
+      sectionName: https
+  rules:
+    # Frontend (site)
+    - matches:
+        - { path: { type: PathPrefix, value: / } }
+      backendRefs:
+        - { name: {{ include "schnappy.fullname" . }}-site, port: 80 }
+    # API → monitor
+    - matches:
+        - { path: { type: PathPrefix, value: /api } }
+      backendRefs:
+        - { name: {{ include "schnappy.fullname" . }}-monitor, port: 8080 }
+    # WebSocket (chat) until Plan 066 cuts to Centrifugo
+    - matches:
+        - { path: { type: PathPrefix, value: /ws } }
+      backendRefs:
+        - { name: {{ include "schnappy.fullname" . }}-chat, port: 8080 }
+{{- end }}

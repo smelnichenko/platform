@@ -1,6 +1,26 @@
 # Core application services chart
 nameOverride: schnappy
 
+# Plan 067 — when true, the chart emits the preview HTTPRoute on
+# `<ingress.host>` against the prod Istio gateway, and a pre-delete
+# Job that prunes per-PR shared-resource artifacts (Kafka topics,
+# Scylla keyspace, MinIO bucket, Keycloak client). Set per-Application
+# by the schnappy-pr-envs ApplicationSet.
+previewMode: false
+previewNumber: ""
+previewSourceRepo: ""
+preview:
+  # Namespace where the shared Kafka cluster (KafkaTopic CRs) lives.
+  sharedNamespace: schnappy-production
+
+# Optional: where the preview HTTPRoute attaches (default = the same
+# Istio gateway used by prod). Override per-cluster if you have a
+# dedicated preview gateway.
+ingress:
+  host: ""
+  gatewayName: schnappy-istio-gateway
+  gatewayNamespace: istio-system
+
 vault:
   secretsEnabled: false
   secretPathPrefix: "secret/data/schnappy"
