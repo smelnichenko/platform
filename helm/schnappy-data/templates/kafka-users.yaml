@@ -1,0 +1,120 @@
+{{- if and (eq (.Values.strimzi.enabled | toString) "true") (eq (.Values.kafka.scram.enabled | toString) "true") }}
+{{- $cluster := include "schnappy.fullname" . }}
+# Plan 068 — per-service KafkaUser CRs with SCRAM-SHA-512 creds and
+# topic-scoped ACLs. Strimzi's userOperator generates a Secret named
+# after each user with `username` + `password` keys; deployments mount
+# those into KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD env vars
+# (Phase 2 of Plan 068, app-side change).
+#
+# Topic ownership map:
+#   monitor       — produce monitor.events.*, consume monitor.commands.*, user.events
+#   chat          — produce + consume chat.*, produce events.chat.*, consume user.events
+#   chess         — produce + consume chess.*, produce events.chess.*, consume user.events
+#   admin         — produce + consume user.events, admin.*
+#   centrifugo    — consume events.* (Plan 066 — fans out to clients)
+#   clickhouse    — consume events.*, chat.*, chess.* (analytics mirror)
+#
+# Each KafkaUser's metadata.name becomes the Secret + SCRAM principal.
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-kafka-admin
+  labels:
+    strimzi.io/cluster: {{ $cluster }}
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "*", patternType: literal }, operations: [All] }
+      - { resource: { type: group, name: "*", patternType: literal }, operations: [All] }
+      - { resource: { type: cluster }, operations: [All] }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-monitor
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "monitor.events.", patternType: prefix }, operations: [Write, Describe] }
+      - { resource: { type: topic, name: "monitor.commands.", patternType: prefix }, operations: [Read, Describe] }
+      - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
+      - { resource: { type: group, name: "schnappy-monitor-", patternType: prefix }, operations: [Read] }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-chat
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "chat.", patternType: prefix }, operations: [Read, Write, Describe] }
+      - { resource: { type: topic, name: "events.chat.", patternType: prefix }, operations: [Write, Describe] }
+      - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
+      - { resource: { type: group, name: "schnappy-chat-", patternType: prefix }, operations: [Read] }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-chess
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "chess.", patternType: prefix }, operations: [Read, Write, Describe] }
+      - { resource: { type: topic, name: "events.chess.", patternType: prefix }, operations: [Write, Describe] }
+      - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
+      - { resource: { type: group, name: "schnappy-chess-", patternType: prefix }, operations: [Read] }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-admin
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Write, Describe] }
+      - { resource: { type: topic, name: "admin.", patternType: prefix }, operations: [Read, Write, Describe] }
+      - { resource: { type: group, name: "schnappy-admin-", patternType: prefix }, operations: [Read] }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-centrifugo
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "events.", patternType: prefix }, operations: [Read, Describe] }
+      - { resource: { type: group, name: "centrifugo", patternType: literal }, operations: [Read] }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-clickhouse-events
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "events.", patternType: prefix }, operations: [Read, Describe] }
+      - { resource: { type: topic, name: "chat.", patternType: prefix }, operations: [Read, Describe] }
+      - { resource: { type: topic, name: "chess.", patternType: prefix }, operations: [Read, Describe] }
+      - { resource: { type: group, name: "clickhouse-events", patternType: literal }, operations: [Read] }
+{{- end }}

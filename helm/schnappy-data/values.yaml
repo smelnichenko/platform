@@ -66,6 +66,12 @@ kafka:
   clusterId: ""
   existingSecret: ""
   javaOpts: "-Xmx1g -Xms1g"
+  # Plan 068 — when enabled, the Kafka cluster gains an extra
+  # SCRAM-SHA-512 listener on :9094, the userOperator runs, and the
+  # KafkaUser CRs in templates/kafka-users.yaml emit their per-service
+  # creds (Strimzi auto-generates Secrets named like the KafkaUser).
+  scram:
+    enabled: false
   retention:
     hours: 168
     bytes: "10737418240"
