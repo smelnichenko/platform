@@ -4,7 +4,7 @@ Helm chart for deploying the full pmon.dev application stack to Kubernetes.
 
 ## Architecture
 
-Single Helm chart that templates all application services and infrastructure components into the `monitor` namespace. Managed by Flux CD HelmRelease -- image tags and configuration values live in the `schnappy/infra` repo.
+Single Helm chart that templates all application services and infrastructure components into the `schnappy` namespace. Managed by an Argo CD Application — image tags and configuration values live in the `schnappy/infra` repo.
 
 ## Components
 
@@ -45,12 +45,11 @@ helm template monitor helm/ -f /path/to/infra/clusters/production/monitor/values
 
 ## Deployment
 
-This chart is not installed directly. Flux CD manages it:
+This chart is not installed directly. Argo CD manages it:
 
-1. Flux HelmRelease references this chart via GitRepository source
-2. Woodpecker CD commits updated image tags to the `schnappy/infra` repo
-3. Flux source-controller polls the infra repo (1-minute interval)
-4. Flux helm-controller reconciles the HelmRelease with new values
-5. Kubernetes performs a rolling update
+1. An Argo CD Application points at this chart inside the `schnappy/infra` repo
+2. Woodpecker CD commits updated image tags to `schnappy/infra`
+3. Argo CD detects the change (polling or webhook)
+4. Argo CD syncs the Application — Helm renders, Kubernetes performs a rolling update
 
 For local development, use `docker-compose.yml` in the ops repo instead.

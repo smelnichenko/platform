@@ -1,4 +1,9 @@
 {{- if eq (.Values.prometheus.enabled | toString) "true" }}
+{{- $cns := true }}
+{{- if hasKey .Values.prometheus "crossNsScrapePolicies" }}
+{{- $cns = .Values.prometheus.crossNsScrapePolicies }}
+{{- end }}
+{{- if $cns }}
 {{- $fn := include "schnappy.fullname" . }}
 {{- $promNs := .Release.Namespace }}
 # Permit prometheus (in {{ $promNs }}) to scrape metrics endpoints in
@@ -60,4 +65,5 @@ spec:
               kubernetes.io/metadata.name: {{ $promNs }}
       ports:
         - { port: 8080, protocol: TCP }   # ESO metrics
+{{- end }}
 {{- end }}
