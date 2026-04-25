@@ -35,7 +35,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: init
-          image: curlimages/curl:8.10.1
+          image: {{ .Values.clickhouse.image }}
           env:
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
@@ -46,18 +46,19 @@ spec:
             - sh
             - -c
             - |
-              set -e
-              ENDPOINT="http://{{ include "schnappy.clickhouse.serviceName" . }}:8123"
+              set -eo pipefail
+              HOST="{{ include "schnappy.clickhouse.serviceName" . }}"
+              # Wait for server to accept queries.
               for i in $(seq 1 60); do
-                if curl -sf "$ENDPOINT/ping" >/dev/null; then break; fi
+                if clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --query "SELECT 1" >/dev/null 2>&1; then break; fi
                 sleep 2
               done
 
-              # Substitute placeholders → /tmp, then POST.
               cp /sql/logs-schema.sql /tmp/logs-schema.sql
               sed -i "s/__TTL_DAYS__/{{ .Values.clickhouse.retention.days | default 30 }}/g" /tmp/logs-schema.sql
-              curl -sf -u "schnappy:$CLICKHOUSE_PASSWORD" \
-                --data-binary @/tmp/logs-schema.sql "$ENDPOINT/" | tee /dev/stderr
+              # --multiquery makes clickhouse-client execute every
+              # ;-separated statement in the file. Failures abort.
+              clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --multiquery < /tmp/logs-schema.sql
 
               {{- if eq (.Values.clickhouse.events.enabled | toString) "true" }}
               cp /sql/events-schema.sql /tmp/events-schema.sql
@@ -68,15 +69,14 @@ spec:
                 -e "s/__KAFKA_NUM_CONS__/{{ .Values.clickhouse.events.kafka.numConsumers | default 2 }}/g" \
                 -e "s/__EVT_TTL_DAYS__/{{ .Values.clickhouse.events.retentionDays | default 180 }}/g" \
                 /tmp/events-schema.sql
-              curl -sf -u "schnappy:$CLICKHOUSE_PASSWORD" \
-                --data-binary @/tmp/events-schema.sql "$ENDPOINT/" | tee /dev/stderr
+              clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --multiquery < /tmp/events-schema.sql
               {{- end }}
 
               # Tell the istio sidecar to exit so the Job pod can
               # reach Completed (sidecar would otherwise stay running
               # forever, holding the pod at 2/2 Running and the Job at
               # PodInitializing). Best-effort: not fatal if it fails.
-              curl -sf -X POST http://localhost:15020/quitquitquit || true
+              wget -q -O- --post-data='' http://localhost:15020/quitquitquit || true
           volumeMounts:
             - { name: sql, mountPath: /sql, readOnly: true }
             - { name: tmp, mountPath: /tmp }
