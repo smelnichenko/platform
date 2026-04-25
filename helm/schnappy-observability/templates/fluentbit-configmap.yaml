@@ -1,4 +1,4 @@
-{{- if eq (.Values.elk.enabled | toString) "true" }}
+{{- if eq (.Values.fluentbit.enabled | toString) "true" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -46,23 +46,26 @@ data:
         Match             kube.*
         Exclude           $kubernetes['container_name'] fluent-bit
 
+    {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
+    # Plan 065: ClickHouse output. The `http` plugin posts JSONEachRow
+    # which the ClickHouse HTTP interface accepts when the URI carries
+    # an INSERT query. Filesystem-backed retry storage is declared at
+    # the [SERVICE] level — this output inherits it.
     [OUTPUT]
-        Name              es
+        Name              http
         Match             kube.*
-        Host              {{ include "schnappy.elasticsearch.serviceName" . }}.{{ .Release.Namespace }}.svc
-        Port              9200
-        HTTP_User         elastic
-        HTTP_Passwd       ${ELASTICSEARCH_PASSWORD}
-        Index             podlogs
-        Logstash_Format   On
-        Logstash_Prefix   podlogs
-        Suppress_Type_Name On
+        Host              {{ include "schnappy.clickhouse.serviceName" . }}.{{ .Release.Namespace }}.svc
+        Port              8123
+        URI               /?database=logs&query=INSERT+INTO+logs.podlogs+FORMAT+JSONEachRow
+        Format            json_lines
+        json_date_key     timestamp
+        json_date_format  iso8601
+        http_user         default
+        http_passwd       ${CLICKHOUSE_PASSWORD}
         tls               Off
         Retry_Limit       5
-        Buffer_Size       1024KB
-        Generate_ID       Off
         Workers           2
-        Trace_Error       On
+    {{- end }}
 
   parsers.conf: |
     [PARSER]

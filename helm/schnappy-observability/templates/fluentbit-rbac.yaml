@@ -1,4 +1,4 @@
-{{- if eq (.Values.elk.enabled | toString) "true" }}
+{{- if eq (.Values.fluentbit.enabled | toString) "true" }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:

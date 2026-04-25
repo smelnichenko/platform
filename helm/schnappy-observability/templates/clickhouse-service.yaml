@@ -1,0 +1,16 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.clickhouse.serviceName" . }}
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - { port: 8123, targetPort: 8123, protocol: TCP, name: http }
+    - { port: 9000, targetPort: 9000, protocol: TCP, name: native }
+    - { port: 9363, targetPort: 9363, protocol: TCP, name: metrics }
+  selector:
+    {{- include "schnappy.clickhouse.selectorLabels" . | nindent 4 }}
+{{- end }}

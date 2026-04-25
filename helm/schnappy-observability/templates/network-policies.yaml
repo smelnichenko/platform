@@ -225,100 +225,48 @@ spec:
           port: 8080
     {{- end }}
 {{- end }}
-{{- if eq (.Values.elk.enabled | toString) "true" }}
+{{- if eq (.Values.clickhouse.enabled | toString) "true" }}
 ---
-# Elasticsearch network policy
+# ClickHouse network policy (Plan 065)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-elasticsearch
+  name: {{ include "schnappy.fullname" . }}-clickhouse
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.clickhouse.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
   ingress:
-    # Allow from app
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9200
-    # Allow from Kibana
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.kibana.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9200
-    # Allow from Fluent-bit
+    # Fluent-bit ships logs in
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.fluentbit.selectorLabels" . | nindent 14 }}
       ports:
-        - protocol: TCP
-          port: 9200
-    # Allow from ES ILM job
+        - { protocol: TCP, port: 8123 }
+    # Grafana queries logs
     - from:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.grafana.selectorLabels" . | nindent 14 }}
       ports:
-        - protocol: TCP
-          port: 9200
+        - { protocol: TCP, port: 8123 }
+    # Prometheus scrapes /metrics on 9363
+    - from: []
+      ports:
+        - { protocol: TCP, port: 9363 }
   egress:
-    # DNS only — Elasticsearch doesn't initiate external connections
+    # DNS only
     - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
----
-# Kibana network policy
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "schnappy.fullname" . }}-kibana
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-spec:
-  podSelector:
-    matchLabels:
-      {{- include "schnappy.kibana.selectorLabels" . | nindent 6 }}
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-      ports:
-        - protocol: TCP
-          port: 5601
-  egress:
-    # DNS
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-    # Kibana → Elasticsearch
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9200
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+{{- end }}
+{{- if eq (.Values.fluentbit.enabled | toString) "true" }}
 ---
 # Fluent-bit network policy
 apiVersion: networking.k8s.io/v1
@@ -336,62 +284,24 @@ spec:
     - Egress
   ingress: []
   egress:
-    # DNS
     - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-    # Fluent-bit → Elasticsearch
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # Fluent-bit → ClickHouse
+    {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.clickhouse.selectorLabels" . | nindent 14 }}
       ports:
-        - protocol: TCP
-          port: 9200
+        - { protocol: TCP, port: 8123 }
+    {{- end }}
     # Fluent-bit → Kubernetes API (metadata enrichment)
     - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
+        - ipBlock: { cidr: 0.0.0.0/0 }
       ports:
-        - protocol: TCP
-          port: 443
-        - protocol: TCP
-          port: 6443
-{{- end }}
----
-# ES ILM job network policy
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "schnappy.fullname" . }}-es-ilm-job
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-spec:
-  podSelector:
-    matchLabels:
-      {{- include "schnappy.esIlmJob.selectorLabels" . | nindent 6 }}
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress: []
-  egress:
-    # DNS
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-    # ILM job → Elasticsearch
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.elasticsearch.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9200
----
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
 {{- end }}
 {{- if and .Values.networkPolicies.enabled .Values.reports.enabled }}
 ---
@@ -434,4 +344,5 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+{{- end }}
 {{- end }}

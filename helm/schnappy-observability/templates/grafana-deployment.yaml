@@ -56,6 +56,15 @@ spec:
               value: "false"
             - name: GF_PLUGINS_PLUGIN_ADMIN_ENABLED
               value: "false"
+            {{- if and (eq (.Values.clickhouse.enabled | toString) "true") (eq (.Values.clickhouse.installGrafanaPlugin | toString) "true") }}
+            - name: GF_INSTALL_PLUGINS
+              value: grafana-clickhouse-datasource
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.clickhouse.secretName" . }}
+                  key: CLICKHOUSE_PASSWORD
+            {{- end }}
             - name: GF_ANALYTICS_CHECK_FOR_UPDATES
               value: "false"
             - name: GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES

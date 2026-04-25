@@ -40,44 +40,30 @@ app.kubernetes.io/name: {{ include "schnappy.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/* ========== Elasticsearch ========== */}}
+{{/* ========== ClickHouse (logs — Plan 065) ========== */}}
 
-{{- define "schnappy.elasticsearch.labels" -}}
+{{- define "schnappy.clickhouse.labels" -}}
 {{ include "schnappy.labels" . }}
-app.kubernetes.io/component: elasticsearch
+app.kubernetes.io/component: clickhouse
 {{- end }}
 
-{{- define "schnappy.elasticsearch.selectorLabels" -}}
+{{- define "schnappy.clickhouse.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: elasticsearch
+app.kubernetes.io/component: clickhouse
 {{- end }}
 
-{{- define "schnappy.elasticsearch.serviceName" -}}
-{{- printf "%s-elasticsearch" (include "schnappy.fullname" .) }}
+{{- define "schnappy.clickhouse.serviceName" -}}
+{{- printf "%s-clickhouse" (include "schnappy.fullname" .) }}
 {{- end }}
 
-{{- define "schnappy.elasticsearch.secretName" -}}
-{{- if .Values.elk.elasticsearch.existingSecret }}
-{{- .Values.elk.elasticsearch.existingSecret }}
+{{- define "schnappy.clickhouse.secretName" -}}
+{{- with .Values.clickhouse }}
+{{- if .existingSecret }}
+{{- .existingSecret }}
 {{- else }}
-{{- printf "%s-elasticsearch" (include "schnappy.fullname" .) }}
+{{- printf "%s-clickhouse" (include "schnappy.fullname" $) }}
 {{- end }}
 {{- end }}
-
-{{/* ========== Kibana ========== */}}
-
-{{- define "schnappy.kibana.labels" -}}
-{{ include "schnappy.labels" . }}
-app.kubernetes.io/component: kibana
-{{- end }}
-
-{{- define "schnappy.kibana.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: kibana
-{{- end }}
-
-{{- define "schnappy.kibana.serviceName" -}}
-{{- printf "%s-kibana" (include "schnappy.fullname" .) }}
 {{- end }}
 
 {{/* ========== Fluent-bit ========== */}}
@@ -182,13 +168,6 @@ app.kubernetes.io/component: kube-state-metrics
 
 {{- define "schnappy.kubeStateMetrics.serviceName" -}}
 {{- printf "%s-kube-state-metrics" (include "schnappy.fullname" .) }}
-{{- end }}
-
-{{/* ========== ES ILM job ========== */}}
-
-{{- define "schnappy.esIlmJob.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: es-ilm-job
 {{- end }}
 
 {{/* ========== Reports ========== */}}

@@ -1,4 +1,4 @@
-{{- if eq (.Values.elk.enabled | toString) "true" }}
+{{- if eq (.Values.fluentbit.enabled | toString) "true" }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -24,13 +24,15 @@ spec:
           type: RuntimeDefault
       containers:
         - name: fluent-bit
-          image: {{ .Values.elk.fluentbit.image }}
+          image: {{ .Values.fluentbit.image }}
           env:
-            - name: ELASTICSEARCH_PASSWORD
+            {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
+            - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.elasticsearch.secretName" . }}
-                  key: ELASTICSEARCH_PASSWORD
+                  name: {{ include "schnappy.clickhouse.secretName" . }}
+                  key: CLICKHOUSE_PASSWORD
+            {{- end }}
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
@@ -51,7 +53,7 @@ spec:
             - name: db
               mountPath: /fluent-bit/db
           resources:
-            {{- toYaml .Values.elk.fluentbit.resources | nindent 12 }}
+            {{- toYaml .Values.fluentbit.resources | nindent 12 }}
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

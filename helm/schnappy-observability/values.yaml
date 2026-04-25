@@ -17,42 +17,33 @@ gateway:
     logs: ""
     reports: ""
 
-# ELK Stack
-elk:
+# ClickHouse — log storage backend (Plan 065). Replaces ELK in
+# steady state; both can be on simultaneously during the cutover.
+clickhouse:
   enabled: false
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.13
-    replicas: 1
-    javaOpts: "-Xms1g -Xmx1g"
-    password: ""
-    existingSecret: ""
-    resources:
-      requests: { memory: "2Gi", cpu: "500m" }
-      limits: { memory: "4Gi", cpu: "4000m" }
-    storage:
-      size: 50Gi
-      storageClass: ""
-    retention:
-      days: 30
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.19.13
-    replicas: 1
-    resources:
-      requests: { memory: "256Mi", cpu: "100m" }
-      limits: { memory: "512Mi", cpu: "1000m" }
-    ingress:
-      enabled: false
-      className: traefik
-      host: "logs.pmon.dev"
-      tls:
-        enabled: false
-        secretName: ""
-        clusterIssuer: "letsencrypt-prod"
-  fluentbit:
-    image: cr.fluentbit.io/fluent/fluent-bit:4.2.3.1
-    resources:
-      requests: { memory: "128Mi", cpu: "50m" }
-      limits: { memory: "256Mi", cpu: "200m" }
+  image: clickhouse/clickhouse-server:24.8-alpine
+  password: ""
+  existingSecret: ""
+  resources:
+    requests: { cpu: "100m", memory: "512Mi" }
+    limits:   { cpu: "2",    memory: "2Gi" }
+  storage:
+    size: 20Gi
+    storageClass: ""
+  retention:
+    days: 30
+  # Grafana plugin install — toggled here so a single chart value
+  # controls both the datasource emit and the plugin presence.
+  installGrafanaPlugin: true
+
+# Fluent-bit log shipper. ELK was retired (Plan 065); fluentbit
+# now talks only to ClickHouse.
+fluentbit:
+  enabled: false
+  image: cr.fluentbit.io/fluent/fluent-bit:4.2.3.1
+  resources:
+    requests: { memory: "128Mi", cpu: "50m" }
+    limits: { memory: "256Mi", cpu: "200m" }
 
 # Prometheus (scraping via ServiceMonitors, deployed separately via kube-prometheus-stack)
 prometheus:

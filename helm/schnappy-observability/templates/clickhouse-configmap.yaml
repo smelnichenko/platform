@@ -1,0 +1,99 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.clickhouse.serviceName" . }}-config
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+data:
+  config.xml: |
+    <?xml version="1.0"?>
+    <clickhouse>
+      <logger>
+        <level>information</level>
+        <console>true</console>
+      </logger>
+      <listen_host>0.0.0.0</listen_host>
+      <http_port>8123</http_port>
+      <tcp_port>9000</tcp_port>
+      <interserver_http_port>9009</interserver_http_port>
+      <max_connections>200</max_connections>
+      <keep_alive_timeout>30</keep_alive_timeout>
+      <max_concurrent_queries>50</max_concurrent_queries>
+      <users_config>users.xml</users_config>
+      <default_profile>default</default_profile>
+      <default_database>logs</default_database>
+      <timezone>UTC</timezone>
+      <path>/var/lib/clickhouse/</path>
+      <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+      <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+      <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+      <prometheus>
+        <endpoint>/metrics</endpoint>
+        <port>9363</port>
+        <metrics>true</metrics>
+        <events>true</events>
+        <asynchronous_metrics>true</asynchronous_metrics>
+      </prometheus>
+    </clickhouse>
+
+  users.xml: |
+    <?xml version="1.0"?>
+    <clickhouse>
+      <profiles>
+        <default>
+          <max_memory_usage>1500000000</max_memory_usage>
+          <log_queries>1</log_queries>
+        </default>
+      </profiles>
+      <users>
+        <default>
+          <password_sha256_hex from_env="CLICKHOUSE_PASSWORD_SHA256"/>
+          <networks>
+            <ip>::/0</ip>
+          </networks>
+          <profile>default</profile>
+          <quota>default</quota>
+          <access_management>0</access_management>
+        </default>
+      </users>
+      <quotas>
+        <default>
+          <interval>
+            <duration>3600</duration>
+            <queries>0</queries>
+            <errors>0</errors>
+            <result_rows>0</result_rows>
+            <read_rows>0</read_rows>
+            <execution_time>0</execution_time>
+          </interval>
+        </default>
+      </quotas>
+    </clickhouse>
+
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS logs;
+
+    CREATE TABLE IF NOT EXISTS logs.podlogs
+    (
+        timestamp     DateTime64(3, 'UTC'),
+        level         LowCardinality(String),
+        namespace     LowCardinality(String),
+        pod           String,
+        container     LowCardinality(String),
+        node          LowCardinality(String),
+        app           LowCardinality(String),
+        component     LowCardinality(String),
+        stream        LowCardinality(String),
+        message       String,
+        labels        Map(LowCardinality(String), String),
+        fields        Map(LowCardinality(String), String),
+        INDEX idx_message_tokens tokens(message) TYPE bloom_filter GRANULARITY 4,
+        INDEX idx_pod_bloom pod TYPE bloom_filter GRANULARITY 4
+    )
+    ENGINE = MergeTree
+    PARTITION BY toYYYYMMDD(timestamp)
+    ORDER BY (namespace, app, timestamp)
+    TTL timestamp + INTERVAL {{ .Values.clickhouse.retention.days | default 30 }} DAY DELETE
+    SETTINGS index_granularity = 8192;
+{{- end }}

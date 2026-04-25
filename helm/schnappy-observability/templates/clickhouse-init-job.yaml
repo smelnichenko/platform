@@ -1,0 +1,72 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "schnappy.fullname" . }}-clickhouse
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "schnappy.clickhouse.serviceName" . }}-init
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
+        job-component: clickhouse-init
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "schnappy.fullname" . }}-clickhouse
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: init
+          image: curlimages/curl:8.10.1
+          env:
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.clickhouse.secretName" . }}
+                  key: CLICKHOUSE_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              ENDPOINT="http://{{ include "schnappy.clickhouse.serviceName" . }}:8123"
+              # Wait for the server.
+              for i in $(seq 1 60); do
+                if curl -sf "$ENDPOINT/ping" >/dev/null; then break; fi
+                sleep 2
+              done
+              # Create database + table from the configmap-mounted SQL.
+              curl -sf -u "default:$CLICKHOUSE_PASSWORD" \
+                --data-binary @/sql/init.sql "$ENDPOINT/" | tee /dev/stderr
+          volumeMounts:
+            - { name: sql, mountPath: /sql }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: sql
+          configMap:
+            name: {{ include "schnappy.clickhouse.serviceName" . }}-config
+            items:
+              - { key: init.sql, path: init.sql }
+{{- end }}

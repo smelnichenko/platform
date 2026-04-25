@@ -115,28 +115,27 @@ spec:
         - operation:
             ports: ["9000"]
 ---
-# Elasticsearch — monitor + kibana + fluentbit on port 9200
+# ClickHouse — fluentbit + grafana on HTTP port 8123 (Plan 065)
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
-  name: {{ $fn }}-elasticsearch
+  name: {{ $fn }}-clickhouse
   namespace: {{ $ns }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/component: elasticsearch
+      app.kubernetes.io/component: clickhouse
   action: ALLOW
   rules:
     - from:
         - source:
             principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kibana
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-fluentbit
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-elasticsearch
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-grafana
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-clickhouse
       to:
         - operation:
-            ports: ["9200"]
+            ports: ["8123", "9000"]
 ---
 # SonarQube PostgreSQL — only sonarqube on port 5432
 apiVersion: security.istio.io/v1

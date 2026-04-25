@@ -1,0 +1,118 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "schnappy.clickhouse.serviceName" . }}
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "schnappy.clickhouse.serviceName" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.clickhouse.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+    spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-clickhouse
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # ClickHouse expects users.xml to read CLICKHOUSE_PASSWORD_SHA256
+        # from env. Compute it from CLICKHOUSE_PASSWORD here so the
+        # ConfigMap stays static.
+        - name: hash-password
+          image: alpine:3.20
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache --quiet coreutils >/dev/null
+              echo -n "$CLICKHOUSE_PASSWORD" | sha256sum | awk '{print $1}' > /env/CLICKHOUSE_PASSWORD_SHA256
+          env:
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.clickhouse.secretName" . }}
+                  key: CLICKHOUSE_PASSWORD
+          volumeMounts:
+            - { name: env, mountPath: /env }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+      containers:
+        - name: clickhouse
+          image: {{ .Values.clickhouse.image }}
+          ports:
+            - { containerPort: 8123, name: http }
+            - { containerPort: 9000, name: native }
+            - { containerPort: 9363, name: metrics }
+          env:
+            - name: CLICKHOUSE_USER
+              value: default
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.clickhouse.secretName" . }}
+                  key: CLICKHOUSE_PASSWORD
+            - name: CLICKHOUSE_PASSWORD_SHA256_FILE
+              value: /env/CLICKHOUSE_PASSWORD_SHA256
+          # Source the SHA256 file as an env var so users.xml can read it.
+          # ClickHouse's docker entrypoint exports anything in /docker-entrypoint-initdb.d
+          # but env_file is simpler.
+          command:
+            - /bin/bash
+            - -c
+            - |
+              export CLICKHOUSE_PASSWORD_SHA256="$(cat /env/CLICKHOUSE_PASSWORD_SHA256)"
+              exec /entrypoint.sh
+          resources:
+            {{- toYaml .Values.clickhouse.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/clickhouse }
+            - { name: config, mountPath: /etc/clickhouse-server/config.d/00-config.xml, subPath: config.xml }
+            - { name: config, mountPath: /etc/clickhouse-server/users.d/00-users.xml, subPath: users.xml }
+            - { name: env, mountPath: /env, readOnly: true }
+          livenessProbe:
+            httpGet: { path: /ping, port: 8123 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /ping, port: 8123 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: false
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "schnappy.clickhouse.serviceName" . }}-config
+        - name: env
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: {{ .Values.clickhouse.storage.size }}
+        {{- if .Values.clickhouse.storage.storageClass }}
+        storageClassName: {{ .Values.clickhouse.storage.storageClass | quote }}
+        {{- end }}
+{{- end }}

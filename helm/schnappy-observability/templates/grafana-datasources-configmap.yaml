@@ -28,6 +28,20 @@ data:
             - name: trace_id
               datasourceUid: tempo
           {{- end }}
+      {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
+      - name: ClickHouse-Logs
+        type: grafana-clickhouse-datasource
+        uid: clickhouse-logs
+        access: proxy
+        url: http://{{ include "schnappy.clickhouse.serviceName" . }}:8123
+        editable: false
+        jsonData:
+          defaultDatabase: logs
+          username: default
+          protocol: http
+        secureJsonData:
+          password: ${CLICKHOUSE_PASSWORD}
+      {{- end }}
       {{- if eq (.Values.tempo.enabled | toString) "true" }}
       - name: Tempo
         type: tempo

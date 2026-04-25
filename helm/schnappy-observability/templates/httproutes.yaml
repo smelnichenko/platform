@@ -23,27 +23,10 @@ spec:
         - name: {{ $fn }}-grafana
           port: 3000
 {{- end }}
-{{- if .Values.gateway.hosts.logs }}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: {{ $fn }}-kibana-route
-  namespace: {{ .Release.Namespace }}
-spec:
-  hostnames:
-    - {{ .Values.gateway.hosts.logs | quote }}
-  parentRefs:
-    - name: {{ $gwName }}
-      namespace: {{ $gwNamespace }}
-      sectionName: https
-  rules:
-    - matches:
-        - path: { type: PathPrefix, value: / }
-      backendRefs:
-        - name: {{ $fn }}-kibana
-          port: 5601
-{{- end }}
+{{- /* Plan 065: Kibana retired. Logs now live in ClickHouse, queried via
+       the ClickHouse-Logs Grafana datasource at the same grafana host.
+       The `gateway.hosts.logs` value is unused — left declared in
+       values.yaml for chart-API compatibility. */ -}}
 {{- if .Values.gateway.hosts.reports }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
