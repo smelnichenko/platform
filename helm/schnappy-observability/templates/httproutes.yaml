@@ -27,8 +27,9 @@ spec:
 ---
 # Plan 065: Kibana retired. Logs now live in ClickHouse, queried via
 # the Grafana ClickHouse-Logs datasource. Keep logs.pmon.dev alive as
-# a 308 redirect to grafana/explore so old bookmarks + the public-URL
-# blackbox probe don't 404.
+# a 301 redirect to grafana/explore so old bookmarks + the public-URL
+# blackbox probe don't 404. (Gateway API only allows 301/302; 308
+# would be ideal but isn't supported.)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -52,7 +53,7 @@ spec:
             path:
               type: ReplaceFullPath
               replaceFullPath: /explore?left=%7B%22datasource%22:%22clickhouse-logs%22%7D
-            statusCode: 308
+            statusCode: 301
 {{- end }}
 {{- if .Values.gateway.hosts.reports }}
 ---
