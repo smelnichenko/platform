@@ -24,11 +24,6 @@ spec:
       labels:
         {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
         job-component: clickhouse-init
-      annotations:
-        # One-shot Job; no mesh sidecar needed. Without this the
-        # istio-proxy stays running after the init container exits,
-        # the pod never reaches Completed, and the Job hangs forever.
-        sidecar.istio.io/inject: "false"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.fullname" . }}-clickhouse
@@ -76,6 +71,12 @@ spec:
               curl -sf -u "schnappy:$CLICKHOUSE_PASSWORD" \
                 --data-binary @/tmp/events-schema.sql "$ENDPOINT/" | tee /dev/stderr
               {{- end }}
+
+              # Tell the istio sidecar to exit so the Job pod can
+              # reach Completed (sidecar would otherwise stay running
+              # forever, holding the pod at 2/2 Running and the Job at
+              # PodInitializing). Best-effort: not fatal if it fails.
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
           volumeMounts:
             - { name: sql, mountPath: /sql, readOnly: true }
             - { name: tmp, mountPath: /tmp }
