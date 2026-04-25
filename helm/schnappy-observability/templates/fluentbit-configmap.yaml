@@ -75,7 +75,7 @@ data:
         Match             kube.*
         Host              {{ include "schnappy.clickhouse.serviceName" . }}.{{ .Release.Namespace }}.svc
         Port              8123
-        URI               /?database=logs&query=INSERT+INTO+logs.podlogs+FORMAT+JSONEachRow
+        URI               /?database=logs&date_time_input_format=best_effort&query=INSERT+INTO+logs.podlogs+FORMAT+JSONEachRow
         Format            json_lines
         json_date_key     timestamp
         json_date_format  iso8601
