@@ -1,9 +1,12 @@
--- Plan 065 — log storage schema. Runs idempotently via the post-install
+-- Log storage schema. Runs idempotently via the post-install
 -- Helm hook (clickhouse-init-job).
 --
 -- The TTL clause references __TTL_DAYS__ which the init Job substitutes
 -- from .Values.clickhouse.retention.days at apply time (sed -i in the
 -- container) so the SQL file stays portable.
+--
+-- TTL must be wrapped in toDateTime() because ClickHouse 24.x rejects
+-- TTL on a DateTime64 column directly (BAD_TTL_EXPRESSION).
 
 CREATE DATABASE IF NOT EXISTS logs;
 
@@ -32,7 +35,7 @@ CREATE TABLE IF NOT EXISTS logs.podlogs
 ENGINE = MergeTree
 PARTITION BY toYYYYMMDD(timestamp)
 ORDER BY (namespace, app, timestamp)
-TTL timestamp + INTERVAL __TTL_DAYS__ DAY DELETE
+TTL toDateTime(timestamp) + INTERVAL __TTL_DAYS__ DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- Online migration for clusters that pre-date the trace_id column.
