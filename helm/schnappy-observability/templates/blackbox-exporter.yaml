@@ -62,8 +62,8 @@ spec:
             - containerPort: 9115
               name: http
           resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits:   { cpu: 100m, memory: 64Mi }
+            requests: { cpu: 10m, memory: 64Mi }
+            limits:   { cpu: 100m, memory: 256Mi }
           readinessProbe:
             httpGet: { path: /-/healthy, port: 9115 }
           volumeMounts:
