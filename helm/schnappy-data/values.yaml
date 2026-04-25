@@ -164,13 +164,17 @@ scyllaOperator:
       enabled: false
       cron: "0 3 * * *"      # daily 03:00 UTC
       retention: 7           # keep 7 daily snapshots
-      location: "s3:schnappy-backups/scylla"
+      # Scylla Manager location format: [dc:]<provider>:<bucket>
+      # The bucket itself is created in MinIO; subpaths aren't part of
+      # the location string.
+      location: "s3:schnappy-backups"
     repair:
       enabled: true
       cron: "0 4 * * 0"      # Sunday 04:00 UTC
       intensity: 1.0
       parallel: 1
-      smallTableThreshold: "1GiB"
+      # k8s resource.Quantity format (Ki/Mi/Gi), not 1GiB.
+      smallTableThreshold: "1Gi"
 
 cnpg:
   enabled: false

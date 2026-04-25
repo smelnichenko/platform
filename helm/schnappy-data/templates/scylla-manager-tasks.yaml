@@ -9,9 +9,13 @@ kind: ScyllaDBManagerClusterRegistration
 metadata:
   name: {{ $clusterRef }}
   labels:
+    # Required by the scylla-operator webhook — the operator only
+    # acts on registrations carrying this label.
+    internal.scylla-operator.scylladb.com/global-scylladb-manager: "true"
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   scyllaDBClusterRef:
+    kind: ScyllaCluster
     name: {{ $clusterRef }}
 {{- if eq (.Values.scyllaOperator.scyllaManager.backup.enabled | toString) "true" }}
 ---
@@ -23,6 +27,7 @@ metadata:
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   scyllaDBClusterRef:
+    kind: ScyllaCluster
     name: {{ $clusterRef }}
   type: Backup
   backup:
@@ -41,10 +46,11 @@ metadata:
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   scyllaDBClusterRef:
+    kind: ScyllaCluster
     name: {{ $clusterRef }}
   type: Repair
   repair:
-    intensity: {{ .Values.scyllaOperator.scyllaManager.repair.intensity }}
+    intensity: {{ .Values.scyllaOperator.scyllaManager.repair.intensity | quote }}
     parallel: {{ .Values.scyllaOperator.scyllaManager.repair.parallel }}
     cron: {{ .Values.scyllaOperator.scyllaManager.repair.cron | quote }}
     smallTableThreshold: {{ .Values.scyllaOperator.scyllaManager.repair.smallTableThreshold | quote }}
