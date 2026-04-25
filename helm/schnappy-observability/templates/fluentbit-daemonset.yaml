@@ -33,6 +33,18 @@ spec:
                   name: {{ include "schnappy.clickhouse.secretName" . }}
                   key: CLICKHOUSE_PASSWORD
             {{- end }}
+            {{- if eq (.Values.openobserve.enabled | toString) "true" }}
+            - name: OPENOBSERVE_ROOT_USER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.openobserve.secretName" . }}
+                  key: ZO_ROOT_USER_EMAIL
+            - name: OPENOBSERVE_ROOT_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.openobserve.secretName" . }}
+                  key: ZO_ROOT_USER_PASSWORD
+            {{- end }}
             - name: NODE_NAME
               valueFrom:
                 fieldRef:

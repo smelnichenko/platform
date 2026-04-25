@@ -66,10 +66,10 @@ data:
         Remove_wildcard   log_parsed_
 
     {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
-    # Plan 065: ClickHouse output. The `http` plugin posts JSONEachRow
-    # which the ClickHouse HTTP interface accepts when the URI carries
-    # an INSERT query. Filesystem-backed retry storage is declared at
-    # the [SERVICE] level — this output inherits it.
+    # ClickHouse — canonical log store + analytics. The `http` plugin
+    # posts JSONEachRow which the ClickHouse HTTP interface accepts
+    # when the URI carries an INSERT query. Filesystem-backed retry
+    # from [SERVICE] inherits to outputs.
     [OUTPUT]
         Name              http
         Match             kube.*
@@ -81,6 +81,25 @@ data:
         json_date_format  iso8601
         http_user         schnappy
         http_passwd       ${CLICKHOUSE_PASSWORD}
+        tls               Off
+        Retry_Limit       5
+        Workers           2
+    {{- end }}
+
+    {{- if eq (.Values.openobserve.enabled | toString) "true" }}
+    # OpenObserve — Discover-like UI. Independent retry from
+    # ClickHouse; if one sink is slow/down the other still ingests.
+    [OUTPUT]
+        Name              http
+        Match             kube.*
+        Host              {{ include "schnappy.openobserve.serviceName" . }}.{{ .Release.Namespace }}.svc
+        Port              5080
+        URI               /api/default/podlogs/_json
+        Format            json_lines
+        json_date_key     timestamp
+        json_date_format  iso8601
+        http_user         ${OPENOBSERVE_ROOT_USER_EMAIL}
+        http_passwd       ${OPENOBSERVE_ROOT_USER_PASSWORD}
         tls               Off
         Retry_Limit       5
         Workers           2

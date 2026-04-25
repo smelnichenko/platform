@@ -167,6 +167,29 @@ spec:
         - operation:
             ports: ["8123", "9000"]
 ---
+# OpenObserve — fluent-bit ingest + gateway browser traffic on 5080
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-openobserve
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: openobserve
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-fluentbit
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-openobserve
+        - source:
+            namespaces: ["istio-system"]
+      to:
+        - operation:
+            ports: ["5080"]
+---
 # SonarQube PostgreSQL — only sonarqube on port 5432
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy

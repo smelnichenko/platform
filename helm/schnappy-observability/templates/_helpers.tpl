@@ -40,7 +40,33 @@ app.kubernetes.io/name: {{ include "schnappy.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/* ========== ClickHouse (logs — Plan 065) ========== */}}
+{{/* ========== OpenObserve ========== */}}
+
+{{- define "schnappy.openobserve.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: openobserve
+{{- end }}
+
+{{- define "schnappy.openobserve.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: openobserve
+{{- end }}
+
+{{- define "schnappy.openobserve.serviceName" -}}
+{{- printf "%s-openobserve" (include "schnappy.fullname" .) }}
+{{- end }}
+
+{{- define "schnappy.openobserve.secretName" -}}
+{{- with .Values.openobserve }}
+{{- if .existingSecret }}
+{{- .existingSecret }}
+{{- else }}
+{{- printf "%s-openobserve" (include "schnappy.fullname" $) }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/* ========== ClickHouse (logs) ========== */}}
 
 {{- define "schnappy.clickhouse.labels" -}}
 {{ include "schnappy.labels" . }}

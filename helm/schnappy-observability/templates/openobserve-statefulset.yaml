@@ -1,0 +1,90 @@
+{{- if .Values.openobserve.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "schnappy.openobserve.serviceName" . }}
+  labels:
+    {{- include "schnappy.openobserve.labels" . | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "schnappy.openobserve.serviceName" . }}
+  labels:
+    {{- include "schnappy.openobserve.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "schnappy.openobserve.serviceName" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.openobserve.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.openobserve.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+    spec:
+      serviceAccountName: {{ include "schnappy.openobserve.serviceName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openobserve
+          image: {{ .Values.openobserve.image }}
+          ports:
+            - { name: http, containerPort: 5080 }
+          env:
+            - name: ZO_DATA_DIR
+              value: /data
+            - name: ZO_HTTP_PORT
+              value: "5080"
+            - name: ZO_TELEMETRY
+              value: "false"
+            # Retention is enforced via stream-level settings the
+            # operator API exposes; bootstrap default below.
+            - name: ZO_COMPACT_DATA_RETENTION_DAYS
+              value: {{ .Values.openobserve.retention.days | default 14 | quote }}
+            - name: ZO_ROOT_USER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.openobserve.secretName" . }}
+                  key: ZO_ROOT_USER_EMAIL
+            - name: ZO_ROOT_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.openobserve.secretName" . }}
+                  key: ZO_ROOT_USER_PASSWORD
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.openobserve.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: false
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: {{ .Values.openobserve.storage.size }}
+        {{- if .Values.openobserve.storage.storageClass }}
+        storageClassName: {{ .Values.openobserve.storage.storageClass | quote }}
+        {{- end }}
+{{- end }}

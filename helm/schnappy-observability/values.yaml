@@ -49,8 +49,29 @@ clickhouse:
         - events.chess.moves
         - events.notifications
 
-# Fluent-bit log shipper. ELK was retired (Plan 065); fluentbit
-# now talks only to ClickHouse.
+# OpenObserve — Discover-like UI for ad-hoc log exploration.
+# ClickHouse remains the canonical log store; OpenObserve is a
+# parallel sink (Fluent-bit dual-writes when both are enabled).
+# Single Rust binary, embedded sled metadata + local file storage.
+openobserve:
+  enabled: true
+  image: public.ecr.aws/zinclabs/openobserve:v0.14.7
+  rootUserEmail: admin@pmon.dev
+  rootUserPassword: ""
+  existingSecret: ""
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "1",    memory: "512Mi" }
+  storage:
+    size: 5Gi
+    storageClass: ""
+  retention:
+    days: 14
+  externalSecret:
+    enabled: false
+    refreshInterval: 15m
+
+# Fluent-bit log shipper.
 fluentbit:
   enabled: false
   image: cr.fluentbit.io/fluent/fluent-bit:4.2.3.1
