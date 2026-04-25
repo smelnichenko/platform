@@ -68,14 +68,14 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.fullname" . }}-postgres-admin
                   key: DB_PASSWORD
-            - name: REDIS_HOST
-              value: {{ include "schnappy.redis.serviceName" . }}
-            {{- if or .Values.redis.password .Values.redis.existingSecret }}
-            - name: REDIS_PASSWORD
+            - name: VALKEY_HOST
+              value: {{ include "schnappy.valkey.serviceName" . }}
+            {{- if or .Values.valkey.password .Values.valkey.existingSecret }}
+            - name: VALKEY_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.redis.secretName" . }}
-                  key: REDIS_PASSWORD
+                  name: {{ include "schnappy.valkey.secretName" . }}
+                  key: VALKEY_PASSWORD
             {{- end }}
             {{- if eq (.Values.tracing.enabled | toString) "true" }}
             - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY

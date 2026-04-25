@@ -170,7 +170,7 @@ chess:
 # Cross-chart references (for secret/service name resolution and configmap)
 postgres:
   database: monitor
-redis: {}
+valkey: {}
 minio: {}
 alertmanager: {}
 kafka:

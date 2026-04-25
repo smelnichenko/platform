@@ -37,15 +37,26 @@ postgres:
     size: 1Gi
     storageClass: ""
 
-# Redis (volatile cache)
-redis:
+# Valkey (volatile cache; replaces Redis — Plan 064)
+# Two modes:
+#   operator.enabled=false  → hand-rolled Deployment + Service + Secret (this chart owns it)
+#   operator.enabled=true   → Valkey CR consumed by hyperspike/valkey-operator
+# In both modes apps resolve `<release>-valkey.<ns>.svc` and use VALKEY_PASSWORD.
+valkey:
   enabled: true
-  image: redis:7-alpine
+  image: valkey/valkey:8.1-alpine
   password: ""
   existingSecret: ""
   resources:
     requests: { memory: "64Mi", cpu: "25m" }
     limits: { memory: "256Mi", cpu: "200m" }
+  # Operator-managed mode (Plan 064 default in prod once vagrant gate is green).
+  operator:
+    enabled: false
+    nodes: 1        # standalone; >=3 for cluster mode
+    replicas: 0     # per-node replicas; 0 = single instance
+    storage: ""     # empty = no PVC (cache is throwaway); set to e.g. "1Gi" for persistence
+    storageClass: ""
 
 # Kafka (KRaft mode)
 kafka:

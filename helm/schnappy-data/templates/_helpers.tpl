@@ -70,25 +70,25 @@ app.kubernetes.io/component: postgres
 
 {{/* ========== Redis ========== */}}
 
-{{- define "schnappy.redis.labels" -}}
+{{- define "schnappy.valkey.labels" -}}
 {{ include "schnappy.labels" . }}
-app.kubernetes.io/component: redis
+app.kubernetes.io/component: valkey
 {{- end }}
 
-{{- define "schnappy.redis.selectorLabels" -}}
+{{- define "schnappy.valkey.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: redis
+app.kubernetes.io/component: valkey
 {{- end }}
 
-{{- define "schnappy.redis.serviceName" -}}
-{{- printf "%s-redis" (include "schnappy.fullname" .) }}
+{{- define "schnappy.valkey.serviceName" -}}
+{{- printf "%s-valkey" (include "schnappy.fullname" .) }}
 {{- end }}
 
-{{- define "schnappy.redis.secretName" -}}
-{{- if .Values.redis.existingSecret }}
-{{- .Values.redis.existingSecret }}
+{{- define "schnappy.valkey.secretName" -}}
+{{- if .Values.valkey.existingSecret }}
+{{- .Values.valkey.existingSecret }}
 {{- else }}
-{{- printf "%s-redis" (include "schnappy.fullname" .) }}
+{{- printf "%s-valkey" (include "schnappy.fullname" .) }}
 {{- end }}
 {{- end }}
 

@@ -48,11 +48,13 @@ data:
           ddl-auto: none
         open-in-view: false
       data:
+          # Spring Data Redis library — config keys stay `spring.data.redis.*`
+          # by Spring contract; we point it at our Valkey service.
           redis:
-            host: {{ include "schnappy.redis.serviceName" . }}
+            host: {{ include "schnappy.valkey.serviceName" . }}
             port: 6379
-            {{- if .Values.redis.password }}
-            password: ${REDIS_PASSWORD}
+            {{- if .Values.valkey.password }}
+            password: ${VALKEY_PASSWORD}
             {{- end }}
       liquibase:
         enabled: true

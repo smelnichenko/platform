@@ -85,7 +85,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.valkey.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -207,7 +207,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.valkey.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -312,7 +312,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.valkey.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379
@@ -395,7 +395,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "schnappy.redis.selectorLabels" . | nindent 14 }}
+              {{- include "schnappy.valkey.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 6379

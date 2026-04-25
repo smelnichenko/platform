@@ -1,0 +1,17 @@
+{{- if .Values.valkey.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.valkey.serviceName" . }}
+  labels:
+    {{- include "schnappy.valkey.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: tcp-valkey
+  selector:
+    {{- include "schnappy.valkey.selectorLabels" . | nindent 4 }}
+{{- end }}

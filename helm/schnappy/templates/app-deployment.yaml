@@ -74,12 +74,12 @@ spec:
                   key: DB_PASSWORD
             - name: JAVA_OPTS
               value: {{ .Values.app.javaOpts | default "-Xmx1536m" | quote }}
-            {{- if or .Values.redis.password .Values.redis.existingSecret }}
-            - name: REDIS_PASSWORD
+            {{- if or .Values.valkey.password .Values.valkey.existingSecret }}
+            - name: VALKEY_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.redis.secretName" . }}
-                  key: REDIS_PASSWORD
+                  name: {{ include "schnappy.valkey.secretName" . }}
+                  key: VALKEY_PASSWORD
             {{- end }}
             {{- if or .Values.ai.apiKey .Values.ai.existingSecret }}
             - name: AI_ENABLED

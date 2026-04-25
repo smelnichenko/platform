@@ -1,22 +1,22 @@
-{{- if .Values.redis.enabled }}
+{{- if .Values.valkey.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "schnappy.redis.serviceName" . }}
+  name: {{ include "schnappy.valkey.serviceName" . }}
   labels:
-    {{- include "schnappy.redis.labels" . | nindent 4 }}
+    {{- include "schnappy.valkey.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "schnappy.redis.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.valkey.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "schnappy.redis.selectorLabels" . | nindent 8 }}
+        {{- include "schnappy.valkey.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
-      serviceAccountName: {{ include "schnappy.fullname" . }}-redis
+      serviceAccountName: {{ include "schnappy.fullname" . }}-valkey
       automountServiceAccountToken: false
       priorityClassName: data-critical
       securityContext:
@@ -27,8 +27,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: redis
-          image: {{ .Values.redis.image }}
+        - name: valkey
+          image: {{ .Values.valkey.image }}
           args:
             - "--appendonly"
             - "no"
@@ -36,29 +36,29 @@ spec:
             - "128mb"
             - "--maxmemory-policy"
             - "allkeys-lru"
-            {{- if or .Values.redis.password .Values.redis.existingSecret }}
+            {{- if or .Values.valkey.password .Values.valkey.existingSecret }}
             - "--requirepass"
-            - "$(REDIS_PASSWORD)"
+            - "$(VALKEY_PASSWORD)"
             {{- end }}
           ports:
             - containerPort: 6379
               protocol: TCP
-          {{- if or .Values.redis.password .Values.redis.existingSecret }}
+          {{- if or .Values.valkey.password .Values.valkey.existingSecret }}
           env:
-            - name: REDIS_PASSWORD
+            - name: VALKEY_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.redis.secretName" . }}
-                  key: REDIS_PASSWORD
+                  name: {{ include "schnappy.valkey.secretName" . }}
+                  key: VALKEY_PASSWORD
           {{- end }}
           resources:
-            {{- toYaml .Values.redis.resources | nindent 12 }}
+            {{- toYaml .Values.valkey.resources | nindent 12 }}
           livenessProbe:
             exec:
               command:
                 - sh
                 - -c
-                - {{- if or .Values.redis.password .Values.redis.existingSecret }} redis-cli -a "$REDIS_PASSWORD" ping {{- else }} redis-cli ping {{- end }}
+                - {{- if or .Values.valkey.password .Values.valkey.existingSecret }} valkey-cli -a "$VALKEY_PASSWORD" ping {{- else }} valkey-cli ping {{- end }}
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
@@ -66,7 +66,7 @@ spec:
               command:
                 - sh
                 - -c
-                - {{- if or .Values.redis.password .Values.redis.existingSecret }} redis-cli -a "$REDIS_PASSWORD" ping {{- else }} redis-cli ping {{- end }}
+                - {{- if or .Values.valkey.password .Values.valkey.existingSecret }} valkey-cli -a "$VALKEY_PASSWORD" ping {{- else }} valkey-cli ping {{- end }}
             initialDelaySeconds: 5
             periodSeconds: 5
           volumeMounts:

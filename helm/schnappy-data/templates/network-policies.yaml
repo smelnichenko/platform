@@ -73,19 +73,19 @@ spec:
           port: 9000
     {{- end }}
 {{- end }}
-{{- if .Values.redis.enabled }}
+{{- if .Values.valkey.enabled }}
 ---
 # Redis network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "schnappy.fullname" . }}-redis
+  name: {{ include "schnappy.fullname" . }}-valkey
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {{- include "schnappy.redis.selectorLabels" . | nindent 6 }}
+      {{- include "schnappy.valkey.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
