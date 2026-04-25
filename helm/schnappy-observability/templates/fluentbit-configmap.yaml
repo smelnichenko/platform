@@ -46,6 +46,25 @@ data:
         Match             kube.*
         Exclude           $kubernetes['container_name'] fluent-bit
 
+    # Lift `log_parsed.{traceId,spanId}` (set by the kubernetes filter
+    # when the container log line is JSON) onto the top-level record
+    # so the ClickHouse output can map them to columns.
+    [FILTER]
+        Name              nest
+        Match             kube.*
+        Operation         lift
+        Nested_under      log_parsed
+        Add_prefix        log_parsed_
+
+    [FILTER]
+        Name              modify
+        Match             kube.*
+        Rename            log_parsed_traceId trace_id
+        Rename            log_parsed_spanId  span_id
+        # Anything else from the parsed JSON goes back into log_parsed_*
+        # keys — drop them; they're noise for the column-only schema.
+        Remove_wildcard   log_parsed_
+
     {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
     # Plan 065: ClickHouse output. The `http` plugin posts JSONEachRow
     # which the ClickHouse HTTP interface accepts when the URI carries

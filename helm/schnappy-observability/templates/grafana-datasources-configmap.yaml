@@ -39,6 +39,15 @@ data:
           defaultDatabase: logs
           username: schnappy
           protocol: http
+          # Click trace_id in a log row → jump to the trace in Tempo.
+          {{- if eq (.Values.tempo.enabled | toString) "true" }}
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '"trace_id":"([a-f0-9]+)"'
+              url: '$${__value.raw}'
+              datasourceUid: tempo
+              urlDisplayLabel: 'View trace'
+          {{- end }}
         secureJsonData:
           password: ${CLICKHOUSE_PASSWORD}
       {{- end }}
@@ -67,5 +76,22 @@ data:
             timeShiftEnabled: true
             spanStartTimeShift: "-1h"
             spanEndTimeShift: "1h"
+          # Click a span → see correlated log lines (filter on trace_id).
+          {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
+          tracesToLogsV2:
+            datasourceUid: clickhouse-logs
+            spanStartTimeShift: "-1m"
+            spanEndTimeShift:   "1m"
+            filterByTraceID: true
+            filterBySpanID:  false
+            customQuery: true
+            query: |
+              SELECT timestamp, level, namespace, pod, message
+              FROM logs.podlogs
+              WHERE trace_id = '$${__span.traceID}'
+                AND timestamp BETWEEN $$__fromTime AND $$__toTime
+              ORDER BY timestamp ASC
+              LIMIT 500
+          {{- end }}
       {{- end }}
 {{- end }}
