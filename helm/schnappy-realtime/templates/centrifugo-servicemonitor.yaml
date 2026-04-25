@@ -1,0 +1,16 @@
+{{- if and .Values.centrifugo.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "schnappy.centrifugo.serviceName" . }}
+  labels:
+    {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "schnappy.centrifugo.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: prometheus
+      path: /metrics
+      interval: 30s
+{{- end }}

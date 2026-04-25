@@ -1,0 +1,15 @@
+{{- if .Values.centrifugo.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.centrifugo.serviceName" . }}
+  labels:
+    {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - { name: http, port: 8000, targetPort: 8000, protocol: TCP }
+    - { name: prometheus, port: 9000, targetPort: 9000, protocol: TCP }
+  selector:
+    {{- include "schnappy.centrifugo.selectorLabels" . | nindent 4 }}
+{{- end }}

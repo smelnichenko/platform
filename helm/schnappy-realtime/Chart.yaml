@@ -1,0 +1,6 @@
+apiVersion: v2
+name: schnappy-realtime
+description: Centrifugo realtime fanout (Plan 066) — Kafka events → Centrifugo → WS/SSE clients
+type: application
+version: 0.1.0
+appVersion: "v6"

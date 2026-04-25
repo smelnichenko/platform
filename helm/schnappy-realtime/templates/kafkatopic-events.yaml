@@ -1,0 +1,20 @@
+{{- if and .Values.centrifugo.enabled .Values.strimzi.enabled .Values.centrifugo.topics.create }}
+{{- $cluster := .Values.strimzi.clusterName | default (printf "%s-kafka" (include "schnappy.fullname" .)) }}
+{{- range .Values.centrifugo.kafka.topics }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ . | quote }}
+  labels:
+    strimzi.io/cluster: {{ $cluster | quote }}
+    {{- include "schnappy.centrifugo.labels" $ | nindent 4 }}
+spec:
+  partitions: {{ $.Values.centrifugo.topics.partitions }}
+  replicas: {{ $.Values.centrifugo.topics.replicas }}
+  config:
+    retention.ms: {{ mul $.Values.centrifugo.topics.retentionHours 3600000 }}
+    compression.type: producer
+    cleanup.policy: delete
+{{- end }}
+{{- end }}

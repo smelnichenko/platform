@@ -1,0 +1,95 @@
+nameOverride: schnappy
+
+vault:
+  secretsEnabled: false
+  secretPathPrefix: "secret/data/schnappy"
+
+networkPolicies:
+  enabled: true
+
+# Istio gateway (HTTPRoute parent reference)
+gateway:
+  enabled: false
+  name: ""
+  namespace: ""
+  hosts:
+    realtime: ""   # e.g. rt.pmon.dev
+
+centrifugo:
+  enabled: true
+  image: centrifugo/centrifugo:v6
+  replicas: 2
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "1",    memory: "512Mi" }
+
+  # JWKS-based JWT validation against Keycloak
+  jwks:
+    publicEndpoint: "https://auth.pmon.dev/realms/schnappy/protocol/openid-connect/certs"
+    audience: "centrifugo"
+
+  # Vault path for the centrifugo Secret (admin/api/HMAC fallback)
+  externalSecret:
+    enabled: false
+    refreshInterval: 15m
+
+  # Channel namespaces — name : { presence, history_size, history_ttl, recover, force_recovery }
+  namespaces:
+    - name: chess
+      presence: true
+      historySize: 200
+      historyTtl: "168h"   # 7d
+      recover: true
+      forceRecovery: true
+    - name: chat
+      presence: true
+      historySize: 100
+      historyTtl: "720h"   # 30d
+      recover: true
+      forceRecovery: false
+    - name: notifications
+      presence: false
+      historySize: 50
+      historyTtl: "168h"
+      recover: true
+      forceRecovery: false
+
+  # Kafka async-consumer ingest (apps publish to Kafka, Centrifugo fans out).
+  kafka:
+    enabled: true
+    brokers:
+      - schnappy-kafka-bootstrap:9092
+    consumerGroup: centrifugo
+    topics:
+      - events.chat.messages
+      - events.chess.moves
+      - events.notifications
+
+  # Valkey engine (Plan 064 — operator-managed Service `schnappy-valkey`).
+  # Centrifugo's Redis engine is wire-compatible with Valkey.
+  valkey:
+    address: "schnappy-valkey:6379"
+    secretName: schnappy-valkey       # provides VALKEY_PASSWORD
+    secretKey: VALKEY_PASSWORD
+
+  # Optional proxy for connect/subscribe/refresh; v1 keeps it off and
+  # accepts JWTs directly from JWKS. Enable when the gateway adds the
+  # webhook endpoints (Phase 2 of Plan 066).
+  proxy:
+    enabled: false
+    connectEndpoint: ""
+    subscribeEndpoint: ""
+    refreshEndpoint: ""
+    timeout: "2s"
+
+  # Strimzi-managed KafkaTopic CRs. Set strimzi.enabled=false in vagrant
+  # tests that don't run Strimzi to skip topic creation.
+  topics:
+    create: true
+    partitions: 6
+    replicas: 1
+    retentionHours: 168   # 7d
+
+# Strimzi operator presence — gates KafkaTopic CRs.
+strimzi:
+  enabled: true

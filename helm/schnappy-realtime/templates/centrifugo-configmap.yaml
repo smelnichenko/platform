@@ -1,0 +1,74 @@
+{{- if .Values.centrifugo.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.centrifugo.serviceName" . }}-config
+  labels:
+    {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
+data:
+  # Centrifugo's YAML config. Environment expands like ${FOO} are
+  # resolved by Centrifugo at startup from process env (see Deployment).
+  config.yaml: |
+    log_level: info
+    admin: true
+    admin_password: ${CENTRIFUGO_ADMIN_PASSWORD}
+    admin_secret: ${CENTRIFUGO_ADMIN_SECRET}
+    api_key: ${CENTRIFUGO_API_KEY}
+    health: true
+    prometheus: true
+
+    # JWT auth from Keycloak realm (RSA via JWKS endpoint).
+    token_jwks_public_endpoint: {{ .Values.centrifugo.jwks.publicEndpoint | quote }}
+    token_audience: {{ .Values.centrifugo.jwks.audience | quote }}
+
+    # Valkey engine (broker + presence + history).
+    engine: redis
+    redis:
+      address: {{ .Values.centrifugo.valkey.address | quote }}
+      password: ${VALKEY_PASSWORD}
+      use_lists: true
+      presence_user_mapping: true
+
+    {{- if .Values.centrifugo.kafka.enabled }}
+    async_consumers:
+      - name: kafka-events
+        type: kafka
+        kafka:
+          brokers:
+            {{- range .Values.centrifugo.kafka.brokers }}
+            - {{ . | quote }}
+            {{- end }}
+          topics:
+            {{- range .Values.centrifugo.kafka.topics }}
+            - {{ . | quote }}
+            {{- end }}
+          consumer_group: {{ .Values.centrifugo.kafka.consumerGroup | quote }}
+        # Map our envelope's `service` + `subject` into the Centrifugo
+        # publication channel and embed the entire envelope as the data.
+        publication_data_mode:
+          enabled: true
+          channel_template: "{{ "{{" }} .service {{ "}}" }}:{{ "{{" }} .subject {{ "}}" }}"
+          data_template: "{{ "{{" }} . {{ "}}" }}"
+    {{- end }}
+
+    namespaces:
+      {{- range .Values.centrifugo.namespaces }}
+      - name: {{ .name | quote }}
+        presence: {{ .presence }}
+        history_size: {{ .historySize }}
+        history_ttl: {{ .historyTtl | quote }}
+        recover: {{ .recover }}
+        force_recovery: {{ .forceRecovery }}
+      {{- end }}
+
+    {{- if .Values.centrifugo.proxy.enabled }}
+    proxies:
+      - name: gateway
+        endpoint: {{ .Values.centrifugo.proxy.connectEndpoint | quote }}
+        timeout: {{ .Values.centrifugo.proxy.timeout | quote }}
+    client:
+      connect_proxy_name: gateway
+      subscribe_proxy_name: gateway
+      refresh_proxy_name: gateway
+    {{- end }}
+{{- end }}

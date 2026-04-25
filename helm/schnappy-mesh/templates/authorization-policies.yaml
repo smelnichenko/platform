@@ -115,6 +115,36 @@ spec:
         - operation:
             ports: ["9000"]
 ---
+# Centrifugo (Plan 066) — gateway + browser WS clients arrive via the
+# Istio ingress, app services may publish via API. Trust the Istio
+# gateway SA + the four service SAs.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-centrifugo
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: centrifugo
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-centrifugo
+        # Browser → Istio ingress gateway is the public path.
+        # Trust-inside-mesh via the gateway's namespace/SA.
+        - source:
+            namespaces: ["istio-system"]
+      to:
+        - operation:
+            ports: ["8000", "9000"]
+---
 # ClickHouse — fluentbit + grafana on HTTP port 8123 (Plan 065)
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy

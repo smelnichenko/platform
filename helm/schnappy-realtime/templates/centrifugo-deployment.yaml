@@ -1,0 +1,87 @@
+{{- if .Values.centrifugo.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "schnappy.centrifugo.serviceName" . }}
+  labels:
+    {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.centrifugo.serviceName" . }}
+  labels:
+    {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.centrifugo.replicas }}
+  selector:
+    matchLabels:
+      {{- include "schnappy.centrifugo.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/centrifugo-configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "schnappy.centrifugo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+    spec:
+      serviceAccountName: {{ include "schnappy.centrifugo.serviceName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: centrifugo
+          image: {{ .Values.centrifugo.image }}
+          args:
+            - "--config=/etc/centrifugo/config.yaml"
+          env:
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.centrifugo.valkey.secretName }}
+                  key: {{ .Values.centrifugo.valkey.secretKey }}
+                  optional: true
+            - name: CENTRIFUGO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.centrifugo.secretName" . }}
+                  key: CENTRIFUGO_ADMIN_PASSWORD
+            - name: CENTRIFUGO_ADMIN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.centrifugo.secretName" . }}
+                  key: CENTRIFUGO_ADMIN_SECRET
+            - name: CENTRIFUGO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.centrifugo.secretName" . }}
+                  key: CENTRIFUGO_API_KEY
+          ports:
+            - { name: http, containerPort: 8000 }
+            - { name: prometheus, containerPort: 9000 }
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.centrifugo.resources | nindent 12 }}
+          volumeMounts:
+            - { name: config, mountPath: /etc/centrifugo, readOnly: true }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "schnappy.centrifugo.serviceName" . }}-config
+{{- end }}

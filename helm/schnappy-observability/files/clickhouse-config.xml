@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<clickhouse>
+  <logger>
+    <level>information</level>
+    <console>true</console>
+  </logger>
+  <listen_host>0.0.0.0</listen_host>
+  <http_port>8123</http_port>
+  <tcp_port>9000</tcp_port>
+  <interserver_http_port>9009</interserver_http_port>
+  <max_connections>200</max_connections>
+  <keep_alive_timeout>30</keep_alive_timeout>
+  <max_concurrent_queries>50</max_concurrent_queries>
+  <users_config>users.xml</users_config>
+  <default_profile>default</default_profile>
+  <default_database>logs</default_database>
+  <timezone>UTC</timezone>
+  <path>/var/lib/clickhouse/</path>
+  <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+  <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+  <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+  <prometheus>
+    <endpoint>/metrics</endpoint>
+    <port>9363</port>
+    <metrics>true</metrics>
+    <events>true</events>
+    <asynchronous_metrics>true</asynchronous_metrics>
+  </prometheus>
+</clickhouse>

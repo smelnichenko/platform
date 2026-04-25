@@ -1,0 +1,48 @@
+{{- if and .Values.centrifugo.enabled .Values.networkPolicies.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.centrifugo.serviceName" . }}
+  labels:
+    {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.centrifugo.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Istio gateway / browser WS clients arrive via Istio sidecar — Istio
+    # AuthorizationPolicy enforces who's allowed; NP just opens the port.
+    - from: []
+      ports:
+        - { protocol: TCP, port: 8000 }
+    # Prometheus scrapes /metrics on 9000
+    - from: []
+      ports:
+        - { protocol: TCP, port: 9000 }
+  egress:
+    - ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # → Valkey (engine)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: valkey
+      ports:
+        - { protocol: TCP, port: 6379 }
+    # → Kafka brokers (Strimzi listener / hand-rolled)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: kafka
+      ports:
+        - { protocol: TCP, port: 9092 }
+    # → Keycloak JWKS endpoint (HTTPS to public DNS)
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- end }}

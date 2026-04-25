@@ -48,16 +48,32 @@ spec:
             - |
               set -e
               ENDPOINT="http://{{ include "schnappy.clickhouse.serviceName" . }}:8123"
-              # Wait for the server.
               for i in $(seq 1 60); do
                 if curl -sf "$ENDPOINT/ping" >/dev/null; then break; fi
                 sleep 2
               done
-              # Create database + table from the configmap-mounted SQL.
+
+              # Substitute placeholders → /tmp, then POST.
+              cp /sql/logs-schema.sql /tmp/logs-schema.sql
+              sed -i "s/__TTL_DAYS__/{{ .Values.clickhouse.retention.days | default 30 }}/g" /tmp/logs-schema.sql
               curl -sf -u "default:$CLICKHOUSE_PASSWORD" \
-                --data-binary @/sql/init.sql "$ENDPOINT/" | tee /dev/stderr
+                --data-binary @/tmp/logs-schema.sql "$ENDPOINT/" | tee /dev/stderr
+
+              {{- if eq (.Values.clickhouse.events.enabled | toString) "true" }}
+              cp /sql/events-schema.sql /tmp/events-schema.sql
+              sed -i \
+                -e "s/__KAFKA_BROKERS__/{{ .Values.clickhouse.events.kafka.bootstrapServers }}/g" \
+                -e "s/__KAFKA_TOPICS__/{{ .Values.clickhouse.events.kafka.topics | join "," }}/g" \
+                -e "s/__KAFKA_GROUP__/{{ .Values.clickhouse.events.kafka.consumerGroup }}/g" \
+                -e "s/__KAFKA_NUM_CONS__/{{ .Values.clickhouse.events.kafka.numConsumers | default 2 }}/g" \
+                -e "s/__EVT_TTL_DAYS__/{{ .Values.clickhouse.events.retentionDays | default 180 }}/g" \
+                /tmp/events-schema.sql
+              curl -sf -u "default:$CLICKHOUSE_PASSWORD" \
+                --data-binary @/tmp/events-schema.sql "$ENDPOINT/" | tee /dev/stderr
+              {{- end }}
           volumeMounts:
-            - { name: sql, mountPath: /sql }
+            - { name: sql, mountPath: /sql, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -68,5 +84,10 @@ spec:
           configMap:
             name: {{ include "schnappy.clickhouse.serviceName" . }}-config
             items:
-              - { key: init.sql, path: init.sql }
+              - { key: logs-schema.sql, path: logs-schema.sql }
+              {{- if eq (.Values.clickhouse.events.enabled | toString) "true" }}
+              - { key: events-schema.sql, path: events-schema.sql }
+              {{- end }}
+        - name: tmp
+          emptyDir: {}
 {{- end }}
