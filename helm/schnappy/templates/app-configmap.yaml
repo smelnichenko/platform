@@ -53,7 +53,7 @@ data:
           redis:
             host: {{ include "schnappy.valkey.serviceName" . }}
             port: 6379
-            {{- if .Values.valkey.password }}
+            {{- if or .Values.valkey.password .Values.valkey.existingSecret }}
             password: ${VALKEY_PASSWORD}
             {{- end }}
       liquibase:
