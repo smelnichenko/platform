@@ -37,7 +37,8 @@ spec:
             - -c
             - |
               set -e
-              apk add --no-cache --quiet coreutils >/dev/null
+              # BusyBox sha256sum + awk are sufficient; no apk install
+              # (init container runs as non-root, can't write apk db).
               echo -n "$CLICKHOUSE_PASSWORD" | sha256sum | awk '{print $1}' > /env/CLICKHOUSE_PASSWORD_SHA256
           env:
             - name: CLICKHOUSE_PASSWORD
