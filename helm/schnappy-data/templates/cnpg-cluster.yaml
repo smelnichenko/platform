@@ -1,4 +1,5 @@
 {{- if eq (.Values.cnpg.enabled | toString) "true" }}
+{{- $ephemeral := eq (.Values.cnpg.ephemeral | default false | toString) "true" }}
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -7,8 +8,10 @@ metadata:
     {{- include "schnappy.postgres.labels" . | nindent 4 }}
 spec:
   instances: 1
-  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  imageName: {{ if $ephemeral }}{{ .Values.cnpg.ephemeralImage | quote }}{{ else }}ghcr.io/cloudnative-pg/postgresql:17{{ end }}
+  {{- if not $ephemeral }}
   priorityClassName: data-critical
+  {{- end }}
 
   enableSuperuserAccess: true
   superuserSecret:
@@ -16,6 +19,15 @@ spec:
 
   postgresql:
     parameters:
+      {{- if $ephemeral }}
+      shared_buffers: "64MB"
+      effective_cache_size: "192MB"
+      work_mem: "4MB"
+      maintenance_work_mem: "32MB"
+      max_parallel_workers_per_gather: "0"
+      max_parallel_workers: "2"
+      max_worker_processes: "4"
+      {{- else }}
       shared_buffers: {{ .Values.postgres.sharedBuffers | default "512MB" | quote }}
       effective_cache_size: {{ .Values.postgres.effectiveCacheSize | default "1536MB" | quote }}
       work_mem: {{ .Values.postgres.workMem | default "16MB" | quote }}
@@ -25,6 +37,7 @@ spec:
       max_worker_processes: {{ .Values.postgres.maxWorkerProcesses | default 8 | quote }}
       effective_io_concurrency: {{ .Values.postgres.effectiveIoConcurrency | default 1 | quote }}
       random_page_cost: {{ .Values.postgres.randomPageCost | default "4.0" | quote }}
+      {{- end }}
 
   bootstrap:
     {{- if .Values.cnpg.recovery }}
@@ -91,20 +104,27 @@ spec:
   {{- end }}
 
   storage:
-    size: {{ .Values.postgres.storage.size | default "20Gi" }}
+    size: {{ if $ephemeral }}{{ .Values.cnpg.ephemeralStorageSize | quote }}{{ else }}{{ .Values.postgres.storage.size | default "20Gi" }}{{ end }}
     {{- if .Values.postgres.storage.storageClass }}
     storageClass: {{ .Values.postgres.storage.storageClass }}
     {{- end }}
 
   resources:
+    {{- if $ephemeral }}
+    requests: { cpu: "50m", memory: "256Mi" }
+    limits:   { cpu: "500m", memory: "512Mi" }
+    {{- else }}
     {{- toYaml .Values.postgres.resources | nindent 4 }}
+    {{- end }}
 
+  {{- if not $ephemeral }}
   inheritedMetadata:
     annotations:
       backup.velero.io/backup-volumes: pgdata
       traffic.sidecar.istio.io/excludeOutboundPorts: "9000"
+  {{- end }}
 
-  {{- if .Values.cnpg.backup }}
+  {{- if and .Values.cnpg.backup (not $ephemeral) }}
   backup:
     barmanObjectStore:
       destinationPath: {{ .Values.cnpg.backupDestination | default "s3://postgres-backups/" }}

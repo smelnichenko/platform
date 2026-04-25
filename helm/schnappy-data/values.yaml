@@ -182,3 +182,11 @@ cnpg:
   backup: false
   backupEndpoint: ""
   backupSecret: ""
+  # When true, the chart emits a small single-instance Cluster (no
+  # backup, no HA, small PVC) suitable for vagrant tests + per-PR
+  # preview namespaces. Per-service users still come from the same
+  # `schnappy-postgres-<svc>` Secrets so app env-var refs don't differ
+  # between modes.
+  ephemeral: false
+  ephemeralStorageSize: 100Mi
+  ephemeralImage: ghcr.io/cloudnative-pg/postgresql:17
