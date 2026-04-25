@@ -68,7 +68,7 @@ app.kubernetes.io/component: postgres
 {{- end }}
 {{- end }}
 
-{{/* ========== Redis ========== */}}
+{{/* ========== Valkey ========== */}}
 
 {{- define "schnappy.valkey.labels" -}}
 {{ include "schnappy.labels" . }}

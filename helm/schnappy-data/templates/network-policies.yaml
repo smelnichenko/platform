@@ -75,7 +75,7 @@ spec:
 {{- end }}
 {{- if .Values.valkey.enabled }}
 ---
-# Redis network policy
+# Valkey network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

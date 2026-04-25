@@ -10,7 +10,7 @@ Single Helm chart that templates all application services and infrastructure com
 
 **Application services:** API gateway, admin, monitor (core), chat, chess, site (frontend)
 
-**Databases:** PostgreSQL 17 (shared instance, per-service databases), Redis 7, Kafka 4.2 (KRaft), ScyllaDB 6.2
+**Databases:** PostgreSQL 17 (shared instance, per-service databases), Valkey 8.1, Kafka 4.2 (KRaft), ScyllaDB 6.2
 
 **Observability:** Prometheus, Grafana, Alertmanager, kube-state-metrics, Elasticsearch 8, Fluent-bit, Kibana, SonarQube
 

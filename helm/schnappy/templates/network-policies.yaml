@@ -81,7 +81,7 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    # App → Redis
+    # App → Valkey
     - to:
         - podSelector:
             matchLabels:
@@ -203,7 +203,7 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    # Admin → Redis (session, captcha, permission version)
+    # Admin → Valkey (session, captcha, permission version)
     - to:
         - podSelector:
             matchLabels:
@@ -308,7 +308,7 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    # Chess → Redis (game cache)
+    # Chess → Valkey (game cache)
     - to:
         - podSelector:
             matchLabels:
@@ -391,7 +391,7 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    # Chat → Redis (presence, user cache)
+    # Chat → Valkey (presence, user cache)
     - to:
         - podSelector:
             matchLabels:
