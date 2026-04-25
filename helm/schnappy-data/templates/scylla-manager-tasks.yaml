@@ -1,0 +1,52 @@
+{{- if and (eq (.Values.scyllaOperator.enabled | toString) "true") (eq (.Values.scyllaOperator.scyllaManager.enabled | toString) "true") }}
+{{- $clusterRef := include "schnappy.fullname" . }}
+# Plan 069 — register the cluster with ScyllaDB Manager and (optionally)
+# schedule daily backup + weekly repair tasks. Manager itself runs in
+# the `scylla-manager` namespace (installed by setup-kubeadm.yml).
+---
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBManagerClusterRegistration
+metadata:
+  name: {{ $clusterRef }}
+  labels:
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
+spec:
+  scyllaDBClusterRef:
+    name: {{ $clusterRef }}
+{{- if eq (.Values.scyllaOperator.scyllaManager.backup.enabled | toString) "true" }}
+---
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBManagerTask
+metadata:
+  name: {{ $clusterRef }}-daily-backup
+  labels:
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
+spec:
+  scyllaDBClusterRef:
+    name: {{ $clusterRef }}
+  type: Backup
+  backup:
+    location:
+      - {{ .Values.scyllaOperator.scyllaManager.backup.location | quote }}
+    retention: {{ .Values.scyllaOperator.scyllaManager.backup.retention }}
+    cron: {{ .Values.scyllaOperator.scyllaManager.backup.cron | quote }}
+{{- end }}
+{{- if eq (.Values.scyllaOperator.scyllaManager.repair.enabled | toString) "true" }}
+---
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBManagerTask
+metadata:
+  name: {{ $clusterRef }}-weekly-repair
+  labels:
+    {{- include "schnappy.scylla.labels" . | nindent 4 }}
+spec:
+  scyllaDBClusterRef:
+    name: {{ $clusterRef }}
+  type: Repair
+  repair:
+    intensity: {{ .Values.scyllaOperator.scyllaManager.repair.intensity }}
+    parallel: {{ .Values.scyllaOperator.scyllaManager.repair.parallel }}
+    cron: {{ .Values.scyllaOperator.scyllaManager.repair.cron | quote }}
+    smallTableThreshold: {{ .Values.scyllaOperator.scyllaManager.repair.smallTableThreshold | quote }}
+{{- end }}
+{{- end }}
