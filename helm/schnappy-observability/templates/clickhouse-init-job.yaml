@@ -24,6 +24,11 @@ spec:
       labels:
         {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
         job-component: clickhouse-init
+      annotations:
+        # One-shot Job; no mesh sidecar needed. Without this the
+        # istio-proxy stays running after the init container exits,
+        # the pod never reaches Completed, and the Job hangs forever.
+        sidecar.istio.io/inject: "false"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.fullname" . }}-clickhouse
