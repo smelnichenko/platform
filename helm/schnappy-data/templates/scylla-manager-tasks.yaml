@@ -15,7 +15,11 @@ metadata:
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   scyllaDBClusterRef:
-    kind: ScyllaCluster
+    # ScyllaDBDatacenter is the v1alpha1 single-DC kind the scylla-
+    # operator's ScyllaDBManagerTask/ClusterRegistration accepts.
+    # (Our underlying ScyllaCluster v1 CR is reconciled into a
+    # ScyllaDBDatacenter by the operator.)
+    kind: ScyllaDBDatacenter
     name: {{ $clusterRef }}
 {{- if eq (.Values.scyllaOperator.scyllaManager.backup.enabled | toString) "true" }}
 ---
@@ -27,7 +31,11 @@ metadata:
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   scyllaDBClusterRef:
-    kind: ScyllaCluster
+    # ScyllaDBDatacenter is the v1alpha1 single-DC kind the scylla-
+    # operator's ScyllaDBManagerTask/ClusterRegistration accepts.
+    # (Our underlying ScyllaCluster v1 CR is reconciled into a
+    # ScyllaDBDatacenter by the operator.)
+    kind: ScyllaDBDatacenter
     name: {{ $clusterRef }}
   type: Backup
   backup:
@@ -46,11 +54,15 @@ metadata:
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   scyllaDBClusterRef:
-    kind: ScyllaCluster
+    # ScyllaDBDatacenter is the v1alpha1 single-DC kind the scylla-
+    # operator's ScyllaDBManagerTask/ClusterRegistration accepts.
+    # (Our underlying ScyllaCluster v1 CR is reconciled into a
+    # ScyllaDBDatacenter by the operator.)
+    kind: ScyllaDBDatacenter
     name: {{ $clusterRef }}
   type: Repair
   repair:
-    intensity: {{ .Values.scyllaOperator.scyllaManager.repair.intensity | quote }}
+    intensity: {{ .Values.scyllaOperator.scyllaManager.repair.intensity }}
     parallel: {{ .Values.scyllaOperator.scyllaManager.repair.parallel }}
     cron: {{ .Values.scyllaOperator.scyllaManager.repair.cron | quote }}
     smallTableThreshold: {{ .Values.scyllaOperator.scyllaManager.repair.smallTableThreshold | quote }}
