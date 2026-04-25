@@ -56,7 +56,7 @@ spec:
               # Substitute placeholders → /tmp, then POST.
               cp /sql/logs-schema.sql /tmp/logs-schema.sql
               sed -i "s/__TTL_DAYS__/{{ .Values.clickhouse.retention.days | default 30 }}/g" /tmp/logs-schema.sql
-              curl -sf -u "default:$CLICKHOUSE_PASSWORD" \
+              curl -sf -u "schnappy:$CLICKHOUSE_PASSWORD" \
                 --data-binary @/tmp/logs-schema.sql "$ENDPOINT/" | tee /dev/stderr
 
               {{- if eq (.Values.clickhouse.events.enabled | toString) "true" }}
@@ -68,7 +68,7 @@ spec:
                 -e "s/__KAFKA_NUM_CONS__/{{ .Values.clickhouse.events.kafka.numConsumers | default 2 }}/g" \
                 -e "s/__EVT_TTL_DAYS__/{{ .Values.clickhouse.events.retentionDays | default 180 }}/g" \
                 /tmp/events-schema.sql
-              curl -sf -u "default:$CLICKHOUSE_PASSWORD" \
+              curl -sf -u "schnappy:$CLICKHOUSE_PASSWORD" \
                 --data-binary @/tmp/events-schema.sql "$ENDPOINT/" | tee /dev/stderr
               {{- end }}
           volumeMounts:

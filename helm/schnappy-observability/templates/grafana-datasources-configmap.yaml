@@ -37,7 +37,7 @@ data:
         editable: false
         jsonData:
           defaultDatabase: logs
-          username: default
+          username: schnappy
           protocol: http
         secureJsonData:
           password: ${CLICKHOUSE_PASSWORD}

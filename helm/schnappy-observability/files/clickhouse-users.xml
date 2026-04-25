@@ -1,4 +1,11 @@
 <?xml version="1.0"?>
+<!--
+  No "default" user — ClickHouse's bootstrap user is removed so the
+  cluster never accepts the well-known "default" username. The
+  application user is `schnappy`, password from CLICKHOUSE_PASSWORD
+  (sha256 hex injected at startup as CLICKHOUSE_PASSWORD_SHA256).
+  Fluent-bit, Grafana, and the init Job all use this user.
+-->
 <clickhouse>
   <profiles>
     <default>
@@ -6,8 +13,8 @@
       <log_queries>1</log_queries>
     </default>
   </profiles>
-  <users>
-    <default>
+  <users replace="replace">
+    <schnappy>
       <password_sha256_hex from_env="CLICKHOUSE_PASSWORD_SHA256"/>
       <networks>
         <ip>::/0</ip>
@@ -15,7 +22,7 @@
       <profile>default</profile>
       <quota>default</quota>
       <access_management>0</access_management>
-    </default>
+    </schnappy>
   </users>
   <quotas>
     <default>

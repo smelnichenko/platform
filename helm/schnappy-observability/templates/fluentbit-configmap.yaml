@@ -60,7 +60,7 @@ data:
         Format            json_lines
         json_date_key     timestamp
         json_date_format  iso8601
-        http_user         default
+        http_user         schnappy
         http_passwd       ${CLICKHOUSE_PASSWORD}
         tls               Off
         Retry_Limit       5
