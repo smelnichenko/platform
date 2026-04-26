@@ -86,35 +86,6 @@ data:
         Workers           2
     {{- end }}
 
-    {{- if eq (.Values.openobserve.enabled | toString) "true" }}
-    # OpenObserve — Discover-like UI. Independent retry from
-    # ClickHouse; if one sink is slow/down the other still ingests.
-    # The /_json endpoint expects a JSON array (Format json), not
-    # NDJSON. Using json_lines here returns 400 "trailing chars".
-    [OUTPUT]
-        Name              http
-        Match             kube.*
-        Host              {{ include "schnappy.openobserve.serviceName" . }}.{{ .Release.Namespace }}.svc
-        Port              5080
-        URI               /api/default/podlogs/_json
-        Format            json
-        json_date_key     timestamp
-        json_date_format  iso8601
-        http_user         ${OPENOBSERVE_ROOT_USER_EMAIL}
-        http_passwd       ${OPENOBSERVE_ROOT_USER_PASSWORD}
-        tls               Off
-        # Halve in-flight concurrency — OO's actix is pinned to
-        # 4 workers, two fluent-bit workers stacked too many
-        # connections under burst, tripping Istio 503s.
-        Workers           1
-        # gzip compress — smaller payloads, lower OO HTTP handler
-        # CPU per request.
-        compress          gzip
-        # Don't drop chunks after a few retries; backoff and survive
-        # OO restarts (it's a single replica).
-        Retry_Limit       False
-    {{- end }}
-
   parsers.conf: |
     [PARSER]
         Name        cri
