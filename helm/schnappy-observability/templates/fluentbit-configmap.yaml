@@ -134,9 +134,15 @@ data:
 
   extract_level.lua: |
     -- Heuristic level extraction for plain-text container logs.
-    -- Skips records that already have a level (JSON-formatted apps).
-    -- Tries klog (single-letter prefix + datestamp), Spring Boot
-    -- text (uppercase token in first 80 chars), then generic.
+    -- Order matters: most specific patterns first.
+    --
+    -- Coverage targets in this cluster:
+    --   1. JSON apps (Spring Boot logback)         -> already populated
+    --   2. logfmt 'level=foo' (Argo CD, containerd)
+    --   3. Envoy access logs '[ts] "METHOD path HTTP/x" STATUS ...'
+    --      -> HTTP status code drives the level (2/3xx=info, 4xx=warn, 5xx=error)
+    --   4. klog 'IMMDD HH:MM:SS ...'
+    --   5. Generic uppercase token (Spring Boot text, [INFO], etc.)
     function extract_level(tag, ts, record)
       if record["level"] and record["level"] ~= "" then
         return 0, ts, record
@@ -146,25 +152,52 @@ data:
         return 0, ts, record
       end
       local lvl = nil
-      -- klog: I0426 11:22:57.853001 ...   (I=info W=warn E=error F=fatal)
-      local k = msg:match("^([IWEF])%d%d%d%d%s%d%d:%d%d:%d%d")
-      if k == "I" then lvl = "info"
-      elseif k == "W" then lvl = "warn"
-      elseif k == "E" then lvl = "error"
-      elseif k == "F" then lvl = "fatal"
-      end
-      -- Uppercase token anywhere in first 120 chars (Spring Boot
-      -- text format, generic [INFO]/INFO patterns).
-      if not lvl then
-        local head = msg:sub(1, 120)
-        if head:find("FATAL") or head:find("CRITICAL") then lvl = "fatal"
-        elseif head:find("ERROR") or head:find("ERR ") then lvl = "error"
-        elseif head:find("WARN") then lvl = "warn"
-        elseif head:find("INFO") then lvl = "info"
-        elseif head:find("DEBUG") then lvl = "debug"
-        elseif head:find("TRACE") then lvl = "trace"
+
+      -- 2. logfmt: level=info / level="warn"
+      local lf = msg:match("level=\"?(%a+)")
+      if lf then
+        local low = lf:lower()
+        if low == "info" or low == "warn" or low == "warning" or low == "error"
+           or low == "debug" or low == "trace" or low == "fatal" or low == "critical" then
+          lvl = low == "warning" and "warn" or (low == "critical" and "fatal" or low)
         end
       end
+
+      -- 3. Envoy access log: [ts] "METHOD path HTTP/x.y" STATUS_CODE ...
+      -- The status code is the 4th whitespace-separated token after the closing quote.
+      if not lvl then
+        local status = msg:match("^%[[^%]]+%]%s+\"[^\"]+\"%s+(%d%d%d)%s")
+        if status then
+          local s = tonumber(status)
+          if     s >= 500 then lvl = "error"
+          elseif s >= 400 then lvl = "warn"
+          else                 lvl = "info"   -- 2xx, 3xx
+          end
+        end
+      end
+
+      -- 4. klog: I0426 11:22:57.853001 ...
+      if not lvl then
+        local k = msg:match("^([IWEF])%d%d%d%d%s%d%d:%d%d:%d%d")
+        if     k == "I" then lvl = "info"
+        elseif k == "W" then lvl = "warn"
+        elseif k == "E" then lvl = "error"
+        elseif k == "F" then lvl = "fatal"
+        end
+      end
+
+      -- 5. Uppercase token in first 120 chars
+      if not lvl then
+        local head = msg:sub(1, 120)
+        if     head:find("FATAL") or head:find("CRITICAL") then lvl = "fatal"
+        elseif head:find("ERROR") or head:find("ERR ")     then lvl = "error"
+        elseif head:find("WARN")                            then lvl = "warn"
+        elseif head:find("INFO")                            then lvl = "info"
+        elseif head:find("DEBUG")                           then lvl = "debug"
+        elseif head:find("TRACE")                           then lvl = "trace"
+        end
+      end
+
       if lvl then
         record["level"] = lvl
         return 1, ts, record
