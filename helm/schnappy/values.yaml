@@ -212,6 +212,10 @@ tracing:
   enabled: false
   tempoEndpoint: "http://schnappy-tempo.schnappy-infra.svc:4318/v1/traces"
   samplingProbability: "0.1"
+  # OkHttp default is 10s — under stress Tempo can take longer, the
+  # client cancels mid-request, error spam follows. 30s gives the
+  # ingester enough headroom to ack during distributor saturation.
+  exporterTimeoutMs: "30000"
 
 # k6 smoke tests (PostSync hook + daily CronJob)
 smokeTest:

@@ -41,6 +41,11 @@ spec:
           args:
             - '--port=8080'
             - '--telemetry-port=8081'
+            # Default collector list includes `secrets`, which the
+            # ClusterRole intentionally does not grant — the SA spam-
+            # loops "secrets is forbidden" otherwise. Enumerate the
+            # set explicitly so future KSM versions can't re-add it.
+            - '--resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpoints,horizontalpodautoscalers,ingresses,jobs,leases,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments'
           ports:
             - containerPort: 8080
               name: metrics

@@ -172,6 +172,8 @@ spec:
               value: {{ .Values.tracing.samplingProbability | default "0.1" | quote }}
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
               value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy-infra.svc:4318/v1/traces" | quote }}
+            - name: OTEL_EXPORTER_OTLP_TIMEOUT
+              value: {{ .Values.tracing.exporterTimeoutMs | default "30000" | quote }}
             - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
               value: "false"
             - name: SPRING_APPLICATION_NAME

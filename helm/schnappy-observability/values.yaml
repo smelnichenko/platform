@@ -85,9 +85,13 @@ tempo:
   image: grafana/tempo:2.7.2
   retention: 336h
   minioSecret: schnappy-minio
+  # Single-replica (PVC for WAL is RWO local-path). Under stress the
+  # OTLP exporters in apps timed out at 10s — root cause is distributor
+  # CPU saturation, not message size. CPU is the lever; memory grew
+  # with it for ingester block headroom during compaction.
   resources:
     requests: { memory: 256Mi, cpu: 100m }
-    limits: { memory: 1Gi, cpu: 1000m }
+    limits: { memory: 2Gi, cpu: 2000m }
   storage: 2Gi
   storageClassName: ""
 

@@ -72,6 +72,19 @@ spec:
               value: "false"
             - name: GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES
               value: "false"
+            # Silence usage stats collector. It scans datasources
+            # (incl. plugins not installed → "amazon prometheus not
+            # found") and tries to GET checks.advisor.grafana.app
+            # every minute, both at error level. Pure phone-home
+            # noise; nothing useful for a self-hosted install.
+            - name: GF_ANALYTICS_REPORTING_ENABLED
+              value: "false"
+            - name: GF_ANALYTICS_FEEDBACK_LINKS_ENABLED
+              value: "false"
+            # In-app cross-promotion: home-dashboard news feed
+            # ("What's new in Grafana", Cloud upsells, etc.).
+            - name: GF_NEWS_NEWS_FEED_ENABLED
+              value: "false"
             {{- if eq (.Values.grafana.oauth.enabled | toString) "true" }}
             - name: GF_AUTH_GENERIC_OAUTH_ENABLED
               value: "true"
