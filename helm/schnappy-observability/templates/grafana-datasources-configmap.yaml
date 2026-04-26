@@ -33,12 +33,16 @@ data:
         type: grafana-clickhouse-datasource
         uid: clickhouse-logs
         access: proxy
-        url: http://{{ include "schnappy.clickhouse.serviceName" . }}:8123
         editable: false
+        # The grafana-clickhouse-datasource v4.x reads server location
+        # from jsonData.host + jsonData.port — the legacy `url:` field
+        # is ignored and the plugin reports "invalid server host".
         jsonData:
+          host: {{ include "schnappy.clickhouse.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local
+          port: 8123
+          protocol: http
           defaultDatabase: logs
           username: schnappy
-          protocol: http
           # Click trace_id in a log row → jump to the trace in Tempo.
           {{- if eq (.Values.tempo.enabled | toString) "true" }}
           derivedFields:

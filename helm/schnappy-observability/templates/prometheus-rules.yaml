@@ -20,16 +20,8 @@ spec:
             summary: "Watchdog alert (always firing)"
             description: "Dead man's switch. If not firing, the alerting pipeline is broken."
 
-    - name: infra-elk
+    - name: infra-logs
       rules:
-        - alert: ElasticsearchDown
-          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-elasticsearch-\\d+$"} == 0
-          for: 5m
-          labels:
-            severity: critical
-          annotations:
-            runbook_url: "https://runbooks.pmon.dev/ElasticsearchDown"
-            summary: "Elasticsearch {{ "{{" }} $labels.pod {{ "}}" }} is down"
         - alert: FluentbitDown
           expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-fluentbit-.*"} == 0
           for: 10m
@@ -38,14 +30,6 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/FluentbitDown"
             summary: "Fluent-bit {{ "{{" }} $labels.pod {{ "}}" }} is down"
-        - alert: KibanaDown
-          expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"{{ $fn }}-kibana-.*"} == 0
-          for: 10m
-          labels:
-            severity: warning
-          annotations:
-            runbook_url: "https://runbooks.pmon.dev/KibanaDown"
-            summary: "Kibana {{ "{{" }} $labels.pod {{ "}}" }} is down"
 
     - name: infra-certificates
       rules:
