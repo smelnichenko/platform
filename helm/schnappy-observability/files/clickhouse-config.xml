@@ -14,19 +14,6 @@
   <!-- Self-cap below cgroup so CH returns "memory limit exceeded" per
        query instead of getting OOMKilled by the kernel. -->
   <max_server_memory_usage_to_ram_ratio>0.85</max_server_memory_usage_to_ram_ratio>
-  <!-- Default 16 concurrent merges OOMs the pod on a backlog replay.
-       Throttle to drain with bounded peak memory. -->
-  <background_pool_size>4</background_pool_size>
-  <merge_tree>
-    <!-- Hard cap on a single merge's input. Keeps any one merge from
-         monopolising memory even if the part backlog is huge. -->
-    <max_bytes_to_merge_at_max_space_in_pool>2147483648</max_bytes_to_merge_at_max_space_in_pool>
-    <!-- CH sanity-checks both of these against
-         background_pool_size * background_merges_mutations_concurrency_ratio.
-         With pool=4 and ratio=2, the budget is 8. -->
-    <number_of_free_entries_in_pool_to_execute_mutation>4</number_of_free_entries_in_pool_to_execute_mutation>
-    <number_of_free_entries_in_pool_to_lower_max_size_of_merge>4</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
-  </merge_tree>
   <users_config>users.xml</users_config>
   <default_profile>default</default_profile>
   <default_database>logs</default_database>
