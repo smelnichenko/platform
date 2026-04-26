@@ -38,8 +38,32 @@ data:
         Merge_Log_Key     log_parsed
         K8S-Logging.Parser On
         Annotations       Off
-        Labels            Off
+        Labels            On
         Buffer_Size       1024KB
+
+    # Map kubernetes.* nested object → top-level fields the CH schema
+    # expects (namespace, pod, container, node). Without this lift,
+    # CH receives JSONEachRow with no matching columns and silently
+    # writes empty defaults.
+    [FILTER]
+        Name              nest
+        Match             kube.*
+        Operation         lift
+        Nested_under      kubernetes
+        Add_prefix        k8s_
+
+    [FILTER]
+        Name              modify
+        Match             kube.*
+        # Field renames so JSONEachRow keys match CH column names.
+        Rename            log                 message
+        Rename            k8s_namespace_name  namespace
+        Rename            k8s_pod_name        pod
+        Rename            k8s_container_name  container
+        Rename            k8s_host            node
+        # Drop the rest of the kubernetes block (container_image,
+        # docker_id, pod_id, labels object, etc.) — not in schema.
+        Remove_wildcard   k8s_
 
     [FILTER]
         Name              grep

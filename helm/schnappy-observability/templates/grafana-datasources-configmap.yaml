@@ -43,6 +43,15 @@ data:
           protocol: http
           defaultDatabase: logs
           username: schnappy
+          # Logs UI defaults so Explore auto-populates Time/Message/Level
+          # instead of nagging the user to pick them every time.
+          logs:
+            defaultDatabase: logs
+            defaultTable: podlogs
+            otelEnabled: false
+            timeColumn: timestamp
+            levelColumn: level
+            messageColumn: message
           # Click trace_id in a log row → jump to the trace in Tempo.
           {{- if eq (.Values.tempo.enabled | toString) "true" }}
           derivedFields:
