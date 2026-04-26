@@ -85,6 +85,10 @@ data:
         Match             kube.*
         Rename            log_parsed_traceId trace_id
         Rename            log_parsed_spanId  span_id
+        # Spring Boot / structured-JSON apps emit `level` in their
+        # log line; surface it as a column. Plain-text container
+        # logs leave this empty (Grafana shows "unknown").
+        Rename            log_parsed_level   level
         # Anything else from the parsed JSON goes back into log_parsed_*
         # keys — drop them; they're noise for the column-only schema.
         Remove_wildcard   log_parsed_
