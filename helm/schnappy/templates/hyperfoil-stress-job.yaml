@@ -45,8 +45,15 @@ spec:
                   drop:
                     - ALL
               env:
+                # Hyperfoil's CPU watchdog reads HOST-level CPU (all
+                # cores on the node, not the pod cgroup). On a
+                # single-node cluster the host easily hits 80% under
+                # modest load + the production workload itself,
+                # aborting the test after the first ramp. The
+                # property name is `io.hyperfoil.cpu.usage.threshold`
+                # (`cpu.threshold` alone is silently ignored).
                 - name: JAVA_OPTS
-                  value: "-Xmx1g -XX:+UseZGC -Dio.hyperfoil.cpu.threshold=90"
+                  value: "-Xmx1g -XX:+UseZGC -Dio.hyperfoil.cpu.usage.threshold=99"
                 - name: MONITOR_URL
                   value: "http://{{ include "schnappy.fullname" . }}-monitor:8080"
                 - name: CHAT_URL
