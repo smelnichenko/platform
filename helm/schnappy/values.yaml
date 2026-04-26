@@ -210,15 +210,14 @@ keycloak:
 # Distributed tracing (OTLP → Tempo)
 tracing:
   enabled: false
-  # gRPC transport (port 4317, no URI path). Switched from HTTP/4318
-  # because OpenTelemetry Java SDK 1.55.0's OkHttp sender doesn't
-  # configure readTimeout — it stays at OkHttp's default 10s, which
-  # caps every export at 10s regardless of management timeout config.
-  # gRPC sender doesn't have that bug.
-  tempoEndpoint: "http://schnappy-tempo.schnappy-infra.svc:4317"
-  tempoTransport: "grpc"
+  # HTTP/protobuf OTLP (port 4318). gRPC was tested but its SDK sender
+  # is also OkHttp-based, so the readTimeout bug applies equally.
+  # The actual fix is the build.gradle swap from
+  # opentelemetry-exporter-sender-okhttp to -sender-jdk; see app
+  # repos. HTTP wins on debug-ability at our trace volume.
+  tempoEndpoint: "http://schnappy-tempo.schnappy-infra.svc:4318/v1/traces"
+  tempoTransport: "http"
   samplingProbability: "0.1"
-  # gRPC call timeout (also defaults to 10s). 30s for headroom.
   exporterTimeout: "30s"
   exporterConnectTimeout: "30s"
   # BatchSpanProcessor schedule delay (was 5s default). Smaller value
