@@ -148,8 +148,10 @@ data:
         return 0, ts, record
       end
       local msg = record["message"]
+      -- Empty/nil messages still need a level so the column is never blank.
       if not msg or msg == "" then
-        return 0, ts, record
+        record["level"] = "info"
+        return 1, ts, record
       end
       local lvl = nil
 
@@ -209,12 +211,17 @@ data:
         end
       end
 
-      -- 7. Catch-all: stack-trace fragments, init-script output,
-      -- bare timestamps from multi-line records, env dumps. We have
-      -- no signal here, but the user wants 0 empty. Tag as 'unknown'
-      -- so the column always has a value and Grafana can group by it.
+      -- 7. Catch-all. The remaining unmatched cases are mostly
+      -- stack-trace continuation frames, init-script output (iptables
+      -- rules, env dumps), bare timestamps from multi-line records,
+      -- and empty lines. None carry a real severity signal, but the
+      -- column must never be empty. Default to 'info' — most of
+      -- these are continuations of an info-level event upstream.
+      -- (If multiline merging gets added later, this default
+      -- becomes effectively dead because continuations will inherit
+      -- the parent line's level.)
       if not lvl then
-        lvl = "unknown"
+        lvl = "info"
       end
 
       record["level"] = lvl
