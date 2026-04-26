@@ -163,15 +163,16 @@ data:
         end
       end
 
-      -- 3. Envoy access log: [ts] "METHOD path HTTP/x.y" STATUS_CODE ...
-      -- The status code is the 4th whitespace-separated token after the closing quote.
+      -- 3. Envoy access log: [ts] "METHOD path HTTP/x.y" STATUS ...
+      -- Status can be `0` for TCP-aborted (no HTTP request landed),
+      -- `200`/`404`/`500` etc for HTTP. Match 1+ digits.
       if not lvl then
-        local status = msg:match("^%[[^%]]+%]%s+\"[^\"]+\"%s+(%d%d%d)%s")
+        local status = msg:match("^%[[^%]]+%]%s+\"[^\"]+\"%s+(%d+)%s")
         if status then
           local s = tonumber(status)
           if     s >= 500 then lvl = "error"
           elseif s >= 400 then lvl = "warn"
-          else                 lvl = "info"   -- 2xx, 3xx
+          else                 lvl = "info"   -- 0, 2xx, 3xx
           end
         end
       end
@@ -198,10 +199,25 @@ data:
         end
       end
 
-      if lvl then
-        record["level"] = lvl
-        return 1, ts, record
+      -- 6. Lowercase phrase patterns (Hyperfoil watchdog, etc.)
+      if not lvl then
+        local low = msg:sub(1, 200):lower()
+        if     low:find("more than the threshold") then lvl = "warn"
+        elseif low:find("exception")               then lvl = "error"
+        elseif low:find("caused by:")              then lvl = "error"
+        elseif low:find("timeout")                 then lvl = "warn"
+        end
       end
-      return 0, ts, record
+
+      -- 7. Catch-all: stack-trace fragments, init-script output,
+      -- bare timestamps from multi-line records, env dumps. We have
+      -- no signal here, but the user wants 0 empty. Tag as 'unknown'
+      -- so the column always has a value and Grafana can group by it.
+      if not lvl then
+        lvl = "unknown"
+      end
+
+      record["level"] = lvl
+      return 1, ts, record
     end
 {{- end }}
