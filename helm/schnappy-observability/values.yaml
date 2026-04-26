@@ -85,13 +85,13 @@ tempo:
   image: grafana/tempo:2.7.2
   retention: 336h
   minioSecret: schnappy-minio
-  # Single-replica (PVC for WAL is RWO local-path). Under stress the
-  # OTLP exporters in apps timed out at 10s — root cause is distributor
-  # CPU saturation, not message size. CPU is the lever; memory grew
-  # with it for ingester block headroom during compaction.
+  # Single-replica (PVC for WAL is RWO local-path). Stress 11 (with
+  # JDK sender finally honoring the 30s timeout) showed Tempo
+  # genuinely takes >30s for some peak-burst batches at 2 CPU.
+  # Bumping to 4 CPU since the host has headroom.
   resources:
-    requests: { memory: 256Mi, cpu: 100m }
-    limits: { memory: 2Gi, cpu: 2000m }
+    requests: { memory: 512Mi, cpu: 200m }
+    limits: { memory: 3Gi, cpu: 4000m }
   storage: 2Gi
   storageClassName: ""
 
