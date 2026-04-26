@@ -45,6 +45,14 @@ spec:
               value: "5080"
             - name: ZO_TELEMETRY
               value: "false"
+            # OO is a Rust binary that reads host CPU count (20 on the
+            # single-node cluster) and spawns one actix worker per
+            # core by default. With a 2-CPU pod limit, that's massive
+            # over-subscription — each worker contends for 0.1 CPU,
+            # raising request queue depth and 503s under burst.
+            # Pin to 4 workers (matches a sane multiple of the limit).
+            - name: ZO_HTTP_WORKER_NUM
+              value: "4"
             # Retention is enforced via stream-level settings the
             # operator API exposes; bootstrap default below.
             - name: ZO_COMPACT_DATA_RETENTION_DAYS

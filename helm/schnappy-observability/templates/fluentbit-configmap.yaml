@@ -103,8 +103,16 @@ data:
         http_user         ${OPENOBSERVE_ROOT_USER_EMAIL}
         http_passwd       ${OPENOBSERVE_ROOT_USER_PASSWORD}
         tls               Off
-        Retry_Limit       5
-        Workers           2
+        # Halve in-flight concurrency — OO's actix is pinned to
+        # 4 workers, two fluent-bit workers stacked too many
+        # connections under burst, tripping Istio 503s.
+        Workers           1
+        # gzip compress — smaller payloads, lower OO HTTP handler
+        # CPU per request.
+        compress          gzip
+        # Don't drop chunks after a few retries; backoff and survive
+        # OO restarts (it's a single replica).
+        Retry_Limit       False
     {{- end }}
 
   parsers.conf: |
