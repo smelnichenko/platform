@@ -1,18 +1,28 @@
 {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
-apiVersion: batch/v1
-kind: CronJob
+# Stress / spike / soak runs are manual (`task test:hyperfoil:*`).
+# Storing the Job spec in a ConfigMap keeps all the chart-templated
+# values (image, hostnames, secrets) under GitOps without leaving a
+# Suspended CronJob in the cluster. Tasks pull this ConfigMap, sed
+# in BENCHMARK_FILE + REPORT_PREFIX, and `kubectl create -f`. Each
+# invocation gets a fresh Job (generateName).
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: {{ include "schnappy.fullname" . }}-hyperfoil-stress
+  name: {{ include "schnappy.fullname" . }}-hyperfoil-jobspec
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
     app.kubernetes.io/component: hyperfoil-stress
-spec:
-  schedule: "0 0 31 2 *"
-  suspend: true
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 3
-  jobTemplate:
+data:
+  job.yaml: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      generateName: hf-__REPORT_PREFIX__-
+      namespace: {{ .Release.Namespace }}
+      labels:
+        {{- include "schnappy.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: hyperfoil-stress
+        app.kubernetes.io/part-of: schnappy
     spec:
       backoffLimit: 0
       ttlSecondsAfterFinished: 86400
@@ -54,6 +64,10 @@ spec:
                 # (`cpu.threshold` alone is silently ignored).
                 - name: JAVA_OPTS
                   value: "-Xmx1g -XX:+UseZGC -Dio.hyperfoil.cpu.usage.threshold=99"
+                - name: BENCHMARK_FILE
+                  value: __BENCHMARK_FILE__
+                - name: REPORT_PREFIX
+                  value: __REPORT_PREFIX__
                 - name: MONITOR_URL
                   value: "http://{{ include "schnappy.fullname" . }}-monitor:8080"
                 - name: CHAT_URL
