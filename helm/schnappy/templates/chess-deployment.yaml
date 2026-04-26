@@ -91,11 +91,19 @@ spec:
               value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
           resources:
             {{- toYaml .Values.chessService.resources | nindent 12 }}
+          # 5-minute startup budget. Until startupProbe succeeds, kubelet
+          # holds off on liveness/readiness so a slow Spring Boot boot
+          # (DB+Kafka init) doesn't trigger a CrashLoop.
+          startupProbe:
+            httpGet:
+              path: /api/actuator/health/liveness
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:

@@ -187,11 +187,16 @@ spec:
               value: {{ .Values.auth.registrationApproval.defaultGroup | default "Users" | quote }}
           resources:
             {{- toYaml .Values.app.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /api/actuator/health/liveness
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:

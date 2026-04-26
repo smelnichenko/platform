@@ -101,11 +101,16 @@ spec:
               value: {{ .Values.chat.e2eEnabled | default false | toString | quote }}
           resources:
             {{- toYaml .Values.chatService.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /api/actuator/health/liveness
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
