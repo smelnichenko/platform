@@ -93,6 +93,16 @@ data:
         # keys — drop them; they're noise for the column-only schema.
         Remove_wildcard   log_parsed_
 
+    # Plain-text logs (klog, Spring Boot text format, generic) don't
+    # have a parsed JSON .level field. Extract it heuristically from
+    # the message so Grafana can colour-code by severity for the
+    # ~99.98% of logs that aren't JSON.
+    [FILTER]
+        Name              lua
+        Match             kube.*
+        script            /fluent-bit/etc/extract_level.lua
+        call              extract_level
+
     {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
     # ClickHouse — canonical log store + analytics. The `http` plugin
     # posts JSONEachRow which the ClickHouse HTTP interface accepts
@@ -121,4 +131,44 @@ data:
         Regex       ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<_p>[^ ]*) (?<log>.*)$
         Time_Key    time
         Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+
+  extract_level.lua: |
+    -- Heuristic level extraction for plain-text container logs.
+    -- Skips records that already have a level (JSON-formatted apps).
+    -- Tries klog (single-letter prefix + datestamp), Spring Boot
+    -- text (uppercase token in first 80 chars), then generic.
+    function extract_level(tag, ts, record)
+      if record["level"] and record["level"] ~= "" then
+        return 0, ts, record
+      end
+      local msg = record["message"]
+      if not msg or msg == "" then
+        return 0, ts, record
+      end
+      local lvl = nil
+      -- klog: I0426 11:22:57.853001 ...   (I=info W=warn E=error F=fatal)
+      local k = msg:match("^([IWEF])%d%d%d%d%s%d%d:%d%d:%d%d")
+      if k == "I" then lvl = "info"
+      elseif k == "W" then lvl = "warn"
+      elseif k == "E" then lvl = "error"
+      elseif k == "F" then lvl = "fatal"
+      end
+      -- Uppercase token anywhere in first 120 chars (Spring Boot
+      -- text format, generic [INFO]/INFO patterns).
+      if not lvl then
+        local head = msg:sub(1, 120)
+        if head:find("FATAL") or head:find("CRITICAL") then lvl = "fatal"
+        elseif head:find("ERROR") or head:find("ERR ") then lvl = "error"
+        elseif head:find("WARN") then lvl = "warn"
+        elseif head:find("INFO") then lvl = "info"
+        elseif head:find("DEBUG") then lvl = "debug"
+        elseif head:find("TRACE") then lvl = "trace"
+        end
+      end
+      if lvl then
+        record["level"] = lvl
+        return 1, ts, record
+      end
+      return 0, ts, record
+    end
 {{- end }}

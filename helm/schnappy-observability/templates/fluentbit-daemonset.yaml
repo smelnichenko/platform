@@ -44,6 +44,9 @@ spec:
             - name: parsers
               mountPath: /fluent-bit/etc/parsers.conf
               subPath: parsers.conf
+            - name: parsers
+              mountPath: /fluent-bit/etc/extract_level.lua
+              subPath: extract_level.lua
             - name: varlogcontainers
               mountPath: /var/log/containers
               readOnly: true
