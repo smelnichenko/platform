@@ -215,7 +215,9 @@ tracing:
   # OkHttp default is 10s — under stress Tempo can take longer, the
   # client cancels mid-request, error spam follows. 30s gives the
   # ingester enough headroom to ack during distributor saturation.
-  exporterTimeoutMs: "30000"
+  # Spring Duration format (s/ms/m), bound to
+  # `management.opentelemetry.tracing.export.otlp.timeout`.
+  exporterTimeout: "30s"
 
 # k6 smoke tests (PostSync hook + daily CronJob)
 smokeTest:
