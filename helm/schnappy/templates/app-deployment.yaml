@@ -171,7 +171,9 @@ spec:
             - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
               value: {{ .Values.tracing.samplingProbability | default "0.1" | quote }}
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-              value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy-infra.svc:4318/v1/traces" | quote }}
+              value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy-infra.svc:4317" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TRANSPORT
+              value: {{ .Values.tracing.tempoTransport | default "grpc" | quote }}
             # OkHttp call+connect timeout in the SDK both default to 10s;
             # under saturation either can bite (Tempo slow to ack OR cold
             # connection from a fresh pod). Bump both to 30s.
