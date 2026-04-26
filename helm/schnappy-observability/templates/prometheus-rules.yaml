@@ -243,4 +243,26 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PrometheusScrapeDurationSlow"
             summary: "Slow scrape: {{ "{{" }} $labels.job {{ "}}" }}/{{ "{{" }} $labels.instance {{ "}}" }}"
+
+    - name: ci-woodpecker
+      rules:
+        - alert: WoodpeckerBuildFailed
+          # Woodpecker increments this counter when a pipeline ends in a
+          # failure state. Any non-zero increase in the last 5min fires.
+          expr: increase(woodpecker_pipeline_count{status="failure"}[5m]) > 0
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
+            summary: "Woodpecker build failed (repo {{ "{{" }} $labels.repo {{ "}}" }})"
+            description: "A pipeline on {{ "{{" }} $labels.repo {{ "}}" }} ended in failure. Check ci.pmon.dev."
+        - alert: WoodpeckerScrapeDown
+          expr: up{job="woodpecker-server-metrics"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/WoodpeckerScrapeDown"
+            summary: "Cannot scrape Woodpecker metrics endpoint"
+            description: "Build-failure alerts are silent until this resolves. Check the bearer token + the woodpecker-server-metrics Service."
 {{- end }}
