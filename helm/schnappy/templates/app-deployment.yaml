@@ -172,14 +172,23 @@ spec:
               value: {{ .Values.tracing.samplingProbability | default "0.1" | quote }}
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
               value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy-infra.svc:4318/v1/traces" | quote }}
-            # Spring Boot 4 builds its own OtlpHttpSpanExporter from
-            # `management.opentelemetry.tracing.export.otlp.*` and
-            # ignores the OpenTelemetry SDK's `OTEL_EXPORTER_OTLP_*`
-            # env vars. Default OkHttp timeout is 10s; under saturation
-            # Tempo briefly takes longer, the client cancels mid-request,
-            # and the export retries. Bump to 30s (Spring Duration).
+            # OkHttp call+connect timeout in the SDK both default to 10s;
+            # under saturation either can bite (Tempo slow to ack OR cold
+            # connection from a fresh pod). Bump both to 30s.
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TIMEOUT
               value: {{ .Values.tracing.exporterTimeout | default "30s" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_CONNECT_TIMEOUT
+              value: {{ .Values.tracing.exporterConnectTimeout | default "30s" | quote }}
+            # Collect more often: 1s instead of 5s default. Each batch
+            # is ~5x smaller and ~5x faster to upload, cutting peak
+            # batch-export latency at the cost of more frequent calls.
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_SCHEDULE_DELAY
+              value: {{ .Values.tracing.scheduleDelay | default "1s" | quote }}
+            # Diagnostic: expose env+configprops actuator endpoints so we
+            # can verify properties actually bound (default exposes only
+            # health+prometheus; this widens to introspection-only).
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,prometheus,env,configprops"
             - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
               value: "false"
             - name: SPRING_APPLICATION_NAME

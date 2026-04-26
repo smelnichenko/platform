@@ -84,6 +84,12 @@ spec:
               value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy-infra.svc:4318/v1/traces" | quote }}
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TIMEOUT
               value: {{ .Values.tracing.exporterTimeout | default "30s" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_CONNECT_TIMEOUT
+              value: {{ .Values.tracing.exporterConnectTimeout | default "30s" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_SCHEDULE_DELAY
+              value: {{ .Values.tracing.scheduleDelay | default "1s" | quote }}
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,prometheus,env,configprops"
             - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
               value: "false"
             - name: SPRING_APPLICATION_NAME

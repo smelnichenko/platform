@@ -212,12 +212,16 @@ tracing:
   enabled: false
   tempoEndpoint: "http://schnappy-tempo.schnappy-infra.svc:4318/v1/traces"
   samplingProbability: "0.1"
-  # OkHttp default is 10s — under stress Tempo can take longer, the
-  # client cancels mid-request, error spam follows. 30s gives the
-  # ingester enough headroom to ack during distributor saturation.
-  # Spring Duration format (s/ms/m), bound to
-  # `management.opentelemetry.tracing.export.otlp.timeout`.
+  # OkHttp call+connect timeouts in the OTel SDK both default to 10s;
+  # under saturation either can bite. 30s gives headroom. Spring
+  # Duration format, bound to:
+  #   management.opentelemetry.tracing.export.otlp.timeout
+  #   management.opentelemetry.tracing.export.otlp.connect-timeout
   exporterTimeout: "30s"
+  exporterConnectTimeout: "30s"
+  # BatchSpanProcessor schedule delay (was 5s default). Smaller value
+  # → more frequent, smaller batches → lower per-export latency.
+  scheduleDelay: "1s"
 
 # k6 smoke tests (PostSync hook + daily CronJob)
 smokeTest:
