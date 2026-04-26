@@ -25,10 +25,11 @@ data:
           protocols:
             grpc:
               endpoint: 0.0.0.0:4317
+              # HTTP receiver doesn't expose a body-size knob; use
+              # server.http_server_read_timeout above for HTTP traffic.
               max_recv_msg_size_mib: 16
             http:
               endpoint: 0.0.0.0:4318
-              max_recv_msg_size_mib: 16
         zipkin:
           endpoint: 0.0.0.0:9411
 
