@@ -21,6 +21,10 @@
     <!-- Hard cap on a single merge's input. Keeps any one merge from
          monopolising memory even if the part backlog is huge. -->
     <max_bytes_to_merge_at_max_space_in_pool>2147483648</max_bytes_to_merge_at_max_space_in_pool>
+    <!-- Default 20 fails sanity-check against background_pool_size=2.
+         Required: this <= background_pool_size *
+         background_merges_mutations_concurrency_ratio (2*2=4). -->
+    <number_of_free_entries_in_pool_to_execute_mutation>2</number_of_free_entries_in_pool_to_execute_mutation>
   </merge_tree>
   <users_config>users.xml</users_config>
   <default_profile>default</default_profile>
