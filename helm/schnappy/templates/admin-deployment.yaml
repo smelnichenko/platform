@@ -90,6 +90,10 @@ spec:
               value: {{ .Values.tracing.exporterConnectTimeout | default "30s" | quote }}
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_SCHEDULE_DELAY
               value: {{ .Values.tracing.scheduleDelay | default "1s" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_MAX_QUEUE_SIZE
+              value: {{ .Values.tracing.maxQueueSize | default "8192" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_MAX_BATCH_SIZE
+              value: {{ .Values.tracing.maxBatchSize | default "2048" | quote }}
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,prometheus,env,configprops"
             - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED

@@ -186,6 +186,13 @@ spec:
             # batch-export latency at the cost of more frequent calls.
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_SCHEDULE_DELAY
               value: {{ .Values.tracing.scheduleDelay | default "1s" | quote }}
+            # Larger BSP buffers absorb burst-period spans that would
+            # otherwise queue (and stall waiting for a free export
+            # slot). Defaults: 2048 / 512.
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_MAX_QUEUE_SIZE
+              value: {{ .Values.tracing.maxQueueSize | default "8192" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_MAX_BATCH_SIZE
+              value: {{ .Values.tracing.maxBatchSize | default "2048" | quote }}
             # Diagnostic: expose env+configprops actuator endpoints so we
             # can verify properties actually bound (default exposes only
             # health+prometheus; this widens to introspection-only).
