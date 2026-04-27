@@ -61,12 +61,12 @@ data:
             - {{ . | quote }}
             {{- end }}
           consumer_group: {{ .Values.centrifugo.kafka.consumerGroup | quote }}
-        # Centrifugo v6: target channels for each Kafka publication come
-        # from a header (publishers must set this when producing). Body
-        # of the Kafka message becomes the publication data verbatim.
-        publication_data_mode:
-          enabled: true
-          channels_header: "x-centrifugo-channels"
+          # Centrifugo v6: target channels for each Kafka publication come
+          # from a header (publishers must set this when producing). Body
+          # of the Kafka message becomes the publication data verbatim.
+          publication_data_mode:
+            enabled: true
+            channels_header: "x-centrifugo-channels"
     {{- end }}
 
     channel:
