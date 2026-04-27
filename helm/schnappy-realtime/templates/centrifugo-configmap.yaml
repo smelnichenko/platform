@@ -6,21 +6,21 @@ metadata:
   labels:
     {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
 data:
-  # Centrifugo v6 YAML config. ${VAR} expands at startup from process env
-  # (see Deployment). v6 nested several previously-flat keys into objects;
-  # admin/health/prometheus are now structs with `enabled`, engine moved
-  # under `engine.type`, JWT options under `client.token`, namespaces
-  # under `channel.namespaces`, and HTTP-API key under `http_api.key`.
+  # Centrifugo v6 does not perform `${VAR}` substitution in the YAML
+  # config. It auto-overrides each config key from an env var whose
+  # name = `CENTRIFUGO_` + UPPER_SNAKE of the dotted path. Secret-bearing
+  # fields are therefore omitted from this YAML and projected via the
+  # Deployment's env (see centrifugo-deployment.yaml).
   config.yaml: |
     log_level: info
 
     admin:
       enabled: true
-      password: ${CENTRIFUGO_ADMIN_PASSWORD}
-      secret: ${CENTRIFUGO_ADMIN_SECRET}
+      # password + secret come from CENTRIFUGO_ADMIN_PASSWORD / _ADMIN_SECRET env
 
     http_api:
-      key: ${CENTRIFUGO_API_KEY}
+      # key comes from CENTRIFUGO_HTTP_API_KEY env
+      enabled: true
 
     health:
       enabled: true
@@ -37,8 +37,8 @@ data:
       {{- if .Values.centrifugo.subscriptionToken.enabled }}
       # Subscription tokens (Plan 066 Option C). Minted per-channel by
       # admin service for `protected: true` namespaces; HS256.
-      subscription_token:
-        hmac_secret_key: ${{ "{" }}{{ .Values.centrifugo.subscriptionToken.envVar }}{{ "}" }}
+      # hmac_secret_key sourced from CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY env.
+      subscription_token: {}
       {{- end }}
 
     # Valkey-backed engine (broker + presence + history).
@@ -46,7 +46,7 @@ data:
       type: redis
       redis:
         address: {{ .Values.centrifugo.valkey.address | quote }}
-        password: ${VALKEY_PASSWORD}
+        # password from CENTRIFUGO_ENGINE_REDIS_PASSWORD env
         use_lists: true
         presence_user_mapping: true
 

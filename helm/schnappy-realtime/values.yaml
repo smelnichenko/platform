@@ -101,14 +101,13 @@ centrifugo:
     secretKey: VALKEY_PASSWORD
 
   # Subscription token (Plan 066 Option C). Channel sub-tokens are
-  # minted by admin service, signed HS256 with the secret below.
-  # Centrifugo verifies on SUBSCRIBE for `protected: true` namespaces.
+  # minted by admin service, signed HS256. Centrifugo reads the secret
+  # from the canonical env var
+  # CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY (chart wires it
+  # automatically). Populated from Vault `secret/schnappy/centrifugo/sub_token_secret`
+  # via the chart's ESO.
   subscriptionToken:
     enabled: true
-    # Env var name read by Centrifugo's config (rendered into config.yaml
-    # as ${CENTRIFUGO_SUB_TOKEN_SECRET}). Populated from the ESO-managed
-    # Secret (key `sub_token_secret`).
-    envVar: CENTRIFUGO_SUB_TOKEN_SECRET
 
   # Strimzi-managed KafkaTopic CRs. Set strimzi.enabled=false in vagrant
   # tests that don't run Strimzi to skip topic creation.

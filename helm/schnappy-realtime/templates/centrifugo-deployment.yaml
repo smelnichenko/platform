@@ -41,13 +41,21 @@ spec:
           command: ["centrifugo"]
           args:
             - "--config=/etc/centrifugo/config.yaml"
+          # Centrifugo v6 reads `engine.redis.password`, `http_api.key`,
+          # `admin.password`, `admin.secret`, and `client.subscription_token.hmac_secret_key`
+          # from env vars whose names follow CENTRIFUGO_<UPPER_SNAKE_OF_PATH>.
+          # That convention is the *only* way to inject secrets — Centrifugo
+          # does not expand ${VAR} in the YAML config.
           env:
-            - name: VALKEY_PASSWORD
+            # engine.redis.password — sourced from data-layer Valkey secret
+            # (same-namespace) or from this chart's ESO-managed secret
+            # (cross-namespace via fromVault).
+            - name: CENTRIFUGO_ENGINE_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   {{- if .Values.centrifugo.valkey.fromVault }}
                   name: {{ include "schnappy.centrifugo.secretName" . }}
-                  key: VALKEY_PASSWORD
+                  key: CENTRIFUGO_ENGINE_REDIS_PASSWORD
                   {{- else }}
                   name: {{ .Values.centrifugo.valkey.secretName }}
                   key: {{ .Values.centrifugo.valkey.secretKey }}
@@ -63,17 +71,17 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.centrifugo.secretName" . }}
                   key: CENTRIFUGO_ADMIN_SECRET
-            - name: CENTRIFUGO_API_KEY
+            - name: CENTRIFUGO_HTTP_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.centrifugo.secretName" . }}
-                  key: CENTRIFUGO_API_KEY
+                  key: CENTRIFUGO_HTTP_API_KEY
             {{- if .Values.centrifugo.subscriptionToken.enabled }}
-            - name: {{ .Values.centrifugo.subscriptionToken.envVar }}
+            - name: CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.centrifugo.secretName" . }}
-                  key: {{ .Values.centrifugo.subscriptionToken.envVar }}
+                  key: CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY
             {{- end }}
           ports:
             - { name: http, containerPort: 8000 }
