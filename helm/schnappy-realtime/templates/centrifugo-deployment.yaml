@@ -1,11 +1,8 @@
+{{- /* The centrifugo ServiceAccount is owned by the schnappy-mesh chart
+       (it's pre-created so AuthorizationPolicies can reference its
+       principal before any workload deploys). This chart only references
+       the SA by name. */}}
 {{- if .Values.centrifugo.enabled }}
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ include "schnappy.centrifugo.serviceName" . }}
-  labels:
-    {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
