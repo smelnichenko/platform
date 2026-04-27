@@ -166,10 +166,12 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.centrifugo.secretName" . }}
                   key: CENTRIFUGO_SUB_TOKEN_SECRET
+            # Chat and chess Spring services use /api as the context-path,
+            # so the /internal endpoints sit at /api/internal/*.
             - name: CHAT_INTERNAL_URL
-              value: "http://{{ include "schnappy.fullname" . }}-chat:8080"
+              value: "http://{{ include "schnappy.fullname" . }}-chat:8080/api"
             - name: CHESS_INTERNAL_URL
-              value: "http://{{ include "schnappy.fullname" . }}-chess:8080"
+              value: "http://{{ include "schnappy.fullname" . }}-chess:8080/api"
             {{- end }}
           resources:
             {{- toYaml .Values.admin.resources | nindent 12 }}

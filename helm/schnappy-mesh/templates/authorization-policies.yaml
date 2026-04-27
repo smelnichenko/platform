@@ -188,4 +188,45 @@ spec:
       to:
         - operation:
             ports: ["5432"]
+---
+# /api/internal/** is admin-only on chat. Spring Security permits the
+# path so the cluster principal (mTLS source SA) is the authority;
+# this DENY rule rejects every source other than the admin service.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-chat-internal
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: chat
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notPrincipals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+      to:
+        - operation:
+            paths: ["/api/internal/*"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-chess-internal
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: chess
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notPrincipals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+      to:
+        - operation:
+            paths: ["/api/internal/*"]
 {{- end }}
