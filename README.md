@@ -1,55 +1,65 @@
-# Platform (Helm Chart)
+# Platform (Helm Charts)
 
-Helm chart for deploying the full pmon.dev application stack to Kubernetes.
+Helm charts for deploying pmon.dev to Kubernetes.
 
 ## Architecture
 
-Single Helm chart that templates all application services and infrastructure components into the `schnappy` namespace. Managed by an Argo CD Application — image tags and configuration values live in the `schnappy/infra` repo.
+This repo holds a family of Helm charts. Each chart is consumed by an Argo CD Application; image tags and per-environment values live in the `schnappy/infra` repo. Production splits into multiple namespaces (`schnappy-production-apps`, `schnappy-production-data`, `schnappy-production-mesh`) and a parallel `schnappy-test-*` set for Vagrant E2E.
 
-## Components
+## Charts
 
-**Application services:** API gateway, admin, monitor (core), chat, chess, site (frontend)
+| Chart | Purpose |
+|-------|---------|
+| `schnappy` | Core application services (admin, monitor, chat, chess, site, game) |
+| `schnappy-data` | Stateful stores: PostgreSQL (CNPG), Valkey, Kafka (Strimzi), ScyllaDB, MinIO, apt-cache |
+| `schnappy-mesh` | Istio ingress gateway, `HTTPRoute`s, `RequestAuthentication`, `AuthorizationPolicy`, rate limits |
+| `schnappy-realtime` | Centrifugo realtime fan-out (Plan 066): Kafka → Centrifugo → WS/SSE clients |
+| `schnappy-observability` | ELK, Mimir, Grafana, Alertmanager, blackbox/PodMonitors, runbooks |
+| `schnappy-sonarqube` | SonarQube + dedicated PostgreSQL |
+| `schnappy-auth` | **Test-only** in-cluster Keycloak for Vagrant E2E (production Keycloak is bare-metal on the Pis) |
+| `schnappy-test` | k6 smoke tests |
 
-**Databases:** PostgreSQL 17 (shared instance, per-service databases), Valkey 8.1, Kafka 4.2 (KRaft), ScyllaDB 6.2
-
-**Observability:** Prometheus, Grafana, Alertmanager, kube-state-metrics, Elasticsearch 8, Fluent-bit, Kibana, SonarQube
-
-**Infrastructure:** Network policies (default-deny), ExternalSecrets (Vault integration), apt-cacher-ng, PostgreSQL backup CronJob
-
-## Chart Structure
+## Repo Structure
 
 ```
 platform/
   helm/
-    Chart.yaml
-    values.yaml
-    templates/           # All k8s resource templates
-  grafana/               # Grafana dashboard JSON and dev config
-  kafka/                 # Kafka topic initialization
-  scylla/                # ScyllaDB schema initialization
-  apt-cache/             # apt-cacher-ng Dockerfile
+    schnappy/                # core app chart
+    schnappy-data/
+    schnappy-mesh/
+    schnappy-realtime/
+    schnappy-observability/
+    schnappy-sonarqube/
+    schnappy-auth/
+    schnappy-test/
+  grafana/                   # dashboard JSON + dev config
+  kafka/                     # Kafka topic init
+  scylla/                    # ScyllaDB schema init
+  apt-cache/                 # apt-cacher-ng image
+  keycloak-theme/            # Keycloak login/account theme assets
 ```
 
 ## Development
 
 ```bash
-# Lint the chart
-helm lint helm/
+# Lint a chart
+helm lint helm/schnappy/
 
-# Render templates locally
-helm template monitor helm/ -f helm/values.yaml
+# Render templates locally with the chart's defaults
+helm template schnappy helm/schnappy/ -f helm/schnappy/values.yaml
 
-# Render with production values (from infra repo)
-helm template monitor helm/ -f /path/to/infra/clusters/production/monitor/values.yaml
+# Render with production values (pulled from the infra repo)
+helm template schnappy helm/schnappy/ \
+  -f /home/sm/src/infra/clusters/production/schnappy-production-apps/values.yaml
 ```
 
 ## Deployment
 
-This chart is not installed directly. Argo CD manages it:
+Charts are not installed directly. Argo CD reconciles them:
 
-1. An Argo CD Application points at this chart inside the `schnappy/infra` repo
+1. An Argo CD Application points at a chart in this repo + a values file in `schnappy/infra`
 2. Woodpecker CD commits updated image tags to `schnappy/infra`
-3. Argo CD detects the change (polling or webhook)
-4. Argo CD syncs the Application — Helm renders, Kubernetes performs a rolling update
+3. Argo CD detects the change (poll/webhook) and syncs the Application
+4. Helm renders, Kubernetes performs a rolling update
 
 For local development, use `docker-compose.yml` in the ops repo instead.
