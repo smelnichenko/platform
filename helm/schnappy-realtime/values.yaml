@@ -33,25 +33,39 @@ centrifugo:
     enabled: false
     refreshInterval: 15m
 
-  # Channel namespaces — name : { presence, history_size, history_ttl, recover, force_recovery }
+  # Channel namespaces.
+  # `protected: true` → subscriptions require an HS256 sub-token from
+  # admin (Plan 066 Option C). `allowedUserChannels: "$"` → Centrifugo
+  # natively gates by JWT `sub` matching the channel's `#user-id` suffix
+  # (no token needed for own-user channels).
   namespaces:
     - name: chess
+      protected: true
       presence: true
       historySize: 200
       historyTtl: "168h"   # 7d
       recover: true
       forceRecovery: true
     - name: chat
+      protected: true
       presence: true
       historySize: 100
       historyTtl: "720h"   # 30d
       recover: true
       forceRecovery: false
     - name: notifications
+      allowedUserChannels: "$"
       presence: false
       historySize: 50
       historyTtl: "168h"
       recover: true
+      forceRecovery: false
+    - name: presence
+      allowedUserChannels: "$"
+      presence: false
+      historySize: 0
+      historyTtl: "0s"
+      recover: false
       forceRecovery: false
 
   # Kafka async-consumer ingest (apps publish to Kafka, Centrifugo fans out).
@@ -72,15 +86,15 @@ centrifugo:
     secretName: schnappy-valkey       # provides VALKEY_PASSWORD
     secretKey: VALKEY_PASSWORD
 
-  # Optional proxy for connect/subscribe/refresh; v1 keeps it off and
-  # accepts JWTs directly from JWKS. Enable when the gateway adds the
-  # webhook endpoints (Phase 2 of Plan 066).
-  proxy:
-    enabled: false
-    connectEndpoint: ""
-    subscribeEndpoint: ""
-    refreshEndpoint: ""
-    timeout: "2s"
+  # Subscription token (Plan 066 Option C). Channel sub-tokens are
+  # minted by admin service, signed HS256 with the secret below.
+  # Centrifugo verifies on SUBSCRIBE for `protected: true` namespaces.
+  subscriptionToken:
+    enabled: true
+    # Env var name read by Centrifugo's config (rendered into config.yaml
+    # as ${CENTRIFUGO_SUB_TOKEN_SECRET}). Populated from the ESO-managed
+    # Secret (key `sub_token_secret`).
+    envVar: CENTRIFUGO_SUB_TOKEN_SECRET
 
   # Strimzi-managed KafkaTopic CRs. Set strimzi.enabled=false in vagrant
   # tests that don't run Strimzi to skip topic creation.

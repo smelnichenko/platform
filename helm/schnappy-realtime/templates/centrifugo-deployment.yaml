@@ -60,6 +60,13 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.centrifugo.secretName" . }}
                   key: CENTRIFUGO_API_KEY
+            {{- if .Values.centrifugo.subscriptionToken.enabled }}
+            - name: {{ .Values.centrifugo.subscriptionToken.envVar }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.centrifugo.secretName" . }}
+                  key: {{ .Values.centrifugo.subscriptionToken.envVar }}
+            {{- end }}
           ports:
             - { name: http, containerPort: 8000 }
             - { name: prometheus, containerPort: 9000 }

@@ -21,6 +21,12 @@ data:
     token_jwks_public_endpoint: {{ .Values.centrifugo.jwks.publicEndpoint | quote }}
     token_audience: {{ .Values.centrifugo.jwks.audience | quote }}
 
+    {{- if .Values.centrifugo.subscriptionToken.enabled }}
+    # Subscription tokens (Plan 066 Option C). Minted by admin service
+    # for `protected: true` namespaces; HS256 with the shared secret below.
+    subscription_token_hmac_secret_key: ${{ "{" }}{{ .Values.centrifugo.subscriptionToken.envVar }}{{ "}" }}
+    {{- end }}
+
     # Valkey engine (broker + presence + history).
     engine: redis
     redis:
@@ -59,16 +65,11 @@ data:
         history_ttl: {{ .historyTtl | quote }}
         recover: {{ .recover }}
         force_recovery: {{ .forceRecovery }}
+        {{- if .protected }}
+        protected: true
+        {{- end }}
+        {{- if .allowedUserChannels }}
+        allowed_user_channels: {{ .allowedUserChannels | quote }}
+        {{- end }}
       {{- end }}
-
-    {{- if .Values.centrifugo.proxy.enabled }}
-    proxies:
-      - name: gateway
-        endpoint: {{ .Values.centrifugo.proxy.connectEndpoint | quote }}
-        timeout: {{ .Values.centrifugo.proxy.timeout | quote }}
-    client:
-      connect_proxy_name: gateway
-      subscribe_proxy_name: gateway
-      refresh_proxy_name: gateway
-    {{- end }}
 {{- end }}
