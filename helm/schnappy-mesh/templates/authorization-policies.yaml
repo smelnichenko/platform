@@ -119,7 +119,8 @@ spec:
 ---
 # Centrifugo — gateway + browser WS clients arrive via the Istio
 # ingress; app services may publish via the HTTP API. Trust the Istio
-# gateway SA + the four service SAs.
+# gateway SA, the four app service SAs, and the schnappy-infra
+# Prometheus SA (scrapes /metrics on the same port).
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -139,13 +140,16 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-centrifugo
+              # Prometheus operator-managed CR runs in schnappy-infra
+              # and scrapes /metrics on the same http port.
+              - cluster.local/ns/schnappy-infra/sa/schnappy-prometheus
         # Browser → Istio ingress gateway is the public path.
         # Trust-inside-mesh via the gateway's namespace/SA.
         - source:
             namespaces: ["istio-system"]
       to:
         - operation:
-            ports: ["8000", "9000"]
+            ports: ["8000"]
 ---
 # ClickHouse — fluentbit + grafana on HTTP port 8123
 apiVersion: security.istio.io/v1
