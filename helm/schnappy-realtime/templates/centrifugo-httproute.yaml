@@ -1,4 +1,15 @@
-{{- if and .Values.centrifugo.enabled .Values.gateway.enabled .Values.gateway.hosts.realtime }}
+{{- if and .Values.centrifugo.enabled .Values.gateway.enabled }}
+{{- /*
+  Two attachment modes:
+
+  1. `gateway.hosts.realtime` set → dedicated subdomain (e.g. rt.pmon.dev),
+     full path-routing to Centrifugo at the apex.
+
+  2. otherwise → path-prefix on the existing app host. Centrifugo's
+     WebSocket endpoint is /connection/websocket; we strip /realtime so
+     the upstream sees the canonical path. Lets us reuse the wildcard
+     cert + DNS for pmon.dev rather than provisioning a new hostname.
+*/ -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -7,15 +18,31 @@ metadata:
   labels:
     {{- include "schnappy.centrifugo.labels" . | nindent 4 }}
 spec:
-  hostnames:
-    - {{ .Values.gateway.hosts.realtime | quote }}
   parentRefs:
     - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https
+  {{- if .Values.gateway.hosts.realtime }}
+  hostnames:
+    - {{ .Values.gateway.hosts.realtime | quote }}
   rules:
     - matches:
         - { path: { type: PathPrefix, value: / } }
       backendRefs:
         - { name: {{ include "schnappy.centrifugo.serviceName" . }}, port: 8000 }
+  {{- else if .Values.gateway.hosts.app }}
+  hostnames:
+    - {{ .Values.gateway.hosts.app | quote }}
+  rules:
+    - matches:
+        - { path: { type: PathPrefix, value: {{ .Values.gateway.pathPrefix | default "/realtime" | quote }} } }
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - { name: {{ include "schnappy.centrifugo.serviceName" . }}, port: 8000 }
+  {{- end }}
 {{- end }}

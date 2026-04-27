@@ -8,13 +8,18 @@ vault:
 networkPolicies:
   enabled: true
 
-# Istio gateway (HTTPRoute parent reference)
+# Istio gateway (HTTPRoute parent reference). Two attachment modes:
+#   1. hosts.realtime set → dedicated subdomain (full root path on that host)
+#   2. hosts.app set + pathPrefix → share the SPA hostname, route a path
+#      prefix to Centrifugo (prefix is stripped before reaching upstream)
 gateway:
   enabled: false
   name: ""
   namespace: ""
+  pathPrefix: /realtime
   hosts:
-    realtime: ""   # e.g. rt.pmon.dev
+    realtime: ""   # e.g. rt.pmon.dev (leave blank for path-prefix mode)
+    app: ""        # e.g. pmon.dev   (used when realtime is blank)
 
 centrifugo:
   enabled: true
