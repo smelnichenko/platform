@@ -1,17 +1,16 @@
 {{- if and (eq (.Values.strimzi.enabled | toString) "true") (eq (.Values.kafka.scram.enabled | toString) "true") }}
 {{- $cluster := include "schnappy.fullname" . }}
-# Plan 068 — per-service KafkaUser CRs with SCRAM-SHA-512 creds and
-# topic-scoped ACLs. Strimzi's userOperator generates a Secret named
-# after each user with `username` + `password` keys; deployments mount
-# those into KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD env vars
-# (Phase 2 of Plan 068, app-side change).
+# Per-service KafkaUser CRs with SCRAM-SHA-512 creds and topic-scoped
+# ACLs. Strimzi's userOperator generates a Secret named after each user
+# with `username` + `password` keys; deployments mount those into
+# KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD env vars.
 #
 # Topic ownership map:
 #   monitor       — produce monitor.events.*, consume monitor.commands.*, user.events
 #   chat          — produce + consume chat.*, produce events.chat.*, consume user.events
 #   chess         — produce + consume chess.*, produce events.chess.*, consume user.events
 #   admin         — produce + consume user.events, admin.*
-#   centrifugo    — consume events.* (Plan 066 — fans out to clients)
+#   centrifugo    — consume events.* (fans out to subscribed clients)
 #   clickhouse    — consume events.*, chat.*, chess.* (analytics mirror)
 #
 # Each KafkaUser's metadata.name becomes the Secret + SCRAM principal.

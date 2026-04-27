@@ -148,6 +148,16 @@ app.kubernetes.io/component: chess
 {{- end }}
 {{- end }}
 
+{{/* Cross-chart: the schnappy-realtime chart creates `<fullname>-centrifugo`
+     in the same namespace; admin reads CENTRIFUGO_SUB_TOKEN_SECRET from it. */}}
+{{- define "schnappy.centrifugo.secretName" -}}
+{{- if and .Values.realtime .Values.realtime.existingSecret }}
+{{- .Values.realtime.existingSecret }}
+{{- else }}
+{{- printf "%s-centrifugo" (include "schnappy.fullname" .) }}
+{{- end }}
+{{- end }}
+
 {{- define "schnappy.valkey.secretName" -}}
 {{- if .Values.valkey }}
 {{- if .Values.valkey.existingSecret }}

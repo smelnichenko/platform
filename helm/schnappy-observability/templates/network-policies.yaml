@@ -227,7 +227,7 @@ spec:
 {{- end }}
 {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
 ---
-# ClickHouse network policy (Plan 065)
+# ClickHouse network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

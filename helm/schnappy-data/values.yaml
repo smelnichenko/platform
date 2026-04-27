@@ -37,7 +37,7 @@ postgres:
     size: 1Gi
     storageClass: ""
 
-# Valkey (volatile cache; replaces Redis — Plan 064)
+# Valkey (volatile cache; replaces Redis)
 # Two modes:
 #   operator.enabled=false  → hand-rolled Deployment + Service + Secret (this chart owns it)
 #   operator.enabled=true   → Valkey CR consumed by hyperspike/valkey-operator
@@ -50,7 +50,8 @@ valkey:
   resources:
     requests: { memory: "64Mi", cpu: "25m" }
     limits: { memory: "256Mi", cpu: "200m" }
-  # Operator-managed mode (Plan 064 default in prod once vagrant gate is green).
+  # Operator-managed mode (hyperspike/valkey-operator). Default once
+  # the vagrant gate is green; flip enabled=true per-env to switch over.
   operator:
     enabled: false
     nodes: 1        # standalone; >=3 for cluster mode
@@ -66,10 +67,10 @@ kafka:
   clusterId: ""
   existingSecret: ""
   javaOpts: "-Xmx1g -Xms1g"
-  # Plan 068 — when enabled, the Kafka cluster gains an extra
-  # SCRAM-SHA-512 listener on :9094, the userOperator runs, and the
-  # KafkaUser CRs in templates/kafka-users.yaml emit their per-service
-  # creds (Strimzi auto-generates Secrets named like the KafkaUser).
+  # When enabled, the Kafka cluster gains an extra SCRAM-SHA-512
+  # listener on :9094, the userOperator runs, and the KafkaUser CRs
+  # in templates/kafka-users.yaml emit their per-service creds
+  # (Strimzi auto-generates Secrets named like the KafkaUser).
   scram:
     enabled: false
   retention:
@@ -91,8 +92,9 @@ kafka:
     - name: user.events
       partitions: 3
       replicationFactor: 1
-    # Plan 066 envelope topics — apps publish here, Centrifugo (Kafka
-    # async-consumer) and ClickHouse Kafka engine both consume.
+    # Realtime envelope topics — apps publish here; Centrifugo (Kafka
+    # async-consumer) fans out to subscribers, ClickHouse Kafka engine
+    # archives for analytics.
     - name: events.chat.messages
       partitions: 12
       replicationFactor: 1
@@ -165,7 +167,7 @@ scyllaOperator:
   agentVersion: "3.9.0"
   developerMode: true
   backups: []
-  # Plan 069 — operator-managed backup + repair via ScyllaDB Manager.
+  # Operator-managed backup + repair via ScyllaDB Manager.
   # scyllaManager.enabled gates the ClusterRegistration + Task CRs;
   # the actual Manager component is installed by setup-kubeadm.yml
   # (`install_scylla_manager: true` on prod, false on vagrant).

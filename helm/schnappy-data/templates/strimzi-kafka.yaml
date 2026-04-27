@@ -90,8 +90,7 @@ spec:
           cpu: 500m
           memory: 512Mi
     {{- if eq (.Values.kafka.scram.enabled | toString) "true" }}
-    # Plan 068 — userOperator reconciles KafkaUser CRs into SCRAM
-    # creds + topic ACLs.
+    # userOperator reconciles KafkaUser CRs into SCRAM creds + topic ACLs.
     userOperator:
       resources:
         requests: { cpu: 50m, memory: 128Mi }

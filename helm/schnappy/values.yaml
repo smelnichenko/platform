@@ -1,11 +1,11 @@
 # Core application services chart
 nameOverride: schnappy
 
-# Plan 067 — when true, the chart emits the preview HTTPRoute on
-# `<ingress.host>` against the prod Istio gateway, and a pre-delete
-# Job that prunes per-PR shared-resource artifacts (Kafka topics,
-# Scylla keyspace, MinIO bucket, Keycloak client). Set per-Application
-# by the schnappy-pr-envs ApplicationSet.
+# Per-PR preview env mode. When true, the chart emits the preview
+# HTTPRoute on `<ingress.host>` against the prod Istio gateway, and a
+# pre-delete Job that prunes per-PR shared-resource artifacts (Kafka
+# topics, Scylla keyspace, MinIO bucket, Keycloak client). Set
+# per-Application by the schnappy-pr-envs ApplicationSet.
 previewMode: false
 previewNumber: ""
 previewSourceRepo: ""
@@ -244,3 +244,11 @@ scylla:
   enabled: true
   datacenter: datacenter1
   keyspace: chat
+
+# admin mints Centrifugo channel subscription tokens. Enable per-env
+# where the schnappy-realtime chart is deployed.
+realtime:
+  enabled: false
+  # Override if the centrifugo Secret name differs from the convention
+  # `<schnappy.fullname>-centrifugo`. Empty → use the default helper.
+  existingSecret: ""

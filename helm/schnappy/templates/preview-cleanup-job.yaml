@@ -1,8 +1,7 @@
 {{- if and .Values.previewMode .Values.previewNumber -}}
-# Plan 067 §"Data backend cleanup hooks" — pre-delete hook that prunes
-# per-PR shared resources that the chart created prefixes for but
-# doesn't own the lifecycle of (Kafka topics on the shared cluster,
-# Scylla keyspaces, MinIO bucket, Keycloak client).
+# Pre-delete hook that prunes per-PR shared resources that the chart
+# created prefixes for but doesn't own the lifecycle of (Kafka topics
+# on the shared cluster, Scylla keyspaces, MinIO bucket, Keycloak client).
 apiVersion: v1
 kind: ServiceAccount
 metadata:

@@ -17,8 +17,8 @@ gateway:
     logs: ""
     reports: ""
 
-# ClickHouse — log storage backend (Plan 065). Replaces ELK in
-# steady state; both can be on simultaneously during the cutover.
+# ClickHouse — log storage backend; replaces ELK in steady state.
+# Both backends can be on simultaneously during cutover.
 clickhouse:
   enabled: false
   image: clickhouse/clickhouse-server:24.8-alpine
@@ -35,8 +35,9 @@ clickhouse:
   # Grafana plugin install — toggled here so a single chart value
   # controls both the datasource emit and the plugin presence.
   installGrafanaPlugin: true
-  # Plan 066 — events database fed by Kafka. Disabled by default;
-  # enable in tandem with the schnappy-realtime chart.
+  # Realtime envelope archive: events database fed by Kafka, gives
+  # analytics + replay over the same publication stream Centrifugo
+  # fans out. Enable in tandem with the schnappy-realtime chart.
   events:
     enabled: false
     retentionDays: 180

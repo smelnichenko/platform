@@ -158,6 +158,19 @@ spec:
                   name: {{ include "schnappy.keycloak.secretName" . }}
                   key: ADMIN_SERVICE_CLIENT_SECRET
             {{- end }}
+            {{- if eq (.Values.realtime.enabled | toString) "true" }}
+            # admin mints Centrifugo channel sub-tokens; same HS256
+            # secret Centrifugo uses to verify on SUBSCRIBE.
+            - name: CENTRIFUGO_SUB_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.centrifugo.secretName" . }}
+                  key: CENTRIFUGO_SUB_TOKEN_SECRET
+            - name: CHAT_INTERNAL_URL
+              value: "http://{{ include "schnappy.fullname" . }}-chat:8080"
+            - name: CHESS_INTERNAL_URL
+              value: "http://{{ include "schnappy.fullname" . }}-chess:8080"
+            {{- end }}
           resources:
             {{- toYaml .Values.admin.resources | nindent 12 }}
           startupProbe:

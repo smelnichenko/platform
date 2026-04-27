@@ -117,8 +117,8 @@ spec:
         - operation:
             ports: ["9000"]
 ---
-# Centrifugo (Plan 066) — gateway + browser WS clients arrive via the
-# Istio ingress, app services may publish via API. Trust the Istio
+# Centrifugo — gateway + browser WS clients arrive via the Istio
+# ingress; app services may publish via the HTTP API. Trust the Istio
 # gateway SA + the four service SAs.
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
@@ -147,7 +147,7 @@ spec:
         - operation:
             ports: ["8000", "9000"]
 ---
-# ClickHouse — fluentbit + grafana on HTTP port 8123 (Plan 065)
+# ClickHouse — fluentbit + grafana on HTTP port 8123
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:

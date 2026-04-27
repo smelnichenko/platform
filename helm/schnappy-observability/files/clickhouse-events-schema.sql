@@ -1,6 +1,6 @@
--- Plan 066 — events database fed by Kafka. Runs idempotently via the
--- post-install Helm hook. Kafka engine + materialized view streams
--- envelopes from the configured topics into events.all (MergeTree).
+-- Events database fed from Kafka. Runs idempotently via the post-install
+-- Helm hook. Kafka engine + materialized view stream envelopes from the
+-- configured topics into events.all (MergeTree).
 --
 -- Substituted at apply time by the init Job:
 --   __KAFKA_BROKERS__  → comma-joined broker list

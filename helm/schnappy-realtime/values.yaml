@@ -38,7 +38,7 @@ centrifugo:
 
   # Channel namespaces.
   # `protected: true` → subscriptions require an HS256 sub-token from
-  # admin (Plan 066 Option C). `allowedUserChannels: "$"` → Centrifugo
+  # admin service via per-channel subscription tokens. `allowedUserChannels: "$"` → Centrifugo
   # natively gates by JWT `sub` matching the channel's `#user-id` suffix
   # (no token needed for own-user channels).
   namespaces:
@@ -89,7 +89,7 @@ centrifugo:
   # Vault rather than expecting it as a same-namespace Secret.
   dataNamespace: ""
 
-  # Valkey engine (Plan 064 — operator-managed Service `schnappy-valkey`).
+  # Valkey engine (operator-managed Service `schnappy-valkey`).
   # Centrifugo's Redis engine is wire-compatible with Valkey.
   valkey:
     # FQDN works for same-namespace and cross-namespace; override per env.
@@ -101,9 +101,8 @@ centrifugo:
     secretName: schnappy-valkey
     secretKey: VALKEY_PASSWORD
 
-  # Subscription token (Plan 066 Option C). Channel sub-tokens are
-  # minted by admin service, signed HS256. Centrifugo reads the secret
-  # from the canonical env var
+  # Channel subscription tokens are minted by the admin service, signed
+  # HS256. Centrifugo reads the secret from the canonical env var
   # CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY (chart wires it
   # automatically). Populated from Vault `secret/schnappy/centrifugo/sub_token_secret`
   # via the chart's ESO.

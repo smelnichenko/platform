@@ -32,9 +32,10 @@ data:
         jwks_public_endpoint: {{ .Values.centrifugo.jwks.publicEndpoint | quote }}
         audience: {{ .Values.centrifugo.jwks.audience | quote }}
       {{- if .Values.centrifugo.subscriptionToken.enabled }}
-      # Subscription tokens (Plan 066 Option C). Minted per-channel by
-      # admin service for namespaces with allow_subscribe_for_client=false.
-      # hmac_secret_key sourced from CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY env.
+      # Per-channel subscription tokens for namespaces that set
+      # allow_subscribe_for_client=false (chat, chess). The admin service
+      # mints them. hmac_secret_key is supplied via env var
+      # CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY.
       subscription_token: {}
       {{- end }}
 
@@ -79,9 +80,9 @@ data:
           {{- if .recover }}
           force_recovery: {{ .forceRecovery }}
           {{- end }}
-          {{- /* Plan 066 Option C: `protected` namespaces require an
-                 admin-minted subscription token; client-direct subscribe
-                 is denied. v6 expresses this as allow_subscribe_for_client=false. */}}
+          {{- /* Protected namespaces require an admin-minted subscription
+                 token; direct client subscribe is denied at the broker.
+                 Centrifugo v6 expresses this as allow_subscribe_for_client=false. */}}
           {{- if .protected }}
           allow_subscribe_for_client: false
           {{- end }}
