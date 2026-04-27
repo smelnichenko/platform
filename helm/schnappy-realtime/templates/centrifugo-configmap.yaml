@@ -12,15 +12,12 @@ data:
   # fields are therefore omitted from this YAML and projected via the
   # Deployment's env (see centrifugo-deployment.yaml).
   config.yaml: |
-    log_level: info
-
     admin:
       enabled: true
       # password + secret come from CENTRIFUGO_ADMIN_PASSWORD / _ADMIN_SECRET env
 
     http_api:
-      # key comes from CENTRIFUGO_HTTP_API_KEY env
-      enabled: true
+      # key comes from CENTRIFUGO_HTTP_API_KEY env (presence enables the API)
 
     health:
       enabled: true
@@ -36,7 +33,7 @@ data:
         audience: {{ .Values.centrifugo.jwks.audience | quote }}
       {{- if .Values.centrifugo.subscriptionToken.enabled }}
       # Subscription tokens (Plan 066 Option C). Minted per-channel by
-      # admin service for `protected: true` namespaces; HS256.
+      # admin service for namespaces with allow_subscribe_for_client=false.
       # hmac_secret_key sourced from CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY env.
       subscription_token: {}
       {{- end }}
@@ -47,8 +44,6 @@ data:
       redis:
         address: {{ .Values.centrifugo.valkey.address | quote }}
         # password from CENTRIFUGO_ENGINE_REDIS_PASSWORD env
-        use_lists: true
-        presence_user_mapping: true
 
     {{- if .Values.centrifugo.kafka.enabled }}
     consumers:
@@ -66,12 +61,12 @@ data:
             - {{ . | quote }}
             {{- end }}
           consumer_group: {{ .Values.centrifugo.kafka.consumerGroup | quote }}
-        # Map our envelope's `service` + `subject` into the publication
-        # channel and embed the whole envelope as the data payload.
+        # Centrifugo v6: target channels for each Kafka publication come
+        # from a header (publishers must set this when producing). Body
+        # of the Kafka message becomes the publication data verbatim.
         publication_data_mode:
           enabled: true
-          channel_template: "{{ "{{" }} .service {{ "}}" }}:{{ "{{" }} .subject {{ "}}" }}"
-          data_template: "{{ "{{" }} . {{ "}}" }}"
+          channels_header: "x-centrifugo-channels"
     {{- end }}
 
     channel:
@@ -84,11 +79,17 @@ data:
           {{- if .recover }}
           force_recovery: {{ .forceRecovery }}
           {{- end }}
+          {{- /* Plan 066 Option C: `protected` namespaces require an
+                 admin-minted subscription token; client-direct subscribe
+                 is denied. v6 expresses this as allow_subscribe_for_client=false. */}}
           {{- if .protected }}
-          protected: true
+          allow_subscribe_for_client: false
           {{- end }}
+          {{- /* User-limited channels (notifications, presence). v6 channel
+                 naming: `<namespace>:<id>#<userid>` — Centrifugo enforces
+                 the suffix matches the JWT sub. */}}
           {{- if .allowedUserChannels }}
-          allowed_user_channels: {{ .allowedUserChannels | quote }}
+          allow_user_limited_channels: true
           {{- end }}
         {{- end }}
 {{- end }}
