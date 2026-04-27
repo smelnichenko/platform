@@ -1,4 +1,4 @@
-# Core application services chart
+# Core application services chart (cache-bust 1)
 nameOverride: schnappy
 
 # Per-PR preview env mode. When true, the chart emits the preview
