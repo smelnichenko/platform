@@ -18,6 +18,13 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/centrifugo-configmap.yaml") . | sha256sum }}
+        # Istio sidecar reads these to merge the workload's /metrics
+        # output into its own :15020/stats/prometheus endpoint, which
+        # is what Prometheus scrapes (avoids opening a separate hole
+        # in STRICT mTLS for plaintext scraping of port 8000).
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
       labels:
         {{- include "schnappy.centrifugo.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
