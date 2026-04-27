@@ -36,6 +36,9 @@ spec:
       containers:
         - name: centrifugo
           image: {{ .Values.centrifugo.image }}
+          # Image has CMD ["centrifugo"] and no ENTRYPOINT — args alone
+          # would replace CMD wholesale. Set command explicitly.
+          command: ["centrifugo"]
           args:
             - "--config=/etc/centrifugo/config.yaml"
           env:
