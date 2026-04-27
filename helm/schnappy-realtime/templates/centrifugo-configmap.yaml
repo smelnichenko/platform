@@ -52,7 +52,8 @@ data:
 
     {{- if .Values.centrifugo.kafka.enabled }}
     consumers:
-      - name: kafka-events
+      # name must match ^[a-zA-Z0-9_]{2,}$ — no hyphens.
+      - name: kafka_events
         enabled: true
         type: kafka
         kafka:
