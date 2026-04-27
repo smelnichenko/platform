@@ -316,7 +316,7 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
-    # Chess → Kafka (chess.moves producer/consumer)
+    # Chess → Kafka (events.chess.moves envelope publish + user.events consume)
     - to:
         - podSelector:
             matchLabels:
