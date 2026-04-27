@@ -81,8 +81,9 @@ spec:
                   key: CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY
             {{- end }}
           ports:
+            # Centrifugo v6 multiplexes ws/api/admin/health/metrics on
+            # one port; default is 8000.
             - { name: http, containerPort: 8000 }
-            - { name: prometheus, containerPort: 9000 }
           livenessProbe:
             httpGet: { path: /health, port: http }
             initialDelaySeconds: 10

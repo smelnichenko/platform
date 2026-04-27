@@ -10,7 +10,7 @@ spec:
     matchLabels:
       {{- include "schnappy.centrifugo.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: prometheus
+    - port: http
       path: /metrics
       interval: 30s
 {{- end }}

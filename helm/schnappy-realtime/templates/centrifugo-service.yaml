@@ -8,8 +8,9 @@ metadata:
 spec:
   type: ClusterIP
   ports:
+    # Centrifugo v6 serves /metrics, /health, /ws, /api, and /admin all
+    # on the same port (default 8000). No separate metrics listener.
     - { name: http, port: 8000, targetPort: 8000, protocol: TCP }
-    - { name: prometheus, port: 9000, targetPort: 9000, protocol: TCP }
   selector:
     {{- include "schnappy.centrifugo.selectorLabels" . | nindent 4 }}
 {{- end }}

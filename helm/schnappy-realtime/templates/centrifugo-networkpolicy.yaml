@@ -18,10 +18,6 @@ spec:
     - from: []
       ports:
         - { protocol: TCP, port: 8000 }
-    # Prometheus scrapes /metrics on 9000
-    - from: []
-      ports:
-        - { protocol: TCP, port: 9000 }
   egress:
     - ports:
         - { protocol: UDP, port: 53 }
