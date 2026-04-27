@@ -13,7 +13,7 @@ This repo holds a family of Helm charts. Each chart is consumed by an Argo CD Ap
 | `schnappy` | Core application services (admin, monitor, chat, chess, site, game) |
 | `schnappy-data` | Stateful stores: PostgreSQL (CNPG), Valkey, Kafka (Strimzi), ScyllaDB, MinIO, apt-cache |
 | `schnappy-mesh` | Istio ingress gateway, `HTTPRoute`s, `RequestAuthentication`, `AuthorizationPolicy`, rate limits |
-| `schnappy-realtime` | Centrifugo realtime fan-out (Plan 066): Kafka → Centrifugo → WS/SSE clients |
+| `schnappy-realtime` | Centrifugo realtime fan-out — Kafka envelopes → Centrifugo → WebSocket clients |
 | `schnappy-observability` | ELK, Mimir, Grafana, Alertmanager, blackbox/PodMonitors, runbooks |
 | `schnappy-sonarqube` | SonarQube + dedicated PostgreSQL |
 | `schnappy-auth` | **Test-only** in-cluster Keycloak for Vagrant E2E (production Keycloak is bare-metal on the Pis) |
