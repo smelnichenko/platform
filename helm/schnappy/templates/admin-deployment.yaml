@@ -159,13 +159,16 @@ spec:
                   key: ADMIN_SERVICE_CLIENT_SECRET
             {{- end }}
             {{- if eq (.Values.realtime.enabled | toString) "true" }}
-            # admin mints Centrifugo channel sub-tokens; same HS256
-            # secret Centrifugo uses to verify on SUBSCRIBE.
+            # Admin mints Centrifugo channel sub-tokens; same HS256
+            # secret Centrifugo uses to verify on SUBSCRIBE. The Secret
+            # key is Centrifugo's canonical env-override name, but admin's
+            # signer reads the simpler CENTRIFUGO_SUB_TOKEN_SECRET — so
+            # we project across.
             - name: CENTRIFUGO_SUB_TOKEN_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.centrifugo.secretName" . }}
-                  key: CENTRIFUGO_SUB_TOKEN_SECRET
+                  key: CENTRIFUGO_CLIENT_SUBSCRIPTION_TOKEN_HMAC_SECRET_KEY
             # Chat and chess Spring services use /api as the context-path,
             # so the /internal endpoints sit at /api/internal/*.
             - name: CHAT_INTERNAL_URL
