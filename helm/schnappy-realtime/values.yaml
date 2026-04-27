@@ -1,3 +1,4 @@
+# (cache-bust: force fresh manifest render — Argo's repo-server caches by platform SHA)
 nameOverride: schnappy
 
 vault:
