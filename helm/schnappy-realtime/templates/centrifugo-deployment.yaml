@@ -42,8 +42,13 @@ spec:
             - name: VALKEY_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.centrifugo.valkey.fromVault }}
+                  name: {{ include "schnappy.centrifugo.secretName" . }}
+                  key: VALKEY_PASSWORD
+                  {{- else }}
                   name: {{ .Values.centrifugo.valkey.secretName }}
                   key: {{ .Values.centrifugo.valkey.secretKey }}
+                  {{- end }}
                   optional: true
             - name: CENTRIFUGO_ADMIN_PASSWORD
               valueFrom:

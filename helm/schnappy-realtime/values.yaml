@@ -79,11 +79,23 @@ centrifugo:
       - events.chess.moves
       - events.notifications
 
+  # Cross-namespace deployment knob. When Centrifugo runs in a separate
+  # namespace from Valkey/Kafka (the production layout), set this to the
+  # data-layer namespace so the NetworkPolicy egress can reach pods in
+  # that namespace and the ESO Secret pulls the Valkey password from
+  # Vault rather than expecting it as a same-namespace Secret.
+  dataNamespace: ""
+
   # Valkey engine (Plan 064 — operator-managed Service `schnappy-valkey`).
   # Centrifugo's Redis engine is wire-compatible with Valkey.
   valkey:
+    # FQDN works for same-namespace and cross-namespace; override per env.
     address: "schnappy-valkey:6379"
-    secretName: schnappy-valkey       # provides VALKEY_PASSWORD
+    # Same-namespace mode: read VALKEY_PASSWORD from a separate Secret
+    # named below. Cross-namespace: set fromVault=true to source the
+    # password via the centrifugo ESO instead.
+    fromVault: false
+    secretName: schnappy-valkey
     secretKey: VALKEY_PASSWORD
 
   # Subscription token (Plan 066 Option C). Channel sub-tokens are

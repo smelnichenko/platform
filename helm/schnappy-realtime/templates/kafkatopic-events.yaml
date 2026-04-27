@@ -1,5 +1,8 @@
 {{- if and .Values.centrifugo.enabled .Values.strimzi.enabled .Values.centrifugo.topics.create }}
-{{- $cluster := .Values.strimzi.clusterName | default (printf "%s-kafka" (include "schnappy.fullname" .)) }}
+{{- /* schnappy-data names the Kafka CR with no -kafka suffix; default the
+       cluster ref to schnappy.fullname. Override via strimzi.clusterName
+       only if the surrounding chart names its Kafka CR differently. */ -}}
+{{- $cluster := .Values.strimzi.clusterName | default (include "schnappy.fullname" .) }}
 {{- range .Values.centrifugo.kafka.topics }}
 ---
 apiVersion: kafka.strimzi.io/v1beta2
