@@ -17,7 +17,9 @@ gateway:
 
 centrifugo:
   enabled: true
-  image: centrifugo/centrifugo:v6
+  # Pin specific patch — `:v6` floats and breaks reproducibility.
+  # Bump deliberately when a new stable lands (https://github.com/centrifugal/centrifugo/releases).
+  image: centrifugo/centrifugo:v6.7.1
   replicas: 2
   resources:
     requests: { cpu: "100m", memory: "128Mi" }
