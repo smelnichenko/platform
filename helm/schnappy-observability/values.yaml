@@ -178,6 +178,15 @@ runbooks:
   enabled: false
   image: nginx:1.27-alpine
 
+# smartctl_exporter — drive SMART metrics for NVMe / SATA monitoring.
+# Exporter runs on the host (systemd unit, installed by ops
+# setup-host-hardening.yml). Chart only emits the cluster-side
+# scrape glue (Service+Endpoints+ServiceMonitor) + alert rules.
+smartctl:
+  enabled: false
+  host: "192.168.11.2"
+  port: 9633
+
 # Cross-chart references
 app:
   service:

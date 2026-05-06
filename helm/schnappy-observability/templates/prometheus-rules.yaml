@@ -249,4 +249,79 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/WoodpeckerScrapeDown"
             summary: "Cannot scrape Woodpecker metrics endpoint"
             description: "Build-failure alerts are silent until this resolves. Check the bearer token + the woodpecker-server-metrics Service."
+
+    {{- if eq (.Values.smartctl.enabled | toString) "true" }}
+    - name: infra-smartctl
+      rules:
+        # Drives in actual trouble — SMART self-test failure or NVMe critical
+        # warning bitfield non-zero. Either of these means the firmware
+        # itself flagged a problem; treat as page-worthy.
+        - alert: SmartctlDeviceFailing
+          expr: smartctl_device_smart_status == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/SmartctlDeviceFailing"
+            summary: "SMART self-test reports failure on {{ "{{" }} $labels.device {{ "}}" }}"
+            description: "smartctl_device_smart_status=0 — drive reports impending failure. Replace immediately."
+        - alert: SmartctlNvmeCriticalWarning
+          expr: smartctl_device_critical_warning > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/SmartctlNvmeCriticalWarning"
+            summary: "NVMe critical warning on {{ "{{" }} $labels.device {{ "}}" }}"
+            description: "Composite NVMe warning bitfield non-zero (spare low / temp / read-only / volatile-memory backup / persistent-memory unreliable). Inspect via 'nvme smart-log /dev/{{ "{{" }} $labels.device {{ "}}" }}'."
+
+        # Data integrity — one media error means the drive returned bad data
+        # or detected corruption. Should be zero in steady state.
+        - alert: SmartctlMediaErrors
+          expr: smartctl_device_media_errors > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/SmartctlMediaErrors"
+            summary: "Media error on {{ "{{" }} $labels.device {{ "}}" }} ({{ "{{" }} $value {{ "}}" }} total)"
+            description: "Drive's internal counter for unrecoverable read/write errors is non-zero. Check filesystem integrity, plan replacement."
+
+        # Wear: 980 PRO has rated endurance of 600 TBW (1TB) → percentage_used
+        # creeps up linearly. Alert at 80% so we have lead time to replace.
+        - alert: SmartctlWearHigh
+          expr: smartctl_device_percentage_used > 80
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/SmartctlWearHigh"
+            summary: "{{ "{{" }} $labels.device {{ "}}" }} at {{ "{{" }} $value {{ "}}" }}% wear"
+            description: "Drive endurance rating is {{ "{{" }} $value {{ "}}" }}% used. Plan replacement before 100%."
+
+        # Power-cycle delta as proxy for unsafe shutdowns. The 980 PRO
+        # firmware bug (1B2QGXA7) caused ~1 unsafe shutdown per 1.6h on
+        # ten before the APST mitigation was applied. Normal operation:
+        # power_cycle_count increments only on planned reboots — should
+        # be a few per week, not per day.
+        - alert: SmartctlExcessivePowerCycles
+          expr: increase(smartctl_device_power_cycle_count[24h]) > 5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/SmartctlExcessivePowerCycles"
+            summary: "{{ "{{" }} $labels.device {{ "}}" }} power-cycled {{ "{{" }} $value {{ "}}" }}× in 24h"
+            description: "Likely host instability — recurring crashes / reboots. Cross-check kernel.softlockup_panic + pstore + 'last -x'. If APST mitigation lapsed, see project_ten_host_wedge memory."
+
+        - alert: SmartctlExporterDown
+          expr: up{job="smartctl-exporter"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/SmartctlExporterDown"
+            summary: "smartctl_exporter scrape failing"
+            description: "Drive-health alerts are silent until this resolves. SSH ten and check 'systemctl status smartctl_exporter'."
+    {{- end }}
 {{- end }}
