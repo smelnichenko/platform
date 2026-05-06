@@ -2,10 +2,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  {{- $hash := printf "%s-%s-%s-%s-%s" (.Values.app.image.tag | default "") (.Values.admin.image.tag | default "") (.Values.chatService.image.tag | default "") (.Values.chessService.image.tag | default "") (.Values.site.image.tag | default "") | sha256sum | trunc 8 }}
-  name: {{ include "schnappy.fullname" . }}-k6-smoke-{{ $hash }}
+  name: {{ include "schnappy.fullname" . }}-k6-smoke
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 3
   ttlSecondsAfterFinished: 86400
@@ -17,19 +17,53 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 12345
         runAsGroup: 12345
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # Wait for the gateway+apps to actually serve /api/health before
+        # k6 starts. Stops the Job from tripping the rate==1.0 threshold
+        # while a cold cluster is still warming up (Istio sidecars,
+        # Keycloak, mTLS handshakes). 10-min ceiling; fails loudly if
+        # services genuinely never come up.
+        - name: wait-for-ready
+          image: curlimages/curl:8.10.1
+          command:
+            - sh
+            - -c
+            - |
+              for i in $(seq 1 60); do
+                if curl -fsS --max-time 5 "${BASE_URL}/api/health" >/dev/null; then
+                  echo "ready after $((i*10))s"
+                  exit 0
+                fi
+                sleep 10
+              done
+              echo "services not ready after 600s — bailing"
+              exit 1
+          env:
+            - name: BASE_URL
+              value: {{ .Values.smokeTest.baseUrl | quote }}
+          resources:
+            requests: { cpu: 10m, memory: 32Mi, ephemeral-storage: 16Mi }
+            limits: { cpu: 200m, memory: 64Mi, ephemeral-storage: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
       containers:
         - name: k6
           image: {{ .Values.smokeTest.image }}
           command: ['k6', 'run', '--no-usage-report', '--out', 'experimental-prometheus-rw', '/scripts/smoke-test.js']
           resources:
-            requests: { cpu: 100m, memory: 128Mi }
-            limits: { cpu: 1000m, memory: 512Mi }
+            requests: { cpu: 100m, memory: 128Mi, ephemeral-storage: 64Mi }
+            limits: { cpu: 1000m, memory: 512Mi, ephemeral-storage: 256Mi }
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
