@@ -20,20 +20,29 @@ spec:
       protocol: TCP
       targetPort: {{ .Values.smartctl.port }}
 ---
-apiVersion: v1
-kind: Endpoints
+# EndpointSlice (not Endpoints) — Argo's default resource.exclusions
+# strips Endpoints, treating it as kubelet-managed. EndpointSlice is
+# the modern API and is included in the resource tree, so the manual
+# host-IP target survives sync. Linked to the (selectorless) Service
+# via the kubernetes.io/service-name label.
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: {{ include "schnappy.fullname" . }}-smartctl-exporter
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
     app.kubernetes.io/component: smartctl-exporter
-subsets:
+    kubernetes.io/service-name: {{ include "schnappy.fullname" . }}-smartctl-exporter
+addressType: IPv4
+ports:
+  - name: metrics
+    port: {{ .Values.smartctl.port }}
+    protocol: TCP
+endpoints:
   - addresses:
-      - ip: {{ .Values.smartctl.host | quote }}
-    ports:
-      - name: metrics
-        port: {{ .Values.smartctl.port }}
-        protocol: TCP
+      - {{ .Values.smartctl.host | quote }}
+    conditions:
+      ready: true
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
