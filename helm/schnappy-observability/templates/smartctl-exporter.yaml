@@ -27,4 +27,32 @@ spec:
         instance: ten
   scrapeInterval: 60s
   scrapeTimeout: 30s
+{{- if eq (.Values.networkPolicies.enabled | toString) "true" }}
+---
+# schnappy-infra has a default-deny NetworkPolicy. Without an explicit
+# allow rule, Prometheus' scrape of {{ .Values.smartctl.host }}:{{ .Values.smartctl.port }}
+# hits "context deadline exceeded". Selecting Prometheus by the operator's
+# canonical label ("app.kubernetes.io/name=prometheus") matches the
+# StatefulSet pod regardless of release name.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-prometheus-egress-smartctl
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: smartctl-exporter
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.smartctl.host }}/32
+      ports:
+        - port: {{ .Values.smartctl.port }}
+          protocol: TCP
+{{- end }}
 {{- end }}
