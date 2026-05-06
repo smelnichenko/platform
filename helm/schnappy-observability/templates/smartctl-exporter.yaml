@@ -1,68 +1,26 @@
 {{- if eq (.Values.smartctl.enabled | toString) "true" }}
-# smartctl_exporter runs on the host (systemd, installed by
+# smartctl_exporter runs on the host (systemd unit, installed by ops
 # setup-host-hardening.yml) bound to {{ .Values.smartctl.host }}:{{ .Values.smartctl.port }}.
-# We give it a Service with no selector + an Endpoints object pointing
-# at the host IP so the in-cluster Prometheus can scrape it via a
-# normal ServiceMonitor.
-apiVersion: v1
-kind: Service
+#
+# We use ScrapeConfig (CRD) instead of Service+EndpointSlice+ServiceMonitor
+# because Argo's default resource.exclusions strips both Endpoints and
+# EndpointSlice (treating them as kubelet-managed). ScrapeConfig is a
+# direct static_configs path that bypasses K8s Service discovery
+# entirely — exactly what's needed for a fixed-IP host-level target.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
 metadata:
   name: {{ include "schnappy.fullname" . }}-smartctl-exporter
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
     app.kubernetes.io/component: smartctl-exporter
 spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    - name: metrics
-      port: {{ .Values.smartctl.port }}
-      protocol: TCP
-      targetPort: {{ .Values.smartctl.port }}
----
-# EndpointSlice (not Endpoints) — Argo's default resource.exclusions
-# strips Endpoints, treating it as kubelet-managed. EndpointSlice is
-# the modern API and is included in the resource tree, so the manual
-# host-IP target survives sync. Linked to the (selectorless) Service
-# via the kubernetes.io/service-name label.
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: {{ include "schnappy.fullname" . }}-smartctl-exporter
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-    app.kubernetes.io/component: smartctl-exporter
-    kubernetes.io/service-name: {{ include "schnappy.fullname" . }}-smartctl-exporter
-addressType: IPv4
-ports:
-  - name: metrics
-    port: {{ .Values.smartctl.port }}
-    protocol: TCP
-endpoints:
-  - addresses:
-      - {{ .Values.smartctl.host | quote }}
-    conditions:
-      ready: true
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: {{ include "schnappy.fullname" . }}-smartctl-exporter
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-    app.kubernetes.io/component: smartctl-exporter
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: smartctl-exporter
-  endpoints:
-    - port: metrics
-      interval: 60s
-      scrapeTimeout: 30s
-      # Job label drives `up{job="smartctl-exporter"}` so the
-      # SmartctlExporterDown alert can match it.
-      relabelings:
-        - action: replace
-          targetLabel: job
-          replacement: smartctl-exporter
+  staticConfigs:
+    - targets:
+        - {{ printf "%s:%d" .Values.smartctl.host (int .Values.smartctl.port) | quote }}
+      labels:
+        job: smartctl-exporter
+        instance: ten
+  scrapeInterval: 60s
+  scrapeTimeout: 30s
 {{- end }}
