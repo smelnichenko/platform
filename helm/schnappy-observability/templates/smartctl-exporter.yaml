@@ -29,30 +29,29 @@ spec:
   scrapeTimeout: 30s
 {{- if eq (.Values.networkPolicies.enabled | toString) "true" }}
 ---
-# schnappy-infra has a default-deny NetworkPolicy. Without an explicit
-# allow rule, Prometheus' scrape of {{ .Values.smartctl.host }}:{{ .Values.smartctl.port }}
-# hits "context deadline exceeded". Selecting Prometheus by the operator's
-# canonical label ("app.kubernetes.io/name=prometheus") matches the
-# StatefulSet pod regardless of release name.
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# Cilium-specific quirk: pod→node-IP traffic doesn't match standard
+# NetworkPolicy.ipBlock rules (verified empirically on this cluster).
+# Use CiliumNetworkPolicy with toEntities:host instead, which matches
+# the local node's IPs regardless of which interface they're on
+# (cilium_host, eth0, etc.). Standard NetworkPolicy from the same chart
+# was applied + selected the right pods + still timed out.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: {{ include "schnappy.fullname" . }}-prometheus-egress-smartctl
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
     app.kubernetes.io/component: smartctl-exporter
 spec:
-  podSelector:
+  endpointSelector:
     matchLabels:
       app.kubernetes.io/name: prometheus
-  policyTypes:
-    - Egress
   egress:
-    - to:
-        - ipBlock:
-            cidr: {{ .Values.smartctl.host }}/32
-      ports:
-        - port: {{ .Values.smartctl.port }}
-          protocol: TCP
+    - toEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: {{ .Values.smartctl.port | quote }}
+              protocol: TCP
 {{- end }}
 {{- end }}
