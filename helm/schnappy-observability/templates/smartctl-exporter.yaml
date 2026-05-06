@@ -14,6 +14,10 @@ metadata:
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
     app.kubernetes.io/component: smartctl-exporter
+    # Prometheus operator's scrapeConfigSelector matches release=schnappy
+    # (set on the Prometheus CR in clusters/production/prometheus/values.yaml).
+    # Without this label, our ScrapeConfig is invisible to the operator.
+    release: schnappy
 spec:
   staticConfigs:
     - targets:
