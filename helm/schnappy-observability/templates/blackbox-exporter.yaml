@@ -19,6 +19,16 @@ data:
           method: GET
           tls_config:
             insecure_skip_verify: true
+      # MinIO health on a Pi's own IP (plain HTTP :9000). Used to detect
+      # dual-active MinIO: only the consul-lock holder serves, so exactly one
+      # Pi IP should return 200.
+      http_2xx_minio:
+        prober: http
+        timeout: 5s
+        http:
+          preferred_ip_protocol: ip4
+          valid_status_codes: [200]
+          method: GET
       # Public endpoints: follow redirects, require 200. Expose TLS cert
       # expiry via probe_ssl_earliest_cert_expiry.
       http_2xx_public:

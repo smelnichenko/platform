@@ -81,6 +81,22 @@ spec:
             summary: "Vault at {{ "{{" }} $labels.instance {{ "}}" }} is sealed or unreachable"
             description: "Pi Vault returned 503 (sealed) or was unreachable for 2m. ESO will fail to refresh any ExternalSecret."
 
+    - name: infra-minio
+      rules:
+        - alert: MinioDualActive
+          # MinIO is xl-single on a SHARED Gluster volume — only the consul-lock
+          # holder may serve. Two Pi IPs serving at once = concurrent writers on
+          # the same data dir, which can corrupt xl-single metadata. The
+          # consul-lock fence should make this impossible; this is the net.
+          expr: count(probe_success{job="blackbox-minio"} == 1) > 1
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MinioDualActive"
+            summary: "MinIO serving on more than one Pi (dual-active on shared Gluster)"
+            description: "{{ "{{" }} $value {{ "}}" }} Pi MinIO endpoints are returning 200; the consul-lock fence should permit exactly one. Risk of xl-single metadata corruption — investigate the minio/active Consul lock immediately."
+
     - name: infra-eso
       rules:
         - alert: ClusterSecretStoreNotReady
