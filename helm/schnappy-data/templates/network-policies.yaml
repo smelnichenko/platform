@@ -46,6 +46,19 @@ spec:
           port: 5432
         - protocol: TCP
           port: 8000
+    # Intra-cluster: streaming replication + instance-manager status between the
+    # cluster's own pods (primary <-> replica). Required once instances > 1; a
+    # no-op at instances: 1 (no sibling pods to match). Mirrors the self-allow
+    # the Strimzi/Scylla policies below already have.
+    - from:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.postgres.serviceName" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
   egress:
     # DNS
     - ports:
@@ -59,6 +72,17 @@ spec:
           port: 443
         - protocol: TCP
           port: 6443
+    # Intra-cluster: reach sibling CNPG pods for streaming replication +
+    # instance-manager status (primary <-> replica). No-op at instances: 1.
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.postgres.serviceName" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
     {{- if .Values.cnpg.backup }}
     # Pi MinIO (CNPG off-site backup)
     - to:

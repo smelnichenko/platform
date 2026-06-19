@@ -182,6 +182,12 @@ scyllaOperator:
 
 cnpg:
   enabled: false
+  # Postgres instances in the Cluster. 1 = single (default; also forced when
+  # ephemeral). 2 = primary + 1 streaming replica → zero-downtime rolling
+  # updates (CNPG switches over before replacing the primary) and survival of a
+  # single pod crash. On the single-node cluster this is pod-level redundancy,
+  # not node-failure HA; CNPG auto-manages the PodDisruptionBudget and failover.
+  instances: 1
   import: false
   backup: false
   backupEndpoint: ""
