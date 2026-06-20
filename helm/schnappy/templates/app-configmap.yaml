@@ -59,6 +59,17 @@ data:
       liquibase:
         enabled: true
         change-log: classpath:db/changelog/db.changelog-master.xml
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              # App-side JWT validation (defense in depth on top of the gateway's
+              # edge check): the Keycloak signature is verified against JWKS here
+              # too, so a forged token injected east-west — bypassing the gateway —
+              # is rejected. jwk-set-uri (not issuer-uri alone) keeps key fetching
+              # lazy, so there is no Keycloak dependency at pod startup.
+              issuer-uri: https://{{ .Values.keycloak.hostname }}/realms/schnappy
+              jwk-set-uri: https://{{ .Values.keycloak.hostname }}/realms/schnappy/protocol/openid-connect/certs
 
     logging:
       level:

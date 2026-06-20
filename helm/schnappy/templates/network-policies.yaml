@@ -136,6 +136,15 @@ spec:
           port: 587
         - protocol: TCP
           port: 80
+    # Monitor → Pi Keycloak via VIP (JWKS fetch for in-app JWT validation).
+    # The external-HTTPS rule above excludes 192.168.0.0/16, so the VIP needs
+    # its own allow — mirrors the admin policy's Keycloak egress.
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.5/32
+      ports:
+        - protocol: TCP
+          port: 443
 ---
 {{- if eq (.Values.admin.enabled | toString) "true" }}
 ---
