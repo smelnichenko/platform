@@ -7,6 +7,13 @@ metadata:
     {{- include "schnappy.admin.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.admin.replicas }}
+  # Single node: recreate in place (maxSurge 0) so a roll never deadlocks on
+  # CPU-request headroom. A brief blip per deploy is the accepted trade-off.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       {{- include "schnappy.admin.selectorLabels" . | nindent 6 }}
