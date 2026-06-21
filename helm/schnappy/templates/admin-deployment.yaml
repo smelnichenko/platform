@@ -54,6 +54,12 @@ spec:
             - name: tmp
               mountPath: /tmp
           env:
+            # In-app JWT validation (defense in depth on top of the gateway):
+            # GatewayAuthFilter verifies the Keycloak signature against JWKS.
+            - name: KEYCLOAK_ISSUER
+              value: "https://{{ .Values.keycloak.hostname }}/realms/schnappy"
+            - name: KEYCLOAK_JWKS_URI
+              value: "https://{{ .Values.keycloak.hostname }}/realms/schnappy/protocol/openid-connect/certs"
             - name: JAVA_OPTS
               value: {{ .Values.admin.javaOpts | default "-Xmx512m" | quote }}
             - name: DB_HOST

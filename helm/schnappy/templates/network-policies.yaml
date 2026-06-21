@@ -145,6 +145,14 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+    # Monitor → admin (token-relay user provisioning: POST /api/auth/ensure-user)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
 ---
 {{- if eq (.Values.admin.enabled | toString) "true" }}
 ---
@@ -163,6 +171,21 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # App services → admin user provisioning (POST /api/auth/ensure-user),
+    # authenticated by the user's relayed Bearer token (admin re-validates it).
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chat.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
     # Gateway (cross-namespace)
     - from:
         - namespaceSelector:
@@ -333,6 +356,21 @@ spec:
       ports:
         - protocol: TCP
           port: 9092
+    # Chess → admin (token-relay user provisioning: POST /api/auth/ensure-user)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Chess → Pi Keycloak via VIP (JWKS fetch for in-app JWT validation)
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.5/32
+      ports:
+        - protocol: TCP
+          port: 443
 ---
 {{- end }}
 {{- if eq (.Values.chatService.enabled | toString) "true" }}
@@ -424,6 +462,21 @@ spec:
       ports:
         - protocol: TCP
           port: 9042
+    # Chat → admin (token-relay user provisioning: POST /api/auth/ensure-user)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Chat → Pi Keycloak via VIP (JWKS fetch for in-app JWT validation)
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.5/32
+      ports:
+        - protocol: TCP
+          port: 443
 {{- end }}
 ---
 {{- if .Values.site.enabled }}
