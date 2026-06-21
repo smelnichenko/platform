@@ -68,8 +68,12 @@ data:
               # too, so a forged token injected east-west — bypassing the gateway —
               # is rejected. jwk-set-uri (not issuer-uri alone) keeps key fetching
               # lazy, so there is no Keycloak dependency at pod startup.
-              issuer-uri: https://{{ .Values.keycloak.hostname }}/realms/schnappy
-              jwk-set-uri: https://{{ .Values.keycloak.hostname }}/realms/schnappy/protocol/openid-connect/certs
+              # jwksUri/issuerUri overrides let non-public environments (e.g. the
+              # Vagrant DR drill) point key-fetching at an in-cluster Keycloak the
+              # pod can actually reach, while iss validation still matches the
+              # token's public issuer. Prod leaves them unset → hostname-derived.
+              issuer-uri: {{ .Values.keycloak.issuerUri | default (printf "https://%s/realms/schnappy" .Values.keycloak.hostname) }}
+              jwk-set-uri: {{ .Values.keycloak.jwksUri | default (printf "https://%s/realms/schnappy/protocol/openid-connect/certs" .Values.keycloak.hostname) }}
 
     logging:
       level:
