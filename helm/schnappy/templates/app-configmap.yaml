@@ -70,9 +70,13 @@ data:
               # lazy, so there is no Keycloak dependency at pod startup.
               # jwksUri/issuerUri overrides let non-public environments (e.g. the
               # Vagrant DR drill) point key-fetching at an in-cluster Keycloak the
-              # pod can actually reach, while iss validation still matches the
-              # token's public issuer. Prod leaves them unset → hostname-derived.
+              # pod can actually reach. issuerUri: "none" drops iss validation
+              # (signature-only) where KC's issuer scheme/port is awkward to match
+              # (KC runs on http://localhost in the test). Prod leaves both unset
+              # → hostname-derived, iss validated.
+              {{- if ne (.Values.keycloak.issuerUri | default "") "none" }}
               issuer-uri: {{ .Values.keycloak.issuerUri | default (printf "https://%s/realms/schnappy" .Values.keycloak.hostname) }}
+              {{- end }}
               jwk-set-uri: {{ .Values.keycloak.jwksUri | default (printf "https://%s/realms/schnappy/protocol/openid-connect/certs" .Values.keycloak.hostname) }}
 
     logging:
