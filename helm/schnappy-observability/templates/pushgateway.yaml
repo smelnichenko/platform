@@ -1,0 +1,118 @@
+{{- if and (eq (.Values.prometheus.enabled | toString) "true") (eq (.Values.pushgateway.enabled | toString) "true") -}}
+# Prometheus Pushgateway — a persistent sink for metrics from batch jobs that
+# run OUTSIDE the cluster, specifically the manually-triggered disaster-recovery
+# drill (`task dr:drill`), which pushes `restore_verify_success` on a passing
+# run. Persisted to a small PVC so a pod restart doesn't drop the last-success
+# timestamp the RestoreVerificationFailing alert keys on.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "schnappy.pushgateway.serviceName" . }}
+  labels:
+    {{- include "schnappy.pushgateway.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.pushgateway.storageClass | default "local-path" }}
+  resources:
+    requests:
+      storage: {{ .Values.pushgateway.storage | default "16Mi" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.pushgateway.serviceName" . }}
+  labels:
+    {{- include "schnappy.pushgateway.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  # RWO PVC — never surge a second pod onto the same volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "schnappy.pushgateway.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.pushgateway.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pushgateway
+          image: {{ .Values.pushgateway.image }}
+          args:
+            - --persistence.file=/data/pushgateway.dat
+            - --persistence.interval=1m
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 9091
+              name: metrics
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.pushgateway.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9091
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "schnappy.pushgateway.serviceName" . }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.pushgateway.serviceName" . }}
+  labels:
+    {{- include "schnappy.pushgateway.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "schnappy.pushgateway.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: metrics
+      port: 9091
+      targetPort: 9091
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "schnappy.pushgateway.serviceName" . }}
+  labels:
+    release: schnappy
+    {{- include "schnappy.pushgateway.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "schnappy.pushgateway.selectorLabels" . | nindent 6 }}
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      # Preserve the pushed job/instance labels rather than overwriting them
+      # with the scrape target's identity — essential for pushgateway metrics.
+      honorLabels: true
+{{- end }}

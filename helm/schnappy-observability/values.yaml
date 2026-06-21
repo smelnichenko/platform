@@ -126,6 +126,17 @@ kubeStateMetrics:
     requests: { memory: "64Mi", cpu: "25m" }
     limits: { memory: "256Mi", cpu: "200m" }
 
+# Pushgateway — persistent metric sink for the manually-triggered DR drill
+# (`task dr:drill` pushes restore_verify_success). Off by default; enabled in prod.
+pushgateway:
+  enabled: false
+  image: quay.io/prometheus/pushgateway:v1.11.3
+  storage: 16Mi
+  storageClass: local-path
+  resources:
+    requests: { memory: "32Mi", cpu: "10m" }
+    limits: { memory: "128Mi", cpu: "100m" }
+
 # Grafana
 grafana:
   enabled: false

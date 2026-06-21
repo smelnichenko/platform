@@ -340,4 +340,22 @@ spec:
             summary: "smartctl_exporter scrape failing"
             description: "Drive-health alerts are silent until this resolves. SSH ten and check 'systemctl status smartctl_exporter'."
     {{- end }}
+    {{- if eq (.Values.pushgateway.enabled | toString) "true" }}
+
+    - name: dr-restore
+      rules:
+        - alert: RestoreVerificationFailing
+          # task dr:drill pushes restore_verify_success on a passing run; the
+          # pushgateway records push_time_seconds. Fire if the last successful
+          # drill is older than 35 days (a monthly cadence won't false-alarm).
+          # Silent before the first-ever drill (metric absent by design).
+          expr: time() - max(push_time_seconds{job="dr-drill"}) > 35 * 24 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/RestoreVerificationFailing"
+            summary: "Disaster-recovery restore not verified in over 35 days"
+            description: "No successful DR drill (task dr:drill — Velero + CNPG restore on Vagrant) has recorded restore_verify_success; the last success is {{ "{{" }} $value | humanizeDuration {{ "}}" }} past the 35-day threshold. Run `task dr:drill` to re-validate the backup/restore path."
+    {{- end }}
 {{- end }}

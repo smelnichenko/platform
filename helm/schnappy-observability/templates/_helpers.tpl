@@ -170,6 +170,22 @@ app.kubernetes.io/component: kube-state-metrics
 {{- printf "%s-kube-state-metrics" (include "schnappy.fullname" .) }}
 {{- end }}
 
+{{/* ========== pushgateway ========== */}}
+
+{{- define "schnappy.pushgateway.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: pushgateway
+{{- end }}
+
+{{- define "schnappy.pushgateway.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: pushgateway
+{{- end }}
+
+{{- define "schnappy.pushgateway.serviceName" -}}
+{{- printf "%s-pushgateway" (include "schnappy.fullname" .) }}
+{{- end }}
+
 {{/* ========== Reports ========== */}}
 
 {{- define "schnappy.reports.labels" -}}

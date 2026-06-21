@@ -161,6 +161,36 @@ spec:
           port: 6443
 ---
 {{- end }}
+{{- if and (eq (.Values.prometheus.enabled | toString) "true") (eq (.Values.pushgateway.enabled | toString) "true") }}
+# pushgateway network policy — scraped by Prometheus on :9091; pushes arrive
+# via the API server (kubectl port-forward), which bypasses NetworkPolicy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.pushgateway.serviceName" . }}
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.pushgateway.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scrape + kubelet probes
+    - ports:
+        - protocol: TCP
+          port: 9091
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+{{- end }}
 {{- if .Values.grafana.enabled }}
 # Grafana network policy
 apiVersion: networking.k8s.io/v1
