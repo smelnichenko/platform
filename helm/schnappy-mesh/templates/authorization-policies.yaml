@@ -235,12 +235,13 @@ spec:
             paths: ["/api/internal/*"]
 {{- /*
   App HTTP :8080 — restrict ingress to the gateway, Prometheus, Hyperfoil, and
-  the specific legit in-mesh service callers. Deployed in DRY-RUN: Istio logs
-  would-be denials (and the dry-run istio_requests_total result) WITHOUT
-  enforcing, so the caller list can be validated against real prod traffic
-  before flipping to enforce (remove the dry-run annotation). This is defense
-  in depth on top of the in-app JWT validation, which already rejects forged
-  tokens, so it closes no open hole on its own.
+  the specific legit in-mesh service callers. ENFORCING since 2026-06-22: the
+  caller list was validated against ~a day of prod traffic in dry-run — every
+  actual caller carried an allow-listed mTLS principal and all four apps showed
+  zero shadow_denied — before the dry-run annotation was removed. Defense in
+  depth on top of the in-app JWT validation, which already rejects forged
+  tokens. (Prometheus scrapes via the sidecar :15020 merge, not :8080, so it is
+  unaffected.)
 */}}
 {{- $httpCallers := dict "monitor" (list) "admin" (list "monitor" "chat" "chess") "chat" (list "admin") "chess" (list "admin") }}
 {{- range $svc, $callers := $httpCallers }}
@@ -250,8 +251,6 @@ kind: AuthorizationPolicy
 metadata:
   name: {{ $fn }}-{{ $svc }}-http
   namespace: {{ $ns }}
-  annotations:
-    istio.io/dry-run: "true"
 spec:
   selector:
     matchLabels:
