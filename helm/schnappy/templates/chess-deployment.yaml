@@ -63,6 +63,11 @@ spec:
             # Token-relay target for user provisioning (POST /api/auth/ensure-user).
             - name: ADMIN_SERVICE_URL
               value: "http://{{ include "schnappy.admin.serviceName" . }}:8080"
+            # Defense-in-depth on /internal/**: InternalCallerFilter rejects calls
+            # whose mTLS SPIFFE peer (Istio XFCC) isn't the admin service, so an
+            # Istio AuthZ regression alone can't expose the membership lookups.
+            - name: INTERNAL_ALLOWED_CALLER
+              value: "spiffe://cluster.local/ns/{{ .Release.Namespace }}/sa/{{ include "schnappy.fullname" . }}-admin"
             - name: JAVA_OPTS
               value: {{ .Values.chessService.javaOpts | default "-Xmx512m" | quote }}
             - name: DB_HOST
