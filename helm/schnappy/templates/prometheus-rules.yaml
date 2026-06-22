@@ -135,4 +135,30 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/K6SmokeTestFailing"
             summary: "k6 smoke test check failing ({{"{{"}} $labels.check {{"}}"}})"
+
+    - name: {{ $ns }}-keycloak-sync
+      rules:
+        # admin pushes role/enabled changes to Keycloak; failures were silent
+        # (log-only) before these counters existed. The hourly reconcile is the
+        # self-heal, these alerts are the visibility.
+        - alert: KeycloakSyncFailing
+          expr: increase(admin_keycloak_sync_failures_total{namespace="{{ $ns }}"}[1h]) > 0
+          for: 30m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KeycloakSyncFailing"
+            summary: "Keycloak role sync failing ({{"{{"}} $labels.operation {{"}}"}})"
+            description: "admin failed to push role/enabled changes to Keycloak in the last hour — KC permissions may be drifting from the admin DB. The hourly reconcile retries; persistent failure points at the KC Admin API or a specific user."
+        - alert: KeycloakReconcileStale
+          expr: time() - max(admin_keycloak_reconcile_last_success{namespace="{{ $ns }}"}) > 3 * 3600
+          for: 20m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KeycloakReconcileStale"
+            summary: "Keycloak role reconcile has not succeeded in 3h"
+            description: "The hourly admin->Keycloak reconcile (self-heal for role/offboarding drift) has not completed for over 3h, or has never succeeded. Check the admin pod and the KC Admin API; drift from silently-failed live syncs won't be corrected until it runs."
 {{- end }}
