@@ -186,6 +186,20 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/PublicSSLCertExpiringSoon"
             summary: "Public cert at {{ "{{" }} $labels.instance {{ "}}" }} expiring soon"
             description: "Serving cert < 14d from expiry."
+        # Proactive Pi cert-sync health: auth.pmon.dev is Caddy/Pi-served, so its
+        # served wildcard goes stale if the per-Pi caddy-wildcard-sync timer
+        # stops propagating cert-manager's renewals. Healthy = always >28d
+        # (renew ~30d before expiry + sync within a day); <25d ⇒ stalled, with
+        # ~25d of runway — fires well before PublicSSLCertExpiringSoon (<14d).
+        - alert: CaddyWildcardSyncStalled
+          expr: (probe_ssl_earliest_cert_expiry{job="blackbox-public", instance=~"https://auth.pmon.dev.*"} - time()) / 86400 < 25
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/CaddyWildcardSyncStalled"
+            summary: "Pi Caddy serving a stale *.pmon.dev wildcard"
+            description: "Cert served on auth.pmon.dev (Pi/Caddy) is <25d from expiry; a healthy renewal + caddy-wildcard-sync keeps it >28d. The per-Pi sync timer likely stalled (or cert-manager renewal failed — check CertManagerRenewalFailing). Re-run task deploy:caddy; Pi HTTPS lapses if left."
 
     - name: infra-certmanager
       rules:
