@@ -171,7 +171,7 @@ scyllaOperator:
       # Scylla Manager location format: [dc:]<provider>:<bucket>
       # The bucket itself is created in MinIO; subpaths aren't part of
       # the location string.
-      location: "s3:schnappy-backups"
+      location: "s3:scylla-backups"
     repair:
       enabled: true
       cron: "0 4 * * 0"      # Sunday 04:00 UTC
