@@ -17,7 +17,7 @@ blip self-heals within the hour; a persistent alert means it isn't healing.
 
 ## Diagnose
 
-1. `kubectl logs -n <ns> deploy/<release>-admin -c admin | grep -i 'Failed to sync KC'`
+1. `kubectl logs -n <ns> deploy/<release>-admin -c admin | grep -iE 'Failed to (sync|update) KC'`
    — the failing user UUID + the KC error.
 2. The `operation` label (`roles` vs `enabled`) narrows which Admin API call failed.
 3. Is the companion `KeycloakReconcileStale` alert also firing? If not, the

@@ -12,9 +12,12 @@ Filesystem may have silent corruption. Anything stored on the affected device is
 
 ## First steps
 
+The `device` label is the stable by-id basename; address the drive via `/dev/disk/by-id/<device>` (kernel `/dev/nvmeN` names aren't in the label):
+
 ```bash
-ssh ten 'sudo nvme smart-log /dev/${labels_device}' | head -30
-ssh ten 'sudo nvme error-log /dev/${labels_device} | head -50'
+DEV=/dev/disk/by-id/<paste $labels.device>
+ssh ten "sudo nvme smart-log $DEV" | head -30
+ssh ten "sudo nvme error-log $DEV | head -50"
 ssh ten 'sudo dmesg --ctime | grep -iE "nvme|i/o error|ext4-fs error" | tail -30'
 ssh ten 'sudo journalctl -k --since "1 day ago" | grep -iE "i/o error|ext4-fs error|btrfs.*error"'
 ```
@@ -24,4 +27,4 @@ ssh ten 'sudo journalctl -k --since "1 day ago" | grep -iE "i/o error|ext4-fs er
 1. Confirm Velero backup is recent.
 2. If filesystem is repairable (ext4 fsck on next reboot), schedule maintenance.
 3. If errors keep climbing, drive is failing. Replace.
-4. For ten specifically: data drive is `/dev/nvme0`, boot drive is `/dev/nvme1`. Replacement strategy differs.
+4. For ten specifically: data drive is `nvme0n1` (`/mnt/storage`), boot+root drive is `nvme1n1` (`/boot/efi` + `/`). Map the by-id `device` label to a kernel name with `ls -l /dev/disk/by-id/<device>`. Replacement strategy differs.

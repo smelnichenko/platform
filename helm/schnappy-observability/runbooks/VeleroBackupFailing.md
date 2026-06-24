@@ -25,7 +25,7 @@ kubectl -n velero logs deploy/velero --tail=80 | grep -iE 'error|fail' | tail -2
 |---|---|
 | `BSL unavailable` | MinIO down, credentials wrong/expired (`secret/schnappy/velero` in Vault) |
 | `volume snapshot timeout` | CSI driver issue, or the source PV is huge and exceeds backup-window |
-| `partial failure` (some resources skipped) | check `kubectl get backup $NAME -o yaml | yq '.status.errors'` |
+| `partial failure` (some resources skipped) | check `kubectl get backup $NAME -o yaml \| yq '.status.errors'` |
 | `failed to upload` to S3 | Network-policy egress blocking velero → MinIO, or MinIO bucket policy changed |
 
 ## Verify resolved
@@ -33,7 +33,7 @@ kubectl -n velero logs deploy/velero --tail=80 | grep -iE 'error|fail' | tail -2
 Next scheduled run completes `Phase: Completed` with no errors.
 
 ```bash
-kubectl -n velero create backup test-recovery-$(date +%s) --include-namespaces=schnappy-test --wait
+velero backup create test-recovery-$(date +%s) --include-namespaces schnappy-test --wait
 ```
 
 ## Related

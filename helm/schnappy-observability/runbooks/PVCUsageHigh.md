@@ -28,7 +28,7 @@ kubectl -n $NS exec $POD -- du -sh $MOUNT_PATH/* 2>/dev/null | sort -h | tail -1
 | Cause | Fix |
 |---|---|
 | Logs accumulating (CH) | TTL not expiring — `OPTIMIZE TABLE logs.podlogs FINAL` and verify TTL clause |
-| Old backups (Velero) | retention policy too long — adjust `--ttl` in BackupSchedule |
+| Old backups (Velero) | retention policy too long — adjust `template.ttl` in the velero `Schedule` |
 | OO sled metadata grew | (OO retired — N/A now) |
 | Genuine growth | bump PVC: `kubectl -n $NS patch pvc $NAME -p '{"spec":{"resources":{"requests":{"storage":"<NEW>"}}}}'` (only works with VolumeExpansion-enabled StorageClass) |
 

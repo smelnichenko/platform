@@ -17,8 +17,10 @@
 
 ## First steps
 
+The `device` label is the stable by-id basename; address the drive via `/dev/disk/by-id/<device>` (kernel `/dev/nvmeN` names aren't in the label):
+
 ```bash
-ssh ten 'sudo nvme smart-log /dev/${labels_device}' | head -25
+ssh ten 'sudo nvme smart-log /dev/disk/by-id/<paste $labels.device>' | head -25
 ```
 
 Decode the `Critical Warning:` value. Then:

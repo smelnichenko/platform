@@ -26,7 +26,7 @@ kubectl -n schnappy-infra exec deploy/schnappy-alertmanager -c alertmanager -- w
 
 ## Fix
 
-- SMTP creds: rotate in Vault (`secret/schnappy/alertmanager` → `SMTP_PASSWORD`), ESO refreshes in ≤15m, AM reloads configmap
+- SMTP creds: rotate in Vault (`secret/schnappy/mail` → `SMTP_PASSWORD`), ESO refreshes in ≤15m, AM reloads configmap
 - SMTP host unreachable: test with `dig`, fallback to alt provider in config
 
 ## Verification

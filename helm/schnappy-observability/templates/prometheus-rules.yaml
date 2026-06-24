@@ -303,7 +303,7 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/SmartctlNvmeCriticalWarning"
             summary: "NVMe critical warning on {{ "{{" }} $labels.device {{ "}}" }}"
-            description: "Composite NVMe warning bitfield non-zero (spare low / temp / read-only / volatile-memory backup / persistent-memory unreliable). Inspect via 'nvme smart-log /dev/{{ "{{" }} $labels.device {{ "}}" }}'."
+            description: "Composite NVMe warning bitfield non-zero (spare low / temp / read-only / volatile-memory backup / persistent-memory unreliable). Inspect via 'nvme smart-log /dev/disk/by-id/{{ "{{" }} $labels.device {{ "}}" }}'."
 
         # Data integrity — one media error means the drive returned bad data
         # or detected corruption. Should be zero in steady state.

@@ -34,7 +34,7 @@ kubectl get httproute -A | grep $HOST
 ## Fix
 
 Depends on cause. Typical:
-- `task deploy:promote SERVICE=...` if a new tag is broken (rollback)
+- If a new tag is broken, roll back by reverting the promotion commit in `infra` (`git revert`), or re-run `task promote:prod CONFIRM=1 SERVICES="..."` from `~/src/ops` once test is fixed
 - `kubectl -n argocd annotate app <app> argocd.argoproj.io/refresh=hard` if drift
 - Restart affected deployment
 

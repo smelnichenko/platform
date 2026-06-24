@@ -14,6 +14,11 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [PublicEndpointDown](PublicEndpointDown.md)
 - [PrometheusNotificationsFailing](PrometheusNotificationsFailing.md)
 - [ArgoCDAppDegraded](ArgoCDAppDegraded.md)
+- [KagentControllerDown](KagentControllerDown.md)
+- [KagentControllerCrashLooping](KagentControllerCrashLooping.md)
+- [KagentToolsCrashLooping](KagentToolsCrashLooping.md)
+- [KagentOAuthProxyDown](KagentOAuthProxyDown.md)
+- [KagentUIDown](KagentUIDown.md)
 
 ## Stub (summary only)
 

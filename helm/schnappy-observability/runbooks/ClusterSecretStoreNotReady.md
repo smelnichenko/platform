@@ -24,14 +24,14 @@ Look for: `unable to create client`, `connection refused`, `401 Unauthorized`, `
 | Error message | Likely cause |
 |---|---|
 | `Vault is sealed` | → [VaultSealed](VaultSealed.md) |
-| `401 Unauthorized` | SA token or role mapping broken — check `vault auth list kubernetes/` |
+| `401 Unauthorized` | SA token or role mapping broken — check `vault read auth/kubernetes/role/eso-role` |
 | `connection refused` / timeout | NetworkPolicy or Pi MinIO/Vault down |
 | `permission denied` | eso-reader policy missing `secret/data/*` read |
 
 ## Fix
 
 - If Vault was sealed: unseal first (see VaultSealed runbook), then `kubectl -n external-secrets rollout restart deploy external-secrets`.
-- If 401: re-run `task deploy:vault` to re-apply auth config.
+- If 401: re-run `task deploy:vault-pi` to re-apply auth config.
 
 ## Verification
 

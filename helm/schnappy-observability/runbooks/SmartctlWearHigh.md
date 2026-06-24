@@ -12,8 +12,10 @@ Drive nearing end of rated life. Not a failure yet, but plan replacement before 
 
 ## First steps
 
+The `device` label is the stable by-id basename; address the drive via `/dev/disk/by-id/<device>` (kernel `/dev/nvmeN` names aren't in the label):
+
 ```bash
-ssh ten 'sudo smartctl -a /dev/${labels_device}' | grep -E 'Percentage Used|Data Units|Power On Hours'
+ssh ten 'sudo smartctl -a /dev/disk/by-id/<paste $labels.device>' | grep -E 'Percentage Used|Data Units|Power On Hours'
 ```
 
 Estimate remaining life:
