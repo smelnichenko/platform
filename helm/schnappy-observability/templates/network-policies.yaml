@@ -215,17 +215,19 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
-    # kagent's grafana-mcp queries the Grafana API with a read-only Viewer service
-    # account (the observability-agent's Grafana tools). Both ends are in the mesh
-    # (mTLS); kagent's own egress NP already permits this direction. No-ops if the
-    # kagent namespace is absent.
+    # Extra in-cluster API consumers (e.g. kagent's grafana-mcp querying Grafana
+    # with a read-only Viewer SA). Values-gated so this generic chart doesn't name
+    # its consumers — mirrors schnappy-mesh's gateway.allowedNamespaces idiom. Both
+    # ends are in the mesh (mTLS) and the consumer's own egress NP must also allow it.
+    {{- range .Values.grafana.extraIngressNamespaces }}
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kagent
+              kubernetes.io/metadata.name: {{ . }}
       ports:
         - protocol: TCP
           port: 3000
+    {{- end }}
   egress:
     # DNS
     - ports:

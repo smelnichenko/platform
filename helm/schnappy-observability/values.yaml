@@ -153,6 +153,10 @@ grafana:
   service:
     type: ClusterIP
     port: 3000
+  # Extra in-cluster namespaces allowed to reach Grafana :3000 (API consumers like
+  # kagent's grafana-mcp). A values list so this generic chart doesn't name its
+  # consumers — mirrors schnappy-mesh's gateway.allowedNamespaces idiom.
+  extraIngressNamespaces: []
   ingress:
     enabled: false
     className: ""
