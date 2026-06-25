@@ -215,6 +215,17 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
+    # kagent's grafana-mcp queries the Grafana API with a read-only Viewer service
+    # account (the observability-agent's Grafana tools). Both ends are in the mesh
+    # (mTLS); kagent's own egress NP already permits this direction. No-ops if the
+    # kagent namespace is absent.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kagent
+      ports:
+        - protocol: TCP
+          port: 3000
   egress:
     # DNS
     - ports:
