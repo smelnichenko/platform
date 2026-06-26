@@ -19,6 +19,8 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
+      # 30s is too short for a clean Postgres checkpoint + shutdown.
+      terminationGracePeriodSeconds: 120
       serviceAccountName: {{ include "schnappy.fullname" . }}-sonarqube-postgres
       securityContext:
         runAsNonRoot: true

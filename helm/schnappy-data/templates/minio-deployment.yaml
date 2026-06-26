@@ -18,6 +18,8 @@ spec:
       annotations:
         backup.velero.io/backup-volumes: data
     spec:
+      # 30s default is too short for a clean MinIO shutdown of in-flight object writes.
+      terminationGracePeriodSeconds: 60
       serviceAccountName: {{ include "schnappy.fullname" . }}-minio
       priorityClassName: data-critical
       securityContext:

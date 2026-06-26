@@ -17,6 +17,8 @@ spec:
         {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
     spec:
+      # 30s is too short for ClickHouse to flush MergeTree parts/buffers cleanly.
+      terminationGracePeriodSeconds: 120
       serviceAccountName: {{ include "schnappy.fullname" . }}-clickhouse
       automountServiceAccountToken: false
       securityContext:

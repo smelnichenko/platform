@@ -24,6 +24,8 @@ spec:
     -Xmx: 1024m
   template:
     pod:
+      # 30s is too short for a clean KRaft broker shutdown (log flush + leadership).
+      terminationGracePeriodSeconds: 120
       priorityClassName: data-critical
       metadata:
         annotations:
