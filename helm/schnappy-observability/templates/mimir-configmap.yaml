@@ -54,6 +54,10 @@ data:
       max_label_names_per_series: 40
       ingestion_rate: 100000
       ingestion_burst_size: 200000
+      # Exemplar storage (in-memory circular buffer per tenant) so the trace_id
+      # exemplars remote-written from Prometheus are retained + queryable, which is
+      # what powers Grafana's metric->trace (exemplar) links. 0 = dropped.
+      max_global_exemplars_per_user: 100000
       compactor_blocks_retention_period: {{ .Values.mimir.retention | default "90d" }}
 
     ruler:
