@@ -78,27 +78,27 @@ spec:
         - https://192.168.11.5:8200/v1/sys/health
         - https://192.168.11.6:8200/v1/sys/health
 ---
-# Per-Pi MinIO health on each Pi's OWN IP (not the VIP). MinIO is xl-single on
-# a SHARED Gluster volume and runs only on the consul-lock holder, so exactly
-# one of these should return 200. Both succeeding = dual-active (MinioDualActive).
+# Per-Pi versitygw backup-store health on each Pi's OWN IP (not the VIP).
+# versitygw is stateless and runs on BOTH Pis, so both should return 200; a Pi
+# returning non-200 = that gateway is down (VersitygwGatewayDown).
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
 metadata:
-  name: {{ $fn }}-minio-pi
+  name: {{ $fn }}-versitygw
   labels:
     release: schnappy
     {{- include "schnappy.labels" . | nindent 4 }}
 spec:
-  jobName: blackbox-minio
+  jobName: blackbox-versitygw
   interval: 30s
-  module: http_2xx_minio
+  module: http_2xx_s3gw
   prober:
     url: {{ $fn }}-blackbox-exporter:9115
   targets:
     staticConfig:
       static:
-        - http://192.168.11.4:9000/minio/health/live
-        - http://192.168.11.6:9000/minio/health/live
+        - http://192.168.11.4:9000/health
+        - http://192.168.11.6:9000/health
 ---
 # Blackbox probe of public HTTPS endpoints. Catches gateway regressions
 # (route mis-binding, cert expiry, HTTP/2 coalescing, upstream down) within

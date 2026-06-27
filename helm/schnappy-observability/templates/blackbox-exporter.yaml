@@ -22,7 +22,7 @@ data:
       # MinIO health on a Pi's own IP (plain HTTP :9000). Used to detect
       # dual-active MinIO: only the consul-lock holder serves, so exactly one
       # Pi IP should return 200.
-      http_2xx_minio:
+      http_2xx_s3gw:
         prober: http
         timeout: 5s
         http:

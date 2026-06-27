@@ -81,21 +81,20 @@ spec:
             summary: "Vault at {{ "{{" }} $labels.instance {{ "}}" }} is sealed or unreachable"
             description: "Pi Vault returned 503 (sealed) or was unreachable for 2m. ESO will fail to refresh any ExternalSecret."
 
-    - name: infra-minio
+    - name: infra-backup-store
       rules:
-        - alert: MinioDualActive
-          # MinIO is xl-single on a SHARED Gluster volume — only the consul-lock
-          # holder may serve. Two Pi IPs serving at once = concurrent writers on
-          # the same data dir, which can corrupt xl-single metadata. The
-          # consul-lock fence should make this impossible; this is the net.
-          expr: count(probe_success{job="blackbox-minio"} == 1) > 1
-          for: 3m
+        - alert: VersitygwGatewayDown
+          # versitygw runs on BOTH Pis (stateless, no consul lock); the VIP
+          # routes to a healthy one. A per-Pi :9000/health failing = that gateway
+          # is down (lost redundancy; if both are down the backup store is down).
+          expr: count(probe_success{job="blackbox-versitygw"} == 0) > 0
+          for: 5m
           labels:
-            severity: critical
+            severity: warning
           annotations:
-            runbook_url: "https://runbooks.pmon.dev/MinioDualActive"
-            summary: "MinIO serving on more than one Pi (dual-active on shared Gluster)"
-            description: "{{ "{{" }} $value {{ "}}" }} Pi MinIO endpoints are returning 200; the consul-lock fence should permit exactly one. Risk of xl-single metadata corruption — investigate the minio/active Consul lock immediately."
+            runbook_url: "https://runbooks.pmon.dev/VersitygwGatewayDown"
+            summary: "A versitygw backup-store gateway is down"
+            description: "{{ "{{" }} $value {{ "}}" }} of the Pi versitygw gateways are not serving :9000/health. The VIP routes to a healthy gateway; if both are down the backup store (velero/etcd/CNPG/scylla) is unavailable."
 
     - name: infra-eso
       rules:
