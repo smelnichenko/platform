@@ -111,6 +111,12 @@ spec:
               value: "health,prometheus,env,configprops"
             - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
               value: "false"
+            - name: MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILESHISTOGRAM_HTTP_SERVER_REQUESTS
+              value: "true"
+            - name: MANAGEMENT_METRICS_DISTRIBUTION_MINIMUMEXPECTEDVALUE_HTTP_SERVER_REQUESTS
+              value: "1ms"
+            - name: MANAGEMENT_METRICS_DISTRIBUTION_MAXIMUMEXPECTEDVALUE_HTTP_SERVER_REQUESTS
+              value: "10s"
             - name: SPRING_APPLICATION_NAME
               value: admin
             {{- end }}
