@@ -136,6 +136,18 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ArgoCDAppOutOfSync"
             summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} OutOfSync 30m+"
+        - alert: ArgoCDAppSyncFailed
+          # A failing sync operation (or a sync hook, e.g. the k6 smoke test) leaves
+          # the app reporting Synced/Healthy, so ArgoCDAppOutOfSync/Degraded never
+          # catch it. This watches the sync-operation result counter instead.
+          expr: sum by (name) (increase(argocd_app_sync_total{phase=~"Failed|Error"}[1h])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ArgoCDAppOutOfSync"
+            summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} sync operation failing"
+            description: "A sync (or one of its hooks, e.g. the k6 smoke test) failed in the last hour while the app still shows Synced/Healthy."
 
     - name: infra-velero
       rules:
