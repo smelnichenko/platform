@@ -4,7 +4,7 @@
 
 ## What fired
 
-Job `$labels.namespace/$labels.job_name` has failed pods, none succeeded, and nothing still running — it exhausted its `backoffLimit` retries without ever completing. (This KSM build omits the `kube_job_failed` condition metric, so the expr is derived from `kube_job_status_failed/succeeded/active` counts.)
+Job `$labels.namespace/$labels.job_name` has failed pods, none succeeded, and nothing still running — it exhausted its `backoffLimit` retries without ever completing. (Derived from the `kube_job_status_*` counters; `kube_job_failed` is emitted only while a job sits in the Failed condition. The `unless` joins are pinned `on(namespace, job_name)` because `kube_job_status_failed` carries a `reason` label the succeeded/active series lack.)
 
 ## Impact
 

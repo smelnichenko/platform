@@ -4,7 +4,7 @@
 
 ## What fired
 
-StatefulSet `$labels.namespace/$labels.statefulset` has had fewer ready replicas than desired for 15m and stopped progressing (no change in ready count over 10m). The StatefulSets this can fire on are ClickHouse, ScyllaDB (scylla-operator), the SonarQube Postgres, and the Prometheus/Alertmanager pods. Kafka does **not** count — Strimzi runs it as a StrimziPodSet, not a StatefulSet, so `kube_statefulset_*` never sees it.
+StatefulSet `$labels.namespace/$labels.statefulset` has had fewer ready replicas than desired for 15m and stopped progressing (no change in ready count over 10m). StatefulSets this can fire on include ClickHouse, ScyllaDB (scylla-operator), the SonarQube Postgres, Prometheus/Alertmanager, the Woodpecker server/agent, and the Argo CD application-controller. Kafka does **not** count — Strimzi runs it as a StrimziPodSet, not a StatefulSet, so `kube_statefulset_*` never sees it.
 
 ## Impact
 
@@ -13,7 +13,7 @@ The set is down a pod. Every workload here runs `replicas: 1` on this single nod
 ## First steps
 
 ```bash
-NS=$labels.namespace; STS=$labels.statefulset
+NS=<namespace>; STS=<statefulset>
 kubectl -n $NS get sts $STS -o jsonpath='desired={.spec.replicas} ready={.status.readyReplicas}{"\n"}'
 # find the not-ready ordinal — that is the blocker
 kubectl -n $NS get pods | grep "$STS-"

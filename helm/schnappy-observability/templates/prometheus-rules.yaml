@@ -150,17 +150,21 @@ spec:
             description: "A sync (or one of its hooks, e.g. the k6 smoke test) failed in the last hour while the app still shows Synced/Healthy."
 
     # kube-state-metrics workload-health alerts. These depend on KSM being scraped
-    # (kube-state-metrics-servicemonitor.yaml). NOTE this KSM build does NOT expose
-    # the condition metrics kube_job_failed / kube_pod_container_status_waiting_reason,
-    # so the textbook KubeJobFailed / KubeContainerWaiting exprs are unavailable —
-    # the rules below derive the same signals from kube_job_status_* and restart counts.
+    # (kube-state-metrics-servicemonitor.yaml). KSM emits the condition metrics
+    # kube_job_failed / kube_pod_container_status_waiting_reason only while the
+    # condition is active (they read empty when nothing is failing/waiting), so these
+    # rules derive equivalent signals from the always-present kube_job_status_*
+    # counters and container restart counts.
     - name: infra-kube-state
       rules:
         - alert: KubeJobFailed
           # "Genuinely failed" = has failed pods, never succeeded, and nothing still
           # running (retries exhausted). Excludes jobs that retried then succeeded,
           # and in-progress jobs. Catches the k6 smoke-test PostSync hook, etc.
-          expr: (kube_job_status_failed > 0) unless (kube_job_status_succeeded > 0) unless (kube_job_status_active > 0)
+          # The unless joins are pinned on(namespace, job_name): kube_job_status_failed
+          # carries a `reason` label (e.g. BackoffLimitExceeded) that the succeeded/
+          # active series lack, so a bare unless would match nothing and suppress nothing.
+          expr: (kube_job_status_failed > 0) unless on(namespace, job_name) (kube_job_status_succeeded > 0) unless on(namespace, job_name) (kube_job_status_active > 0)
           for: 15m
           labels:
             severity: warning
@@ -169,8 +173,10 @@ spec:
             summary: "Job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.job_name {{ "}}" }} failed"
             description: "A Job exhausted its retries without completing. Check the job's pod logs."
         - alert: KubePodCrashLooping
-          # waiting_reason=CrashLoopBackOff isn't exposed by this KSM, so detect via
-          # restart rate instead: a container restarting more than 5 times in an hour.
+          # kube_pod_container_status_waiting_reason is emitted only while a container
+          # is waiting; detect crash-loops via restart rate instead — a container
+          # restarting more than 5 times in an hour — independent of catching that
+          # transient waiting-reason series at scrape time.
           expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
           for: 15m
           labels:

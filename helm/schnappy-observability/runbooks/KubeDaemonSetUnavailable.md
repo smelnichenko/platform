@@ -8,13 +8,13 @@ DaemonSet `$labels.namespace/$labels.daemonset` has `kube_daemonset_status_numbe
 
 ## Impact
 
-Depends on which DS. **Cilium is the serious one**: it is the CNI with kube-proxy-replacement, so a broken Cilium pod wedges all pod networking — treat as high urgency despite warning severity. Others degrade a subsystem: fluent-bit → no logs to ClickHouse, node-exporter / smartctl-exporter → blind metrics, istio-cni → new pods fail to get mesh wiring.
+Depends on which DS. **Cilium is the serious one**: it is the CNI with kube-proxy-replacement, so a broken Cilium pod wedges all pod networking — treat as high urgency despite warning severity. Others degrade a subsystem: fluent-bit → no logs to ClickHouse, velero/node-agent → fs-backup volume backups/restores stall, cilium-envoy → L7 proxy/policy, istio-cni → new pods fail to get mesh wiring.
 
 ## First steps
 
 ```bash
 kubectl get ds -A | awk 'NR==1 || $3!=$5'            # which DS is short (DESIRED != READY)
-NS=$labels.namespace; NAME=$labels.daemonset
+NS=<namespace>; NAME=<daemonset>
 kubectl -n $NS get pods -o wide | grep "$NAME-"
 POD=$(kubectl -n $NS get pods -o name | grep "/$NAME-" | head -1)
 kubectl -n $NS describe $POD | sed -n '/Events/,$p'

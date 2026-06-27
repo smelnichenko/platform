@@ -4,7 +4,7 @@
 
 ## What fired
 
-Container `$labels.container` in pod `$labels.namespace/$labels.pod` restarted more than 5 times in the last hour — almost always `CrashLoopBackOff`. This KSM build doesn't expose `kube_pod_container_status_waiting_reason`, so the alert is derived from the restart-count rate, not the textbook reason metric.
+Container `$labels.container` in pod `$labels.namespace/$labels.pod` restarted more than 5 times in the last hour — almost always `CrashLoopBackOff`. Detected from the restart-count rate rather than `kube_pod_container_status_waiting_reason` (which KSM emits only while a container is actively waiting).
 
 ## Impact
 
@@ -13,7 +13,7 @@ Depends entirely on the workload. A core service (admin, gateway, monitor, centr
 ## First steps
 
 ```bash
-NS=$labels.namespace; POD=$labels.pod; C=$labels.container
+NS=<namespace>; POD=<pod>; C=<container>
 # Last State / Reason / Exit Code + the Events tail
 kubectl -n $NS describe pod $POD | sed -n '/Last State/,/Events/p'
 # Logs from the instance that crashed (note --previous)

@@ -13,7 +13,7 @@ That replica is doing no work. If it's the only one for a service, that service 
 ## First steps
 
 ```bash
-NS=$labels.namespace; POD=$labels.pod
+NS=<namespace>; POD=<pod>
 # Events at the BOTTOM are the signal
 kubectl -n $NS describe pod $POD | sed -n '/Events:/,$p'
 kubectl -n $NS get pod $POD -o jsonpath='phase={.status.phase} reason={.status.reason}{"\n"}'

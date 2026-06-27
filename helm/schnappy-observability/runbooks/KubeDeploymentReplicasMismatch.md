@@ -13,7 +13,7 @@ Degraded capacity for that workload; if the short ReplicaSet is the new one, the
 ## First steps
 
 ```bash
-NS=$labels.namespace; NAME=$labels.deployment
+NS=<namespace>; NAME=<deployment>
 kubectl -n $NS rollout status deploy/$NAME --timeout=5s     # "Waiting for..." == stuck
 kubectl -n $NS get rs | grep "^$NAME-"                      # which RS is short on READY
 kubectl -n $NS describe deploy/$NAME | sed -n '/Events/,$p'
