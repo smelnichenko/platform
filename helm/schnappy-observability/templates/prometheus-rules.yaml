@@ -149,6 +149,84 @@ spec:
             summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} sync operation failing"
             description: "A sync (or one of its hooks, e.g. the k6 smoke test) failed in the last hour while the app still shows Synced/Healthy."
 
+    # kube-state-metrics workload-health alerts. These depend on KSM being scraped
+    # (kube-state-metrics-servicemonitor.yaml). NOTE this KSM build does NOT expose
+    # the condition metrics kube_job_failed / kube_pod_container_status_waiting_reason,
+    # so the textbook KubeJobFailed / KubeContainerWaiting exprs are unavailable —
+    # the rules below derive the same signals from kube_job_status_* and restart counts.
+    - name: infra-kube-state
+      rules:
+        - alert: KubeJobFailed
+          # "Genuinely failed" = has failed pods, never succeeded, and nothing still
+          # running (retries exhausted). Excludes jobs that retried then succeeded,
+          # and in-progress jobs. Catches the k6 smoke-test PostSync hook, etc.
+          expr: (kube_job_status_failed > 0) unless (kube_job_status_succeeded > 0) unless (kube_job_status_active > 0)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KubeJobFailed"
+            summary: "Job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.job_name {{ "}}" }} failed"
+            description: "A Job exhausted its retries without completing. Check the job's pod logs."
+        - alert: KubePodCrashLooping
+          # waiting_reason=CrashLoopBackOff isn't exposed by this KSM, so detect via
+          # restart rate instead: a container restarting more than 5 times in an hour.
+          expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KubePodCrashLooping"
+            summary: "Pod {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} crash-looping"
+            description: "Container {{ "{{" }} $labels.container {{ "}}" }} restarted >5 times in the last hour."
+        - alert: KubePodNotReady
+          # Scoped to Pending|Unknown only — the textbook expr also matches Failed phase,
+          # which floods on terminal/Error pods shadowed by a healthy replica. A pod
+          # stuck on ImagePullBackOff / scheduling sits in Pending and is still caught.
+          expr: kube_pod_status_phase{phase=~"Pending|Unknown"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KubePodNotReady"
+            summary: "Pod {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} not ready ({{ "{{" }} $labels.phase {{ "}}" }})"
+            description: "Pod has been Pending/Unknown for 15m. Check scheduling, image pulls, init containers."
+        - alert: KubeDeploymentReplicasMismatch
+          # changes(...)==0 guard avoids firing during a normal rollout where the
+          # available count is still moving toward spec.
+          expr: |
+            (kube_deployment_spec_replicas - kube_deployment_status_replicas_available) > 0
+              and
+            changes(kube_deployment_status_replicas_available[10m]) == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KubeDeploymentReplicasMismatch"
+            summary: "Deployment {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.deployment {{ "}}" }} replicas mismatch"
+            description: "Available replicas have not matched desired for 15m and stopped progressing."
+        - alert: KubeStatefulSetReplicasMismatch
+          expr: |
+            (kube_statefulset_replicas - kube_statefulset_status_replicas_ready) > 0
+              and
+            changes(kube_statefulset_status_replicas_ready[10m]) == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KubeStatefulSetReplicasMismatch"
+            summary: "StatefulSet {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.statefulset {{ "}}" }} replicas mismatch"
+            description: "Ready replicas have not matched desired for 15m and stopped progressing."
+        - alert: KubeDaemonSetUnavailable
+          expr: kube_daemonset_status_number_unavailable > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KubeDaemonSetUnavailable"
+            summary: "DaemonSet {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.daemonset {{ "}}" }} has unavailable pods"
+            description: "One or more DaemonSet pods have been unavailable for 15m."
+
     - name: infra-velero
       rules:
         - alert: VeleroBSLUnavailable
