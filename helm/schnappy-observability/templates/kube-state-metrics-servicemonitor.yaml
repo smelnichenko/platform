@@ -1,0 +1,21 @@
+{{- if and .Values.prometheus.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") -}}
+# kube-state-metrics is deployed by this chart but had NO scrape config, so Prometheus
+# never collected any kube_* metrics — silently disabling the whole KubeJobFailed /
+# KubePodCrashLooping / KubeDeploymentReplicasMismatch alert family. This ServiceMonitor
+# wires it up (the operator's serviceMonitorSelector is empty, so it's auto-selected).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "schnappy.kubeStateMetrics.serviceName" . }}
+  labels:
+    {{- include "schnappy.kubeStateMetrics.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "schnappy.kubeStateMetrics.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      interval: 30s
+      # Keep the resource's own namespace/pod labels rather than the KSM target's.
+      honorLabels: true
+{{- end }}
