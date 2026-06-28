@@ -83,10 +83,10 @@ spec:
         s3Credentials:
           accessKeyId:
             name: {{ .Values.cnpg.backupSecret }}
-            key: MINIO_ROOT_USER
+            key: {{ .Values.cnpg.backupAccessKeyName | default "MINIO_ROOT_USER" }}
           secretAccessKey:
             name: {{ .Values.cnpg.backupSecret }}
-            key: MINIO_ROOT_PASSWORD
+            key: {{ .Values.cnpg.backupSecretKeyName | default "MINIO_ROOT_PASSWORD" }}
         wal:
           maxParallel: 4
   {{- else if .Values.cnpg.import }}
@@ -135,10 +135,10 @@ spec:
       s3Credentials:
         accessKeyId:
           name: {{ .Values.cnpg.backupSecret }}
-          key: MINIO_ROOT_USER
+          key: {{ .Values.cnpg.backupAccessKeyName | default "MINIO_ROOT_USER" }}
         secretAccessKey:
           name: {{ .Values.cnpg.backupSecret }}
-          key: MINIO_ROOT_PASSWORD
+          key: {{ .Values.cnpg.backupSecretKeyName | default "MINIO_ROOT_PASSWORD" }}
       wal:
         compression: gzip
       data:
