@@ -8,7 +8,7 @@ Job `$labels.namespace/$labels.job_name` has failed pods, none succeeded, and no
 
 ## Impact
 
-Depends on the Job. The k6-smoke PostSync hook failing means a deploy's smoke test did not pass — treat as a possibly-broken release. The etcd-backup CronJob (kube-system) failing means no fresh etcd snapshot to Pi MinIO (DR gap). velero kopia-maintain, sonarqube-setup, gateway-patch, hyperfoil are advisory or one-shot. After a node reboot, old Jobs left in Failed phase are cosmetic cruft, not an incident.
+Depends on the Job. The k6-smoke PostSync hook failing means a deploy's smoke test did not pass — treat as a possibly-broken release. The etcd-backup CronJob (kube-system) failing means no fresh etcd snapshot to the Pi backup store (DR gap). velero kopia-maintain, sonarqube-setup, gateway-patch, hyperfoil are advisory or one-shot. After a node reboot, old Jobs left in Failed phase are cosmetic cruft, not an incident.
 
 ## First steps
 
@@ -35,7 +35,7 @@ The k6 PostSync hook uses `hook-delete-policy: BeforeHookCreation`, so a failed 
 | `403` / `401` from the smoke run | missing RBAC or Keycloak permission for the smoke SA |
 | `ErrImagePull` / `ImagePullBackOff` (in pods) | bad tag or registry/NetworkPolicy egress blocked |
 | `OOMKilled` (in `describe pod`) | Job memory limit too low |
-| etcd-backup: MinIO connection refused | Pi MinIO VIP down — see node-reboot/DR docs |
+| etcd-backup: backup-store connection refused | Pi backup-store VIP down — see node-reboot/DR docs |
 
 ## Verify resolved
 

@@ -84,7 +84,7 @@ spec:
         - protocol: TCP
           port: 8000
     {{- if .Values.cnpg.backup }}
-    # Pi MinIO (CNPG off-site backup)
+    # Pi backup store (CNPG off-site backup)
     - to:
         - ipBlock:
             cidr: 192.168.11.4/32
@@ -402,7 +402,7 @@ spec:
           port: 7000
         - protocol: TCP
           port: 7001
-    # Pi MinIO (backup)
+    # Pi backup store (backup)
     - to:
         - ipBlock:
             cidr: 192.168.11.4/32

@@ -22,7 +22,7 @@ kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Unavailable: ... 500 internal error` | Pi MinIO broken | Check `systemctl status minio` on Pi1+Pi2 |
+| `Unavailable: ... 500 internal error` | Pi backup store (versitygw) broken | Check `systemctl status versitygw` on Pi1+Pi2 |
 | `NoSuchBucket` | bucket got wiped | `mc mb vip/velero` on a Pi |
 | No recent Backup objects | Schedule disabled or paused | `kubectl -n velero get schedule velero-schnappy-daily -o yaml` |
 | Kopia-maintain jobs all Error | BackupRepository CRs reference missing kopia paths | `kubectl -n velero delete backuprepository --all` (recreated lazily) |
