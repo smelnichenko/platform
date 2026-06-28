@@ -86,6 +86,27 @@ spec:
             capabilities: { drop: [ALL] }
             runAsNonRoot: true
             runAsUser: 65534
+        # blackbox-exporter doesn't auto-reload on ConfigMap change; this sidecar
+        # POSTs /-/reload when the mounted config changes, so module/probe edits
+        # apply in-place (no pod restart). Reuses the operator's reloader image.
+        - name: config-reloader
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.89.0
+          args:
+            - --watched-dir=/etc/blackbox
+            - --reload-url=http://127.0.0.1:9115/-/reload
+          resources:
+            requests: { cpu: 5m, memory: 16Mi }
+            limits:   { cpu: 50m, memory: 64Mi }
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+            runAsNonRoot: true
+            runAsUser: 65534
       volumes:
         - name: config
           configMap:
