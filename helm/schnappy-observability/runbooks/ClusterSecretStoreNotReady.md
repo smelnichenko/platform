@@ -25,7 +25,7 @@ Look for: `unable to create client`, `connection refused`, `401 Unauthorized`, `
 |---|---|
 | `Vault is sealed` | → [VaultSealed](VaultSealed.md) |
 | `401 Unauthorized` | SA token or role mapping broken — check `vault read auth/kubernetes/role/eso-role` |
-| `connection refused` / timeout | NetworkPolicy or Pi MinIO/Vault down |
+| `connection refused` / timeout | NetworkPolicy or Pi backup store/Vault down |
 | `permission denied` | eso-reader policy missing `secret/data/*` read |
 
 ## Fix
