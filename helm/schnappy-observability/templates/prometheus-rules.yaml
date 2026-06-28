@@ -87,14 +87,17 @@ spec:
           # versitygw runs on BOTH Pis (stateless, no consul lock); the VIP
           # routes to a healthy one. A per-Pi :9000/health failing = that gateway
           # is down (lost redundancy; if both are down the backup store is down).
-          expr: count(probe_success{job="blackbox-versitygw"} == 0) > 0
+          # The `or absent(...)` arm fires when the probe stops producing series
+          # entirely (blackbox down, Probe CR gone) — without it, count()-over-
+          # empty is silent exactly when the store is unmonitored.
+          expr: count(probe_success{job="blackbox-versitygw"} == 0) > 0 or absent(probe_success{job="blackbox-versitygw"})
           for: 5m
           labels:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/VersitygwGatewayDown"
-            summary: "A versitygw backup-store gateway is down"
-            description: "{{ "{{" }} $value {{ "}}" }} of the Pi versitygw gateways are not serving :9000/health. The VIP routes to a healthy gateway; if both are down the backup store (velero/etcd/CNPG/scylla) is unavailable."
+            summary: "A versitygw backup-store gateway is down (or its probe is not reporting)"
+            description: "A per-Pi versitygw :9000/health probe is failing, or the probe has stopped reporting entirely. The VIP routes to a healthy gateway; if both gateways are down the backup store (velero/etcd/CNPG/scylla) is unavailable."
 
     - name: infra-eso
       rules:
