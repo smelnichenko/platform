@@ -139,7 +139,7 @@ minio:
 # data-copy+verify Job (MinIO xl-single is not versitygw-readable in place).
 s3gw:
   enabled: false
-  image: ghcr.io/versity/versitygw:1.6.0
+  image: ghcr.io/versity/versitygw:v1.6.0
   mirror: false
   resources:
     requests: { memory: "256Mi", cpu: "100m" }
