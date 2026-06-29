@@ -1,9 +1,7 @@
 {{- if eq (.Values.s3gw.enabled | toString) "true" }}
-# versitygw S3 gateway, stood up ALONGSIDE the MinIO Deployment during the
-# migration: MinIO xl-single on-disk format is not readable by versitygw's
-# POSIX backend, so data is copied at the S3 level (the mirror Job) from MinIO
-# into this gateway's own PVC, then consumers are repointed here. Distinct
-# `component: s3gw` label keeps the MinIO Service/mesh/NP untouched.
+# versitygw S3 gateway — the in-cluster S3 object store (Mimir/Tempo blocks,
+# hyperfoil reports). POSIX object=file backend on its own PVC; driven entirely
+# by env (no command/args).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,12 +58,12 @@ spec:
             - name: ROOT_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.minio.secretName" . }}
+                  name: {{ include "schnappy.s3gw.secretName" . }}
                   key: MINIO_ROOT_USER
             - name: ROOT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.minio.secretName" . }}
+                  name: {{ include "schnappy.s3gw.secretName" . }}
                   key: MINIO_ROOT_PASSWORD
             - name: VGW_PORT
               value: ":9000"
