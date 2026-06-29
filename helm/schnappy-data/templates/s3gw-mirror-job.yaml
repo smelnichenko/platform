@@ -12,11 +12,13 @@ metadata:
   labels:
     {{- include "schnappy.s3gw.labels" . | nindent 4 }}
   annotations:
+    # Normal resource (NOT a hook): enabling s3gw.mirror adds this Job so Argo
+    # creates + runs it. A hook wouldn't fire — adding a hook changes no tracked
+    # resource, so Argo sees no diff and runs no sync. Replace=true so a re-sync
+    # recreates (re-runs) it cleanly past Job spec immutability; to force a
+    # delta-catch before the flip, delete the Job and sync.
     argocd.argoproj.io/sync-wave: "11"
-    argocd.argoproj.io/sync-options: Delete=true
-    # Re-render on every sync so a re-enabled mirror always re-runs.
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 3600
