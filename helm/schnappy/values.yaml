@@ -191,7 +191,11 @@ chess:
 postgres:
   database: monitor
 valkey: {}
-minio: {}
+minio:
+  # S3 endpoint for the app's attachment storage. Empty = the in-cluster
+  # {release}-minio service; override to repoint (e.g. the versitygw gateway
+  # during the MinIO->versitygw migration).
+  endpoint: ""
 alertmanager: {}
 kafka:
   enabled: true
