@@ -14,8 +14,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.s3gw.storage.size | default .Values.minio.storage.size }}
-  {{- with .Values.s3gw.storage.storageClass | default .Values.minio.storage.storageClass }}
+      storage: {{ required "s3gw.storage.size must be set per-env (no fallback)" .Values.s3gw.storage.size }}
+  {{- with .Values.s3gw.storage.storageClass }}
   storageClassName: {{ . }}
   {{- end }}
 {{- end }}
