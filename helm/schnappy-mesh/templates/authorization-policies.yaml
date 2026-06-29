@@ -116,6 +116,15 @@ spec:
       to:
         - operation:
             ports: ["9000"]
+    # Sidecar-less in-cluster clients (the buckets/mirror Jobs) speak plaintext on
+    # 9000 (PERMISSIVE PeerAuth) and carry no SPIFFE principal; allow them by
+    # source IP. The NetworkPolicy gates which pods can reach :9000.
+    - from:
+        - source:
+            ipBlocks: ["{{ .Values.podNetworkCidr | default "10.42.0.0/16" }}"]
+      to:
+        - operation:
+            ports: ["9000"]
 ---
 # s3gw (versitygw) — same allow-list as MinIO plus the minio SA, which the
 # data-mirror Job runs as (it reads MinIO and writes the gateway).
@@ -136,6 +145,15 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-s3gw
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-minio
+      to:
+        - operation:
+            ports: ["9000"]
+    # Sidecar-less in-cluster clients (buckets/mirror Jobs, and Mimir/Tempo on the
+    # infra tier) speak plaintext on 9000 and carry no SPIFFE principal; allow by
+    # source IP. The NetworkPolicy gates which pods can reach :9000.
+    - from:
+        - source:
+            ipBlocks: ["{{ .Values.podNetworkCidr | default "10.42.0.0/16" }}"]
       to:
         - operation:
             ports: ["9000"]
