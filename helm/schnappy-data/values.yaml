@@ -145,8 +145,8 @@ s3gw:
     requests: { memory: "256Mi", cpu: "100m" }
     limits: { memory: "1Gi", cpu: "1000m" }
   storage:
-    size: ""          # default: match minio.storage.size
-    storageClass: ""  # default: match minio.storage.storageClass
+    size: ""          # REQUIRED per-env (no fallback); e.g. 5Gi
+    storageClass: ""  # optional; empty = cluster default StorageClass
 
 # apt-cacher-ng (apt caching proxy for Docker builds)
 aptCache:

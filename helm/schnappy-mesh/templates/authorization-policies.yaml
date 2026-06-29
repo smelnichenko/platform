@@ -96,49 +96,11 @@ spec:
         - operation:
             ports: ["9042", "7000"]
 ---
-# MinIO — monitor + minio (buckets job) on port 9000
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: {{ $fn }}-minio
-  namespace: {{ $ns }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: minio
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-minio
-      to:
-        - operation:
-            ports: ["9000"]
----
-# s3gw (versitygw) — same allow-list as MinIO plus the minio SA, which the
-# data-mirror Job runs as (it reads MinIO and writes the gateway).
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: {{ $fn }}-s3gw
-  namespace: {{ $ns }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: s3gw
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-s3gw
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-minio
-      to:
-        - operation:
-            ports: ["9000"]
+# MinIO + s3gw (versitygw) intentionally have NO L7 AuthorizationPolicy on :9000.
+# Their S3 clients (the buckets/mirror Jobs, and Mimir/Tempo on the infra tier)
+# must run sidecar-less — istio breaks S3 SigV4 — so they carry no principal to
+# match at L7. Access to :9000 is gated by the NetworkPolicy (pod-label selectors),
+# the same way infra-MinIO already runs with no authz.
 ---
 # Centrifugo — gateway + browser WS clients arrive via the Istio
 # ingress; app services may publish via the HTTP API. Trust the Istio

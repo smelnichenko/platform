@@ -182,6 +182,16 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+    {{- if eq (.Values.s3gw.enabled | toString) "true" }}
+    # versitygw data-mirror Job reads MinIO (sidecar-less; gated here by pod label)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: s3gw-mirror
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- end }}
     {{- if .Values.minio.allowCrossNamespace }}
     # Cross-namespace access (Hyperfoil from production, reports from infra)
     - from:
@@ -224,6 +234,16 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
+    # buckets + mirror Jobs (sidecar-less; gated here by pod label)
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values: ["s3gw-buckets", "s3gw-mirror"]
       ports:
         - protocol: TCP
           port: 9000
