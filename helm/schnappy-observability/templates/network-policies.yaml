@@ -27,12 +27,12 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Mimir → MinIO (S3 block storage)
+    # Mimir → s3gw (S3 block storage)
     - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: minio
+              app.kubernetes.io/component: s3gw
       ports:
         - protocol: TCP
           port: 9000
@@ -71,12 +71,12 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Tempo → MinIO (S3 trace storage)
+    # Tempo → s3gw (S3 trace storage)
     - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: minio
+              app.kubernetes.io/component: s3gw
       ports:
         - protocol: TCP
           port: 9000
@@ -348,7 +348,7 @@ spec:
 {{- end }}
 {{- if and .Values.networkPolicies.enabled .Values.reports.enabled }}
 ---
-# Reports server (Nginx → MinIO proxy) network policy
+# Reports server (Nginx → s3gw proxy) network policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -378,12 +378,12 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Reports → MinIO (S3 proxy)
+    # Reports → s3gw (S3 proxy)
     - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/part-of: schnappy
-              app.kubernetes.io/component: minio
+              app.kubernetes.io/component: s3gw
       ports:
         - protocol: TCP
           port: 9000
