@@ -39,6 +39,9 @@ spec:
         - name: init-dirs
           image: busybox:1.37
           command: ["sh", "-c", "mkdir -p /data/buckets /data/iam"]
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 50m, memory: 32Mi }
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
