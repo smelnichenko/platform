@@ -56,25 +56,8 @@ spec:
     9093:
       mode: PERMISSIVE
 ---
-# MinIO accepts plaintext on port 9000 for Tempo and Mimir S3 access
-# (Tempo has no sidecar — Envoy breaks S3 Signature V4)
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: {{ include "schnappy.fullname" . }}-minio
-  namespace: {{ .Release.Namespace }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: minio
-  mtls:
-    mode: {{ .Values.peerAuthentication.mode }}
-  portLevelMtls:
-    9000:
-      mode: PERMISSIVE
----
-# s3gw (versitygw) — same PERMISSIVE :9000 carve-out as MinIO, for the parallel
-# migration workload (sidecar-less Mimir/Tempo speak plaintext S3).
+# s3gw (versitygw) accepts plaintext on port 9000 for Tempo and Mimir S3 access
+# (sidecar-less Mimir/Tempo speak plaintext S3 — Envoy breaks S3 Signature V4).
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:

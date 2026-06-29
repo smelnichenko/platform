@@ -116,12 +116,6 @@ data:
           enabled: ${RESEND_WEBHOOK_ENABLED:false}
           signing-secret: ${RESEND_WEBHOOK_SECRET:}
           api-key: ${RESEND_API_KEY:}
-      minio:
-        enabled: ${MINIO_ENABLED:false}
-        endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-        access-key: ${MINIO_ACCESS_KEY:minioadmin}
-        secret-key: ${MINIO_SECRET_KEY:minioadmin}
-        bucket: ${MINIO_BUCKET:email-attachments}
       chat:
         e2e-enabled: ${CHAT_E2E_ENABLED:false}
         scylla:

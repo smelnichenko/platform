@@ -198,18 +198,6 @@ app.kubernetes.io/component: chess
 {{- end }}
 {{- end }}
 
-{{- define "schnappy.minio.secretName" -}}
-{{- if .Values.minio }}
-{{- if .Values.minio.existingSecret }}
-{{- .Values.minio.existingSecret }}
-{{- else }}
-{{- printf "%s-minio" (include "schnappy.fullname" .) }}
-{{- end }}
-{{- else }}
-{{- printf "%s-minio" (include "schnappy.fullname" .) }}
-{{- end }}
-{{- end }}
-
 {{- define "schnappy.kafka.serviceName" -}}
 {{- printf "%s-kafka" (include "schnappy.fullname" .) }}
 {{- end }}
@@ -271,11 +259,6 @@ scylla/cluster: {{ include "schnappy.scylla.serviceName" . }}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: scylla
 {{- end }}
-{{- end }}
-
-{{- define "schnappy.minio.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: minio
 {{- end }}
 
 {{- define "schnappy.elasticsearch.selectorLabels" -}}

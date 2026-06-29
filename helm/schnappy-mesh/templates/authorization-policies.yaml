@@ -96,11 +96,10 @@ spec:
         - operation:
             ports: ["9042", "7000"]
 ---
-# MinIO + s3gw (versitygw) intentionally have NO L7 AuthorizationPolicy on :9000.
-# Their S3 clients (the buckets/mirror Jobs, and Mimir/Tempo on the infra tier)
+# s3gw (versitygw) intentionally has NO L7 AuthorizationPolicy on :9000.
+# Its S3 clients (the buckets Job, and Mimir/Tempo/Hyperfoil on the infra tier)
 # must run sidecar-less — istio breaks S3 SigV4 — so they carry no principal to
-# match at L7. Access to :9000 is gated by the NetworkPolicy (pod-label selectors),
-# the same way infra-MinIO already runs with no authz.
+# match at L7. Access to :9000 is gated by the NetworkPolicy (pod-label selectors).
 ---
 # Centrifugo — gateway + browser WS clients arrive via the Istio
 # ingress; app services may publish via the HTTP API. Trust the Istio

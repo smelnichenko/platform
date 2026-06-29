@@ -135,24 +135,6 @@ spec:
                   name: {{ include "schnappy.webhook.secretName" . }}
                   key: RESEND_API_KEY
             {{- end }}
-            {{- if eq (.Values.minio.enabled | toString) "true" }}
-            - name: MINIO_ENABLED
-              value: "true"
-            - name: MINIO_ENDPOINT
-              value: "http://{{ include "schnappy.fullname" . }}-minio:9000"
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.minio.secretName" . }}
-                  key: MINIO_ROOT_USER
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "schnappy.minio.secretName" . }}
-                  key: MINIO_ROOT_PASSWORD
-            - name: MINIO_BUCKET
-              value: {{ .Values.minio.bucket | default "email-attachments" | quote }}
-            {{- end }}
             {{- if eq (.Values.chat.e2eEnabled | toString) "true" }}
             - name: CHAT_E2E_ENABLED
               value: "true"
