@@ -1,0 +1,65 @@
+{{- if eq (.Values.s3gw.enabled | toString) "true" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "schnappy.fullname" . }}-s3gw-buckets
+  labels:
+    {{- include "schnappy.s3gw.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: Delete=true
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        {{- include "schnappy.s3gw.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: s3gw-buckets
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "schnappy.fullname" . }}-s3gw
+      containers:
+        - name: create-buckets
+          image: minio/mc:latest
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mc alias set s3gw http://{{ include "schnappy.fullname" . }}-s3gw:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              {{- range .Values.minio.buckets }}
+              mc mb s3gw/{{ . }} --ignore-existing
+              {{- end }}
+              mc ls s3gw/
+              # Signal istio-proxy sidecar to exit (required for Job completion)
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
+          env:
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.minio.secretName" . }}
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.minio.secretName" . }}
+                  key: MINIO_ROOT_PASSWORD
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

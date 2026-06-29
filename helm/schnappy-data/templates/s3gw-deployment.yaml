@@ -1,0 +1,110 @@
+{{- if eq (.Values.s3gw.enabled | toString) "true" }}
+# versitygw S3 gateway, stood up ALONGSIDE the MinIO Deployment during the
+# migration: MinIO xl-single on-disk format is not readable by versitygw's
+# POSIX backend, so data is copied at the S3 level (the mirror Job) from MinIO
+# into this gateway's own PVC, then consumers are repointed here. Distinct
+# `component: s3gw` label keeps the MinIO Service/mesh/NP untouched.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.fullname" . }}-s3gw
+  labels:
+    {{- include "schnappy.s3gw.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.s3gw.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.s3gw.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+      annotations:
+        backup.velero.io/backup-volumes: data
+    spec:
+      terminationGracePeriodSeconds: 60
+      serviceAccountName: {{ include "schnappy.fullname" . }}-s3gw
+      priorityClassName: data-critical
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # versitygw creates neither its backend dir nor its IAM dir, and the IAM
+        # dir MUST be separate from the backend or it surfaces as a stray bucket.
+        - name: init-dirs
+          image: busybox:1.37
+          command: ["sh", "-c", "mkdir -p /data/buckets /data/iam"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: s3gw
+          image: {{ .Values.s3gw.image }}
+          imagePullPolicy: IfNotPresent
+          # object=file POSIX backend on the PVC; same gateway the Pi backup
+          # store runs. Driven entirely by env (no command/args).
+          env:
+            - name: ROOT_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.minio.secretName" . }}
+                  key: MINIO_ROOT_USER
+            - name: ROOT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.minio.secretName" . }}
+                  key: MINIO_ROOT_PASSWORD
+            - name: VGW_PORT
+              value: ":9000"
+            - name: VGW_BACKEND
+              value: posix
+            - name: VGW_BACKEND_ARGS
+              value: /data/buckets
+            - name: VGW_IAM_DIR
+              value: /data/iam
+          ports:
+            - containerPort: 9000
+              protocol: TCP
+              name: s3
+          resources:
+            {{- toYaml .Values.s3gw.resources | nindent 12 }}
+          # versitygw's /health can answer 200 before the S3 API is ready to
+          # serve bucket ops, so gate on the TCP socket (same lesson as the Pi role).
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "schnappy.fullname" . }}-s3gw
+{{- end }}

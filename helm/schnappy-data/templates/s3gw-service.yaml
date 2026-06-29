@@ -1,0 +1,17 @@
+{{- if eq (.Values.s3gw.enabled | toString) "true" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.fullname" . }}-s3gw
+  labels:
+    {{- include "schnappy.s3gw.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: tcp-s3
+  selector:
+    {{- include "schnappy.s3gw.selectorLabels" . | nindent 4 }}
+{{- end }}

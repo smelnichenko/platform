@@ -161,6 +161,18 @@ app.kubernetes.io/component: minio
 {{- end }}
 {{- end }}
 
+{{/* ========== s3gw (versitygw) — parallel workload during the MinIO migration ========== */}}
+
+{{- define "schnappy.s3gw.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: s3gw
+{{- end }}
+
+{{- define "schnappy.s3gw.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: s3gw
+{{- end }}
+
 {{/* ========== apt-cache ========== */}}
 
 {{- define "schnappy.aptCache.labels" -}}

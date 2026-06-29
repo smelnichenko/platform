@@ -117,6 +117,29 @@ spec:
         - operation:
             ports: ["9000"]
 ---
+# s3gw (versitygw) — same allow-list as MinIO plus the minio SA, which the
+# data-mirror Job runs as (it reads MinIO and writes the gateway).
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-s3gw
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: s3gw
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-s3gw
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-minio
+      to:
+        - operation:
+            ports: ["9000"]
+---
 # Centrifugo — gateway + browser WS clients arrive via the Istio
 # ingress; app services may publish via the HTTP API. Trust the Istio
 # gateway SA, the four app service SAs, and the schnappy-infra
