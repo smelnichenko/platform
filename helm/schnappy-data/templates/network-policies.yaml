@@ -158,63 +158,8 @@ spec:
           port: 53
 ---
 {{- end }}
-{{- if eq (.Values.minio.enabled | toString) "true" }}
-# MinIO network policy
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "schnappy.fullname" . }}-minio
-  labels:
-    {{- include "schnappy.labels" . | nindent 4 }}
-spec:
-  podSelector:
-    matchLabels:
-      {{- include "schnappy.minio.selectorLabels" . | nindent 6 }}
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress:
-    # Monitor app (email attachments)
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9000
-    {{- if eq (.Values.s3gw.enabled | toString) "true" }}
-    # versitygw data-mirror Job reads MinIO (sidecar-less; gated here by pod label)
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/component: s3gw-mirror
-      ports:
-        - protocol: TCP
-          port: 9000
-    {{- end }}
-    {{- if .Values.minio.allowCrossNamespace }}
-    # Cross-namespace access (Hyperfoil from production, reports from infra)
-    - from:
-        - namespaceSelector:
-            matchExpressions:
-              - key: environment
-                operator: In
-                values: ["production", "test"]
-      ports:
-        - protocol: TCP
-          port: 9000
-    {{- end }}
-  egress:
-    # DNS only
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
----
-{{- end }}
 {{- if eq (.Values.s3gw.enabled | toString) "true" }}
-# s3gw (versitygw) network policy — mirrors the MinIO one while both run during migration
+# s3gw (versitygw) network policy — the in-cluster S3 object store
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -237,18 +182,18 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
-    # buckets + mirror Jobs (sidecar-less; gated here by pod label)
+    # buckets Job (sidecar-less; gated here by pod label)
     - from:
         - podSelector:
             matchExpressions:
               - key: app.kubernetes.io/component
                 operator: In
-                values: ["s3gw-buckets", "s3gw-mirror"]
+                values: ["s3gw-buckets"]
       ports:
         - protocol: TCP
           port: 9000
-    {{- if .Values.minio.allowCrossNamespace }}
-    # Cross-namespace + in-namespace Jobs (Hyperfoil/reports; buckets + mirror Jobs)
+    {{- if .Values.s3gw.allowCrossNamespace }}
+    # Cross-namespace access (Hyperfoil from production, reports from infra)
     - from:
         - namespaceSelector:
             matchExpressions:

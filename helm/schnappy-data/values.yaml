@@ -119,28 +119,15 @@ scylla:
     size: 20Gi
     storageClass: ""
 
-# MinIO (email attachment storage)
-minio:
-  enabled: false
-  image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-  accessKey: ""
-  secretKey: ""
-  existingSecret: ""
-  bucket: "email-attachments"
-  resources:
-    requests: { memory: "256Mi", cpu: "100m" }
-    limits: { memory: "1Gi", cpu: "1000m" }
-  storage:
-    size: 20Gi
-    storageClass: ""
-
-# versitygw S3 gateway, stood up alongside MinIO to migrate off it. Reuses the
-# minio secret + buckets. enabled -> deploy it; mirror -> run the one-shot
-# data-copy+verify Job (MinIO xl-single is not versitygw-readable in place).
+# versitygw S3 gateway — the in-cluster S3 object store (Mimir/Tempo blocks,
+# hyperfoil reports). enabled -> deploy it. The shared S3 credentials secret is
+# Vault-managed (created by the ExternalSecret) and named via existingSecret.
 s3gw:
   enabled: false
   image: ghcr.io/versity/versitygw:v1.6.0
-  mirror: false
+  existingSecret: ""          # REQUIRED per-env: name of the shared S3 creds secret
+  allowCrossNamespace: false  # allow Hyperfoil (production) + reports (infra) cross-ns reads
+  buckets: []                 # buckets to create (e.g. mimir-blocks, tempo-traces, hyperfoil-reports)
   resources:
     requests: { memory: "256Mi", cpu: "100m" }
     limits: { memory: "1Gi", cpu: "1000m" }

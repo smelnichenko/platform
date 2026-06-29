@@ -141,27 +141,7 @@ app.kubernetes.io/component: scylla
 {{- printf "%s-scylla" (include "schnappy.fullname" .) }}
 {{- end }}
 
-{{/* ========== MinIO ========== */}}
-
-{{- define "schnappy.minio.labels" -}}
-{{ include "schnappy.labels" . }}
-app.kubernetes.io/component: minio
-{{- end }}
-
-{{- define "schnappy.minio.selectorLabels" -}}
-{{ include "schnappy.selectorLabels" . }}
-app.kubernetes.io/component: minio
-{{- end }}
-
-{{- define "schnappy.minio.secretName" -}}
-{{- if .Values.minio.existingSecret }}
-{{- .Values.minio.existingSecret }}
-{{- else }}
-{{- printf "%s-minio" (include "schnappy.fullname" .) }}
-{{- end }}
-{{- end }}
-
-{{/* ========== s3gw (versitygw) — parallel workload during the MinIO migration ========== */}}
+{{/* ========== s3gw (versitygw) — in-cluster S3 object store ========== */}}
 
 {{- define "schnappy.s3gw.labels" -}}
 {{ include "schnappy.labels" . }}
@@ -171,6 +151,10 @@ app.kubernetes.io/component: s3gw
 {{- define "schnappy.s3gw.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: s3gw
+{{- end }}
+
+{{- define "schnappy.s3gw.secretName" -}}
+{{- required "s3gw.existingSecret must be set (the shared S3 credentials secret)" .Values.s3gw.existingSecret }}
 {{- end }}
 
 {{/* ========== apt-cache ========== */}}

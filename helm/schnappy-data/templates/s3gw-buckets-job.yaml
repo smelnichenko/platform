@@ -32,7 +32,7 @@ spec:
             - -c
             - |
               mc alias set s3gw http://{{ include "schnappy.fullname" . }}-s3gw:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
-              {{- range .Values.minio.buckets }}
+              {{- range .Values.s3gw.buckets }}
               mc mb s3gw/{{ . }} --ignore-existing
               {{- end }}
               mc ls s3gw/
@@ -44,12 +44,12 @@ spec:
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.minio.secretName" . }}
+                  name: {{ include "schnappy.s3gw.secretName" . }}
                   key: MINIO_ROOT_USER
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "schnappy.minio.secretName" . }}
+                  name: {{ include "schnappy.s3gw.secretName" . }}
                   key: MINIO_ROOT_PASSWORD
           securityContext:
             readOnlyRootFilesystem: true
