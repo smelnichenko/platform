@@ -134,6 +134,20 @@ minio:
     size: 20Gi
     storageClass: ""
 
+# versitygw S3 gateway, stood up alongside MinIO to migrate off it. Reuses the
+# minio secret + buckets. enabled -> deploy it; mirror -> run the one-shot
+# data-copy+verify Job (MinIO xl-single is not versitygw-readable in place).
+s3gw:
+  enabled: false
+  image: ghcr.io/versity/versitygw:1.6.0
+  mirror: false
+  resources:
+    requests: { memory: "256Mi", cpu: "100m" }
+    limits: { memory: "1Gi", cpu: "1000m" }
+  storage:
+    size: ""          # default: match minio.storage.size
+    storageClass: ""  # default: match minio.storage.storageClass
+
 # apt-cacher-ng (apt caching proxy for Docker builds)
 aptCache:
   enabled: true

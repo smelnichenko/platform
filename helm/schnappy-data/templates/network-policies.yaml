@@ -203,6 +203,51 @@ spec:
           port: 53
 ---
 {{- end }}
+{{- if eq (.Values.s3gw.enabled | toString) "true" }}
+# s3gw (versitygw) network policy — mirrors the MinIO one while both run during migration
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-s3gw
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.s3gw.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Monitor app (email attachments)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.monitor.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- if .Values.minio.allowCrossNamespace }}
+    # Cross-namespace + in-namespace Jobs (Hyperfoil/reports; buckets + mirror Jobs)
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - key: environment
+                operator: In
+                values: ["production", "test"]
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- end }}
+  egress:
+    # DNS only
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+{{- end }}
 {{- if eq (.Values.strimzi.enabled | toString) "true" }}
 ---
 # Strimzi Kafka broker network policy

@@ -1,0 +1,85 @@
+{{- if and (eq (.Values.s3gw.enabled | toString) "true") (eq (.Values.s3gw.mirror | toString) "true") }}
+# One-shot data preservation: copy every bucket from the live MinIO into the
+# versitygw PVC at the S3 level (xl-single is not readable in place), then VERIFY
+# with `mc diff` — a non-empty diff means data is missing, so the Job FAILS and
+# Argo blocks the cutover. Re-run (idempotent) right before the consumer flip to
+# capture any writes made during the window. Runs as the MinIO SA so MinIO's
+# authorization policy permits reading the source.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "schnappy.fullname" . }}-s3gw-mirror
+  labels:
+    {{- include "schnappy.s3gw.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+    argocd.argoproj.io/sync-options: Delete=true
+    # Re-render on every sync so a re-enabled mirror always re-runs.
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 3600
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        {{- include "schnappy.s3gw.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: s3gw-mirror
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "schnappy.fullname" . }}-minio
+      containers:
+        - name: mirror
+          image: minio/mc:latest
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: "1", memory: 512Mi }
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              mc alias set src http://{{ include "schnappy.fullname" . }}-minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              mc alias set dst http://{{ include "schnappy.fullname" . }}-s3gw:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              rc=0
+              {{- range .Values.minio.buckets }}
+              echo "=== mirror {{ . }} ==="
+              mc mb dst/{{ . }} --ignore-existing
+              mc mirror --overwrite src/{{ . }} dst/{{ . }}
+              echo "--- verify {{ . }} (mc diff must be empty) ---"
+              mc diff src/{{ . }} dst/{{ . }} > /tmp/diff.txt
+              if [ -s /tmp/diff.txt ]; then
+                echo "MISMATCH in {{ . }} — source has objects not in dest:"; cat /tmp/diff.txt; rc=1
+              else
+                echo "OK {{ . }}: source and dest match"
+              fi
+              {{- end }}
+              curl -sf -X POST http://localhost:15020/quitquitquit || true
+              exit $rc
+          env:
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.minio.secretName" . }}
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.minio.secretName" . }}
+                  key: MINIO_ROOT_PASSWORD
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

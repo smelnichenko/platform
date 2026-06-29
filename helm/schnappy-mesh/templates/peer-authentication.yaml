@@ -73,6 +73,23 @@ spec:
     9000:
       mode: PERMISSIVE
 ---
+# s3gw (versitygw) — same PERMISSIVE :9000 carve-out as MinIO, for the parallel
+# migration workload (sidecar-less Mimir/Tempo speak plaintext S3).
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "schnappy.fullname" . }}-s3gw
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: s3gw
+  mtls:
+    mode: {{ .Values.peerAuthentication.mode }}
+  portLevelMtls:
+    9000:
+      mode: PERMISSIVE
+---
 # Elasticsearch accepts plaintext on port 9200 for Fluent Bit log shipping
 # (Fluent Bit DaemonSet has no sidecar — needs host log access)
 apiVersion: security.istio.io/v1

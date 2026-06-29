@@ -1,0 +1,21 @@
+{{- if eq (.Values.s3gw.enabled | toString) "true" }}
+# Fresh empty PVC, the mirror destination. Transient second volume during the
+# migration; becomes the steady-state store once MinIO is decommissioned.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "schnappy.fullname" . }}-s3gw
+  labels:
+    {{- include "schnappy.s3gw.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.s3gw.storage.size | default .Values.minio.storage.size }}
+  {{- with .Values.s3gw.storage.storageClass | default .Values.minio.storage.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
