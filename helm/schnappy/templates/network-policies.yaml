@@ -89,14 +89,6 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
-    # App → MinIO
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "schnappy.minio.selectorLabels" . | nindent 14 }}
-      ports:
-        - protocol: TCP
-          port: 9000
     # App → Elasticsearch
     - to:
         - podSelector:
@@ -630,14 +622,14 @@ spec:
       ports:
         - protocol: TCP
           port: 2003
-    # Hyperfoil → infra MinIO (report upload)
+    # Hyperfoil → infra s3gw (report upload)
     - to:
         - namespaceSelector:
             matchLabels:
               gateway: "true"
           podSelector:
             matchLabels:
-              app.kubernetes.io/component: minio
+              app.kubernetes.io/component: s3gw
       ports:
         - protocol: TCP
           port: 9000
@@ -699,14 +691,14 @@ spec:
       ports:
         - protocol: TCP
           port: 2003
-    # Hyperfoil → infra MinIO (report upload)
+    # Hyperfoil → infra s3gw (report upload)
     - to:
         - namespaceSelector:
             matchLabels:
               gateway: "true"
           podSelector:
             matchLabels:
-              app.kubernetes.io/component: minio
+              app.kubernetes.io/component: s3gw
       ports:
         - protocol: TCP
           port: 9000

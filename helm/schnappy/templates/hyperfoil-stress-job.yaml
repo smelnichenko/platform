@@ -87,16 +87,16 @@ data:
                 - name: REPORTS_URL
                   value: {{ .Values.hyperfoil.reportsUrl | quote }}
                 {{- end }}
-                {{- if .Values.minio.existingSecret }}
+                {{- if .Values.hyperfoil.clientSecretName }}
                 - name: MINIO_USER
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Values.minio.existingSecret }}
+                      name: {{ .Values.hyperfoil.clientSecretName }}
                       key: MINIO_ROOT_USER
                 - name: MINIO_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Values.minio.existingSecret }}
+                      name: {{ .Values.hyperfoil.clientSecretName }}
                       key: MINIO_ROOT_PASSWORD
                 {{- end }}
               volumeMounts:
