@@ -47,12 +47,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}
-                  key: MINIO_ROOT_USER
+                  key: ACCESS_KEY
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}
-                  key: MINIO_ROOT_PASSWORD
+                  key: SECRET_KEY
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

@@ -154,7 +154,7 @@ app.kubernetes.io/component: s3gw
 {{- end }}
 
 {{- define "schnappy.s3gw.secretName" -}}
-{{- required "s3gw.existingSecret must be set (the shared S3 credentials secret)" .Values.s3gw.existingSecret }}
+{{- .Values.s3gw.newSecretName | default (required "s3gw.existingSecret must be set (the shared S3 credentials secret)" .Values.s3gw.existingSecret) }}
 {{- end }}
 
 {{/* ========== apt-cache ========== */}}
