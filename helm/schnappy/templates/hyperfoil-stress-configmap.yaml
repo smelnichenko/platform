@@ -67,16 +67,16 @@ data:
       echo "Report generated successfully (directory)"
     fi
 
-    # Upload report to MinIO
+    # Upload report to s3gw
     if [ -f /tmp/report-dir/index.html ] && [ -n "$MINIO_USER" ]; then
       export MC_CONFIG_DIR=/tmp/.mc
-      mc alias set minio http://{{ .Values.hyperfoil.minioEndpoint | default (printf "%s-minio:9000" (include "schnappy.fullname" .)) }} "$MINIO_USER" "$MINIO_PASSWORD" --api S3v4
-      mc mb --ignore-existing minio/hyperfoil-reports
-      mc anonymous set download minio/hyperfoil-reports
+      mc alias set s3 http://{{ .Values.hyperfoil.s3Endpoint }} "$MINIO_USER" "$MINIO_PASSWORD" --api S3v4
+      mc mb --ignore-existing s3/hyperfoil-reports
+      mc anonymous set download s3/hyperfoil-reports
 
       REPORT_DIR="${REPORT_PREFIX}/$(date -u +%Y-%m-%d_%H%M%S)"
-      echo "Uploading report to minio/hyperfoil-reports/${REPORT_DIR}/"
-      mc cp --recursive /tmp/report-dir/ "minio/hyperfoil-reports/${REPORT_DIR}/"
+      echo "Uploading report to s3/hyperfoil-reports/${REPORT_DIR}/"
+      mc cp --recursive /tmp/report-dir/ "s3/hyperfoil-reports/${REPORT_DIR}/"
 
       # Generate index page listing all reports
       echo "Generating index page..."
@@ -85,14 +85,14 @@ data:
         echo '<style>body{font-family:sans-serif;max-width:800px;margin:2em auto;padding:0 1em}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #ddd}th{background:#f5f5f5}a{color:#0366d6}</style>'
         echo '</head><body><h1>Hyperfoil Reports</h1><table><tr><th>Type</th><th>Date</th><th>Link</th></tr>'
         for type in load stress spike soak; do
-          mc ls "minio/hyperfoil-reports/${type}/" 2>/dev/null | while read -r line; do
+          mc ls "s3/hyperfoil-reports/${type}/" 2>/dev/null | while read -r line; do
             dir=$(echo "$line" | awk '{print $NF}' | sed 's|/$||')
             [ -n "$dir" ] && echo "<tr><td>${type}</td><td>${dir}</td><td><a href=\"${type}/${dir}/index.html\">View Report</a></td></tr>"
           done
         done
         echo '</table></body></html>'
       } > /tmp/index.html
-      mc cp /tmp/index.html minio/hyperfoil-reports/index.html
+      mc cp /tmp/index.html s3/hyperfoil-reports/index.html
       echo ""
       echo "============================================"
       echo "Report: ${REPORTS_URL}/${REPORT_DIR}/index.html"

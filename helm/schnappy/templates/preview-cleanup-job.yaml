@@ -1,7 +1,7 @@
 {{- if and .Values.previewMode .Values.previewNumber -}}
 # Pre-delete hook that prunes per-PR shared resources that the chart
 # created prefixes for but doesn't own the lifecycle of (Kafka topics
-# on the shared cluster, Scylla keyspaces, MinIO bucket, Keycloak client).
+# on the shared cluster, Scylla keyspaces, Keycloak client).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -67,24 +67,6 @@ spec:
               value: {{ .Values.previewNumber | quote }}
             - name: SHARED_KAFKA_NS
               value: {{ .Values.preview.sharedNamespace | default "schnappy-production" | quote }}
-            - name: MINIO_ENDPOINT
-              valueFrom:
-                secretKeyRef:
-                  name: schnappy-shared-minio
-                  key: MINIO_ENDPOINT
-                  optional: true
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: schnappy-shared-minio
-                  key: MINIO_ACCESS_KEY
-                  optional: true
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: schnappy-shared-minio
-                  key: MINIO_SECRET_KEY
-                  optional: true
             - name: SCYLLA_CONTACT_POINTS
               valueFrom:
                 secretKeyRef:
@@ -126,14 +108,6 @@ spec:
                   | grep "kafkatopic.*pr-${PR_NUMBER}-" \
                   | xargs -r kubectl -n "$SHARED_KAFKA_NS" delete \
                   || true
-              fi
-              # MinIO bucket
-              if [ -n "${MINIO_ENDPOINT:-}" ]; then
-                wget -qO /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc \
-                  && chmod +x /tmp/mc \
-                  && /tmp/mc alias set prod "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" >/dev/null \
-                  && /tmp/mc rb --force "prod/pr-${PR_NUMBER}" \
-                  || echo "minio cleanup skipped/failed (non-fatal)"
               fi
               # Scylla keyspace
               if [ -n "${SCYLLA_CONTACT_POINTS:-}" ]; then
