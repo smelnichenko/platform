@@ -76,12 +76,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.tempo.minioSecret | default "schnappy-minio" }}
-                  key: MINIO_ROOT_USER
+                  key: {{ .Values.tempo.accessKeyName | default "MINIO_ROOT_USER" }}
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.tempo.minioSecret | default "schnappy-minio" }}
-                  key: MINIO_ROOT_PASSWORD
+                  key: {{ .Values.tempo.secretKeyName | default "MINIO_ROOT_PASSWORD" }}
           resources:
             {{- toYaml .Values.tempo.resources | nindent 12 }}
           securityContext:

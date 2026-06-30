@@ -59,12 +59,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}
-                  key: MINIO_ROOT_USER
+                  key: ACCESS_KEY
             - name: ROOT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}
-                  key: MINIO_ROOT_PASSWORD
+                  key: SECRET_KEY
             - name: VGW_PORT
               value: ":9000"
             - name: VGW_BACKEND
