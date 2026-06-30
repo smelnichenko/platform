@@ -135,7 +135,7 @@ spec:
       s3Credentials:
         accessKeyId:
           name: {{ .Values.cnpg.backupSecret }}
-          key: {{ .Values.cnpg.backupAccessKeyName | default "MINIO_ROOT_USER" }}
+          key: {{ .Values.cnpg.backupAccessKeyName | default "ACCESS_KEY" }}
         secretAccessKey:
           name: {{ .Values.cnpg.backupSecret }}
           key: {{ .Values.cnpg.backupSecretKeyName | default "SECRET_KEY" }}
