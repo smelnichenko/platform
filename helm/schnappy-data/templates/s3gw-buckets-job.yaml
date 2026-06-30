@@ -8,8 +8,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "10"
     # Jobs are immutable; when the template changes (e.g. the bucket list or the
-    # secret ref) Argo must delete+recreate, not patch. Replace=true does that.
-    argocd.argoproj.io/sync-options: Replace=true
+    # secret ref) Argo must delete+recreate, not patch. Replace alone uses
+    # `kubectl replace`, which still fails on the immutable spec.template — Force
+    # makes it `replace --force`, i.e. delete+recreate.
+    argocd.argoproj.io/sync-options: Replace=true,Force=true
 spec:
   backoffLimit: 5
   activeDeadlineSeconds: 120
