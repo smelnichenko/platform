@@ -6,12 +6,14 @@ metadata:
   labels:
     {{- include "schnappy.s3gw.labels" . | nindent 4 }}
   annotations:
+    # Run as a Sync hook so Argo owns this Job's lifecycle and creates a fresh one
+    # each sync (hook-delete-policy BeforeHookCreation deletes the prior run first).
+    # A plain synced Job can't be updated (immutable spec.template), and Replace=true
+    # captures the Job's k8s-generated selector/controller-uid and then fails to
+    # re-apply them ("selector not auto-generated"). A hook Job sidesteps both.
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "10"
-    # Jobs are immutable; when the template changes (e.g. the bucket list or the
-    # secret ref) Argo must delete+recreate, not patch. Replace alone uses
-    # `kubectl replace`, which still fails on the immutable spec.template — Force
-    # makes it `replace --force`, i.e. delete+recreate.
-    argocd.argoproj.io/sync-options: Replace=true,Force=true
 spec:
   backoffLimit: 5
   activeDeadlineSeconds: 120
