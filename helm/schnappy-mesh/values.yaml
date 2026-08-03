@@ -39,6 +39,22 @@ gateway:
     ci: ci.pmon.dev
     hubble: ""
 
+# Route gateway.hosts.auth through the gateway to the out-of-cluster
+# Keycloak (Pi Caddy VIP). Exposes only /realms/<realm> for the realms
+# listed below plus /resources; /admin, /metrics, and unlisted realms
+# (master included) stay LAN/VPN-only. Enablement checklist for the infra
+# repo: the gateway namespace's default-deny NetworkPolicy
+# (clusters/production/cluster-config/schnappy-infra-default-deny.yaml)
+# should gain an explicit ipBlock egress rule to address:port — today its
+# unscoped :443 "Kubernetes API" rule happens to permit the VIP, but that
+# is incidental and may be tightened.
+keycloakExternal:
+  enabled: false
+  address: ""  # required when enabled; STATIC endpoint, e.g. 192.168.11.5
+  port: 443
+  realms:
+    - schnappy
+
 # JWT validation on app routes only (not sonar/ci/git/auth)
 jwt:
   enabled: false

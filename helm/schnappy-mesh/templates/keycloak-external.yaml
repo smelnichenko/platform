@@ -1,0 +1,92 @@
+{{- if and .Values.gateway.enabled (eq (.Values.keycloakExternal.enabled | toString) "true") }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $host := .Values.gateway.hosts.auth }}
+{{- $address := required "keycloakExternal.address is required when enabled" .Values.keycloakExternal.address }}
+# Keycloak runs on the Pis behind Caddy (keepalived VIP), outside the mesh.
+# These resources publish it through the gateway so clients that only reach
+# the cluster ingress (public internet via the router port-forward) can log
+# in. Only the OIDC surface of the listed realms is routed — /realms/<realm>
+# (endpoints + account console) and /resources (theme assets). Everything
+# else — notably /admin, /metrics, and the master realm's token endpoint —
+# gets no route and 404s at the gateway; those stay reachable from the
+# LAN/VPN, whose split-horizon DNS view goes straight to the Pi Caddy.
+#
+# exportTo "." on both resources is load-bearing: in-mesh workloads (admin
+# service KC Admin API, Centrifugo JWKS, OIDC logins) already reach
+# auth.pmon.dev as passthrough traffic with their own TLS. Exported
+# mesh-wide, this ServiceEntry would SNI-capture that traffic and the
+# DestinationRule would wrap its TLS in a second TLS layer, breaking every
+# in-mesh Keycloak client. Only the gateway (this namespace) may see these.
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: {{ $fn }}-keycloak-external
+  namespace: {{ .Release.Namespace }}
+spec:
+  exportTo: ["."]
+  hosts:
+    - {{ $host }}
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  ports:
+    - number: {{ .Values.keycloakExternal.port }}
+      name: https
+      protocol: HTTPS
+  endpoints:
+    - address: {{ $address | quote }}
+---
+# The gateway terminates the client's TLS, so re-originate TLS towards
+# Caddy. SIMPLE mode chain-validates against system CAs; subjectAltNames
+# pins the peer identity (sni alone only controls what is *sent*, not
+# what is verified) — the *.pmon.dev wildcard SAN satisfies it.
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ $fn }}-keycloak-external
+  namespace: {{ .Release.Namespace }}
+spec:
+  exportTo: ["."]
+  host: {{ $host }}
+  trafficPolicy:
+    tls:
+      mode: SIMPLE
+      sni: {{ $host }}
+      subjectAltNames:
+        - {{ $host }}
+    connectionPool:
+      tcp:
+        connectTimeout: 5s
+        # Bound how long connections pooled against the pre-failover
+        # keepalived master linger after a VIP flip (mirrors the chart's
+        # internal DestinationRules).
+        tcpKeepalive:
+          time: 300s
+          interval: 60s
+          probes: 3
+      http:
+        idleTimeout: 3600s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-keycloak-external-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ $host | quote }}
+  parentRefs:
+    - name: {{ $fn }}-gateway
+      namespace: {{ .Release.Namespace }}
+      sectionName: https
+  rules:
+    - matches:
+        {{- range .Values.keycloakExternal.realms }}
+        - path: { type: PathPrefix, value: /realms/{{ . }} }
+        {{- end }}
+        - path: { type: PathPrefix, value: /resources }
+      backendRefs:
+        - group: networking.istio.io
+          kind: Hostname
+          name: {{ $host }}
+          port: {{ .Values.keycloakExternal.port }}
+{{- end }}
