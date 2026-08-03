@@ -468,6 +468,6 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/RestoreVerificationFailing"
             summary: "Disaster-recovery restore not verified in over 35 days"
-            description: "No successful DR drill (task dr:drill — Velero + CNPG restore on Vagrant) has recorded restore_verify_success; the last success is {{ "{{" }} $value | humanizeDuration {{ "}}" }} past the 35-day threshold. Run `task dr:drill` to re-validate the backup/restore path."
+            description: "No successful DR drill (task dr:drill — Velero + CNPG restore on Vagrant) has recorded restore_verify_success; the last success was {{ "{{" }} $value | humanizeDuration {{ "}}" }} ago (threshold: 35 days). Run `task dr:drill` to re-validate the backup/restore path."
     {{- end }}
 {{- end }}
