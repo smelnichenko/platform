@@ -39,6 +39,15 @@ gateway:
     ci: ci.pmon.dev
     hubble: ""
 
+# Route gateway.hosts.auth through the gateway to the out-of-cluster
+# Keycloak (Pi Caddy VIP). Exposes only /realms and /resources; /admin
+# stays LAN/VPN-only. Needs a matching egress allowance to address:port
+# in the namespace NetworkPolicy.
+keycloakExternal:
+  enabled: false
+  address: ""
+  port: 443
+
 # JWT validation on app routes only (not sonar/ci/git/auth)
 jwt:
   enabled: false

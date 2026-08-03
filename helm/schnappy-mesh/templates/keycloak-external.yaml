@@ -1,0 +1,68 @@
+{{- if and .Values.gateway.enabled (eq (.Values.keycloakExternal.enabled | toString) "true") }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- $host := .Values.gateway.hosts.auth }}
+# Keycloak runs on the Pis behind Caddy (keepalived VIP), outside the mesh.
+# These resources publish it through the gateway so clients that only reach
+# the cluster ingress (public internet via the router port-forward) can log
+# in. Only the OIDC surface is routed — /realms (endpoints + account console)
+# and /resources (theme assets). Everything else, notably /admin and
+# /metrics, gets no route and 404s at the gateway; the admin console stays
+# reachable from the LAN/VPN, whose split-horizon DNS view goes straight to
+# the Pi Caddy.
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: {{ $fn }}-keycloak-external
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    - {{ $host }}
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  ports:
+    - number: {{ .Values.keycloakExternal.port }}
+      name: https
+      protocol: HTTPS
+  endpoints:
+    - address: {{ .Values.keycloakExternal.address | quote }}
+---
+# The gateway terminates the client's TLS, so re-originate TLS towards
+# Caddy (which serves the *.pmon.dev wildcard; SIMPLE mode validates it
+# against system CAs).
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ $fn }}-keycloak-external
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ $host }}
+  trafficPolicy:
+    tls:
+      mode: SIMPLE
+      sni: {{ $host }}
+    connectionPool:
+      tcp:
+        connectTimeout: 5s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-keycloak-external-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ $host | quote }}
+  parentRefs:
+    - name: {{ $fn }}-gateway
+      namespace: {{ .Release.Namespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /realms }
+        - path: { type: PathPrefix, value: /resources }
+      backendRefs:
+        - group: networking.istio.io
+          kind: Hostname
+          name: {{ $host }}
+          port: {{ .Values.keycloakExternal.port }}
+{{- end }}
