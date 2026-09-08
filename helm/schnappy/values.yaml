@@ -224,15 +224,19 @@ tracing:
   # → more frequent, smaller batches → lower per-export latency.
   scheduleDelay: "1s"
 
-# k6 smoke tests (PostSync hook + daily CronJob)
+# k6 smoke test, run as an Argo PostSync hook Job after every sync.
+# (The scheduled CronJob variant lives in the schnappy-test chart.)
 smokeTest:
   enabled: true
   image: grafana/k6:1.7.1
-  schedule: "0 6 * * *"
   baseUrl: ""                # Defaults to https://<app.ingress.host>
   clientSecretName: ""       # k8s Secret with CLIENT_SECRET key (for authenticated tests)
-  prometheusRwUrl: http://schnappy-mimir.schnappy-infra.svc:9009/api/v1/push  # empty disables the output
-  skipGroups: []             # script groups to skip (services not deployed here)
+  # k6 remote-write target; empty disables the output. Plain HTTP by design:
+  # in-cluster ClusterIP, the k6 pod runs without a sidecar.
+  prometheusRwUrl: http://schnappy-mimir.schnappy-infra.svc:9009/api/v1/push
+  # Extra script groups to skip; admin/chat/chess groups are skipped automatically
+  # when the corresponding service is disabled in this release.
+  skipGroups: []
 # Hyperfoil load/stress tests (bypass Envoy, hit backends directly)
 hyperfoil:
   enabled: false

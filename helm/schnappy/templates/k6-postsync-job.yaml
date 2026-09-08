@@ -87,9 +87,15 @@ spec:
             - name: K6_PROMETHEUS_RW_TREND_STATS
               value: "p(95),p(99),avg,min,max,med"
             {{- end }}
-            {{- if .Values.smokeTest.skipGroups }}
+            {{- /* Groups whose service this release does not deploy, plus any explicit list. */}}
+            {{- $skip := list }}
+            {{- if ne (.Values.admin.enabled | toString) "true" }}{{ $skip = concat $skip (list "approval-mode" "permissions") }}{{ end }}
+            {{- if ne (.Values.chatService.enabled | toString) "true" }}{{ $skip = append $skip "chat" }}{{ end }}
+            {{- if ne (.Values.chessService.enabled | toString) "true" }}{{ $skip = append $skip "chess" }}{{ end }}
+            {{- $skip = concat $skip (.Values.smokeTest.skipGroups | default list) | uniq }}
+            {{- if $skip }}
             - name: K6_SKIP_GROUPS
-              value: {{ .Values.smokeTest.skipGroups | join "," | quote }}
+              value: {{ $skip | join "," | quote }}
             {{- end }}
             - name: BASE_URL
               value: {{ .Values.smokeTest.baseUrl | quote }}

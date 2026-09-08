@@ -5,7 +5,7 @@ metadata:
   name: schnappy-k6-smoke
 spec:
   schedule: {{ .Values.smokeTest.schedule | quote }}
-  suspend: {{ .Values.smokeTest.suspend | default false }}
+  suspend: {{ eq (.Values.smokeTest.suspend | toString) "true" }}
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
