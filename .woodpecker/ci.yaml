@@ -20,6 +20,12 @@ steps:
       - helm lint helm/schnappy-auth/
       - helm lint helm/schnappy-observability/
       - helm lint helm/schnappy-sonarqube/
+      - helm lint helm/schnappy-mesh/
+      - helm lint helm/schnappy-realtime/
+      # smokeTest is off by default; without the flag nothing renders.
+      - helm lint helm/schnappy-test/ --set smokeTest.enabled=true
+      # The k6 smoke script ships in both charts and must not drift.
+      - cmp helm/schnappy/files/smoke-test.js helm/schnappy-test/files/smoke-test.js
 
   - name: sonar
     image: git.pmon.dev/schnappy/sonar-scanner:latest

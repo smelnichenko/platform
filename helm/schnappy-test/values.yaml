@@ -2,9 +2,16 @@ smokeTest:
   enabled: false
   image: grafana/k6:1.7.1
   schedule: "0 6 * * *"
+  # true = never fires on its own; still runnable via `kubectl create job --from=cronjob/...`
+  suspend: false
   baseUrl: https://pmon.dev
   keycloakUrl: https://auth.pmon.dev
   clientSecretName: schnappy-k6-smoke
+  # Prometheus remote-write target for k6 metrics; empty disables the output.
+  # Plain HTTP by design: in-cluster ClusterIP, the k6 pod runs without a sidecar.
+  prometheusRwUrl: http://schnappy-mimir.schnappy-infra.svc:9009/api/v1/push
+  # Script groups to skip (e.g. services not deployed in this environment).
+  skipGroups: []
 
 vault:
   secretsEnabled: false
