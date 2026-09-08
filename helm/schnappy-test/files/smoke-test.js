@@ -51,12 +51,17 @@ function getToken() {
   }, { tags: { name: 'token' } });
   // A configured secret that yields no token is a failure, not a skip: otherwise
   // a Keycloak missing the k6-smoke client passes on the public checks alone.
-  check(res, { 'token obtained': (r) => r.status === 200 });
-  if (res.status !== 200) {
+  // A 200 whose body carries no non-empty access_token counts as no token too
+  // (res.json(selector) returns undefined on a non-JSON body, it does not throw).
+  const token = res.status === 200 ? res.json('access_token') : undefined;
+  const ok = check(res, {
+    'token obtained': () => typeof token === 'string' && token.length > 0,
+  });
+  if (!ok) {
     console.error(`Token request failed: ${res.status} ${res.body}`);
     return null;
   }
-  return res.json('access_token');
+  return token;
 }
 
 export default function smokeTest() {
