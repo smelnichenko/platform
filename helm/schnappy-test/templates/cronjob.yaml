@@ -5,6 +5,7 @@ metadata:
   name: schnappy-k6-smoke
 spec:
   schedule: {{ .Values.smokeTest.schedule | quote }}
+  suspend: {{ .Values.smokeTest.suspend | default false }}
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -63,7 +64,15 @@ spec:
           containers:
             - name: k6
               image: {{ .Values.smokeTest.image }}
-              command: ['k6', 'run', '--no-usage-report', '--out', 'experimental-prometheus-rw', '/scripts/smoke-test.js']
+              command:
+                - k6
+                - run
+                - --no-usage-report
+                {{- if .Values.smokeTest.prometheusRwUrl }}
+                - --out
+                - experimental-prometheus-rw
+                {{- end }}
+                - /scripts/smoke-test.js
               resources:
                 requests: { cpu: 100m, memory: 128Mi, ephemeral-storage: 64Mi }
                 limits: { cpu: 1000m, memory: 512Mi, ephemeral-storage: 256Mi }
@@ -80,10 +89,16 @@ spec:
                   value: {{ .Values.smokeTest.keycloakUrl | quote }}
                 - name: KEYCLOAK_PUBLIC_URL
                   value: {{ .Values.smokeTest.keycloakUrl | quote }}
+                {{- if .Values.smokeTest.prometheusRwUrl }}
                 - name: K6_PROMETHEUS_RW_SERVER_URL
-                  value: "http://schnappy-mimir.schnappy-infra.svc:9009/api/v1/push"
+                  value: {{ .Values.smokeTest.prometheusRwUrl | quote }}
                 - name: K6_PROMETHEUS_RW_TREND_STATS
                   value: "p(95),p(99),avg,min,max,med"
+                {{- end }}
+                {{- if .Values.smokeTest.skipGroups }}
+                - name: K6_SKIP_GROUPS
+                  value: {{ .Values.smokeTest.skipGroups | join "," | quote }}
+                {{- end }}
                 - name: K6_DNS
                   value: "ttl=5s,select=first,policy=preferIPv4"
                 {{- if .Values.smokeTest.clientSecretName }}
