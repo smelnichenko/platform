@@ -64,9 +64,13 @@ spec:
             - k6
             - run
             - --no-usage-report
-            # Lands on every emitted series; K6SmokeTestFailing keys on it.
+            # Both land on every emitted series: the k6 rules key on namespace,
+            # and source=k6 is the matcher Prometheus' remoteRead from Mimir
+            # requires (k6 pushes to Mimir; the rules are evaluated by Prometheus).
             - --tag
             - namespace={{ .Release.Namespace }}
+            - --tag
+            - source=k6
             {{- if .Values.smokeTest.prometheusRwUrl }}
             - --out
             - experimental-prometheus-rw

@@ -26,7 +26,6 @@ data:
         Skip_Long_Lines   On
         Refresh_Interval  10
         Rotate_Wait       5
-        Exclude_Path      /var/log/containers/*k6-*
 
     [FILTER]
         Name              kubernetes

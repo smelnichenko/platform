@@ -127,16 +127,36 @@ spec:
 
     - name: {{ $ns }}-smoke-tests
       rules:
-        # k6's prometheus-rw output names the checks Rate metric k6_checks_rate;
-        # the namespace label comes from the Job's `--tag namespace=…`.
+        # k6 pushes to Mimir, not to this Prometheus: these series arrive through
+        # Prometheus' remoteRead, which only serves queries carrying source="k6"
+        # (both labels come from the Job's `--tag`). The metric is k6_checks_rate
+        # (k6's prometheus-rw naming). last_over_time: a run's sample is a point,
+        # not a series — an instant `< 1` would only be visible for 5 minutes.
         - alert: K6SmokeTestFailing
-          expr: k6_checks_rate{namespace="{{ $ns }}"} < 1
+          expr: last_over_time(k6_checks_rate{namespace="{{ $ns }}", source="k6"}[1d]) < 1
           labels:
             severity: critical
             namespace: {{ $ns }}
           annotations:
             runbook_url: "https://runbooks.pmon.dev/K6SmokeTestFailing"
             summary: "k6 smoke test check failing ({{"{{"}} $labels.check {{"}}"}})"
+        # k6 exits 0 when its remote-write push fails, so a dropped push (a
+        # NetworkPolicy, Mimir down) leaves the hook green and the dashboard
+        # and the rule above blind. Gated on the hook Job having completed in
+        # the last day (kube-state-metrics), so a quiet month without a deploy
+        # does not fire; a completed run with no sample behind it does.
+        - alert: K6SmokeMetricsMissing
+          expr: >-
+            absent_over_time(k6_checks_rate{namespace="{{ $ns }}", source="k6"}[1d])
+            and on() (time() - max(kube_job_status_completion_time{namespace="{{ $ns }}", job_name=~".*-k6-smoke"}) < 86400)
+          for: 1h
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/K6SmokeMetricsMissing"
+            summary: "k6 smoke ran in {{ $ns }} but no metrics arrived"
+            description: "A k6 smoke hook Job completed in namespace {{ $ns }} within the last day, but Mimir holds no k6_checks_rate sample for it: the push to Mimir is failing (k6 still exits 0)."
 
     - name: {{ $ns }}-keycloak-sync
       rules:
