@@ -127,8 +127,10 @@ spec:
 
     - name: {{ $ns }}-smoke-tests
       rules:
+        # k6's prometheus-rw output names the checks Rate metric k6_checks_rate;
+        # the namespace label comes from the Job's `--tag namespace=…`.
         - alert: K6SmokeTestFailing
-          expr: k6_checks{namespace="{{ $ns }}"} < 1
+          expr: k6_checks_rate{namespace="{{ $ns }}"} < 1
           labels:
             severity: critical
             namespace: {{ $ns }}

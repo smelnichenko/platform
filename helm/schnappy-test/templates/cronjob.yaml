@@ -68,6 +68,8 @@ spec:
                 - k6
                 - run
                 - --no-usage-report
+                - --tag
+                - namespace={{ .Release.Namespace }}
                 {{- if .Values.smokeTest.prometheusRwUrl }}
                 - --out
                 - experimental-prometheus-rw

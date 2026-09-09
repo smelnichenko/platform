@@ -64,6 +64,9 @@ spec:
             - k6
             - run
             - --no-usage-report
+            # Lands on every emitted series; K6SmokeTestFailing keys on it.
+            - --tag
+            - namespace={{ .Release.Namespace }}
             {{- if .Values.smokeTest.prometheusRwUrl }}
             - --out
             - experimental-prometheus-rw
