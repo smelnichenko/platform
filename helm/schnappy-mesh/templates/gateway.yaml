@@ -66,9 +66,11 @@ spec:
               until kubectl get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null; do
                 sleep 2
               done
-              echo "Patching externalIPs..."
+              echo "Patching externalIPs + externalTrafficPolicy=Local..."
+              # Local, not Cluster: a gateway pod on a node that does not own the IP would get
+              # traffic SNATed to a LAN node address, and gatewayLanOnly would then allow everyone.
               kubectl patch svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} \
-                --type merge -p '{"spec":{"externalIPs":["{{ .Values.gateway.loadBalancerIP }}"]}}'
+                --type merge -p '{"spec":{"externalIPs":["{{ .Values.gateway.loadBalancerIP }}"],"externalTrafficPolicy":"Local"}}'
               echo "Done."
 ---
 apiVersion: v1

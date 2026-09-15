@@ -97,4 +97,37 @@ spec:
         - name: {{ $fn }}-alertmanager
           port: 9093
 {{- end }}
+{{- if .Values.gateway.hosts.prometheus }}
+---
+# Target of the "View in Prometheus" link in alert emails (prometheusSpec.externalUrl).
+# The Service belongs to kube-prometheus-stack, so its name is passed in, not derived.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-prometheus-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.prometheus | quote }}
+  parentRefs:
+    - name: {{ $gwName }}
+      namespace: {{ $gwNamespace }}
+      sectionName: https
+  rules:
+    # Lifecycle endpoints are on for the operator's config-reloader, which calls them on
+    # localhost; nobody needs them through the gateway. (PathPrefix outranks "/" by length.)
+    - matches:
+        - path: { type: PathPrefix, value: /-/quit }
+        - path: { type: PathPrefix, value: /-/reload }
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path: { type: ReplaceFullPath, replaceFullPath: / }
+            statusCode: 302
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ required "gateway.prometheusService is required when gateway.hosts.prometheus is set" .Values.gateway.prometheusService }}
+          port: 9090
+{{- end }}
 {{- end }}

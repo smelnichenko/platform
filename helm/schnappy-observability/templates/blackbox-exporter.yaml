@@ -41,6 +41,17 @@ data:
           method: GET
           fail_if_ssl: false
           fail_if_not_ssl: true
+      # LAN-only hosts probed from a pod: a pod IP is outside gatewayLanOnly.allowedCidrs, so
+      # the gateway must answer 403. Anything else means the policy is gone or not selecting.
+      http_403_lan_only:
+        prober: http
+        timeout: 10s
+        http:
+          preferred_ip_protocol: ip4
+          valid_status_codes: [403]
+          follow_redirects: false
+          method: GET
+          fail_if_not_ssl: true
 ---
 apiVersion: apps/v1
 kind: Deployment

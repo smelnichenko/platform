@@ -21,6 +21,8 @@ steps:
       - helm lint helm/schnappy-observability/
       - helm lint helm/schnappy-sonarqube/
       - helm lint helm/schnappy-mesh/
+      # Lint renders defaults, where the gateway routes and the LAN-only policy are off.
+      - sh .woodpecker/chart-render-checks.sh
       - helm lint helm/schnappy-realtime/
       # smokeTest is off by default; without the flag nothing renders.
       - helm lint helm/schnappy-test/ --set smokeTest.enabled=true

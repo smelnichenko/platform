@@ -12,6 +12,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [ClusterSecretStoreNotReady](ClusterSecretStoreNotReady.md)
 - [VeleroBSLUnavailable](VeleroBSLUnavailable.md)
 - [PublicEndpointDown](PublicEndpointDown.md)
+- [LanOnlyHostReachable](LanOnlyHostReachable.md)
 - [PrometheusNotificationsFailing](PrometheusNotificationsFailing.md)
 - [ArgoCDAppDegraded](ArgoCDAppDegraded.md)
 - [KagentControllerDown](KagentControllerDown.md)

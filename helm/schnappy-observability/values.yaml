@@ -16,6 +16,11 @@ gateway:
     grafana: ""
     logs: ""
     reports: ""
+    # Browsable Prometheus. Also set kube-prometheus-stack's prometheusSpec.externalUrl to it:
+    # that is what alert emails link to, and the in-cluster default is unreachable from a mail client.
+    prometheus: ""
+  # Service kube-prometheus-stack created (its fullnameOverride decides the name); required with hosts.prometheus.
+  prometheusService: ""
 
 # ClickHouse — log storage backend; replaces ELK in steady state.
 # Both backends can be on simultaneously during cutover.
@@ -63,6 +68,8 @@ fluentbit:
 prometheus:
   enabled: false
   scrapeInterval: 15s
+  # URLs on hosts in schnappy-mesh gatewayLanOnly; probed from a pod, each must return 403.
+  lanOnlyProbeUrls: []
   woodpecker:
     enabled: false
   forgejo:
