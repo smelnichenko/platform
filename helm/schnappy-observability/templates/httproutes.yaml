@@ -97,4 +97,28 @@ spec:
         - name: {{ $fn }}-alertmanager
           port: 9093
 {{- end }}
+{{- if .Values.gateway.hosts.prometheus }}
+---
+# Target of the "View in Prometheus" link in alert emails (prometheusSpec.externalUrl).
+# The Service belongs to kube-prometheus-stack, which names it <release>-prometheus;
+# both charts are released as "schnappy".
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-prometheus-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ .Values.gateway.hosts.prometheus | quote }}
+  parentRefs:
+    - name: {{ $gwName }}
+      namespace: {{ $gwNamespace }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: {{ .Release.Name }}-prometheus
+          port: 9090
+{{- end }}
 {{- end }}
