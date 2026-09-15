@@ -61,3 +61,8 @@ jwt:
   issuer: https://auth.pmon.dev/realms/schnappy
   jwksUri: https://auth.pmon.dev/realms/schnappy/protocol/openid-connect/certs
   passthroughHosts: []
+
+# Hosts the gateway serves only to clients inside allowedCidrs (everyone else gets 403).
+gatewayLanOnly:
+  hosts: []
+  allowedCidrs: []

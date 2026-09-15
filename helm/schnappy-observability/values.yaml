@@ -19,6 +19,8 @@ gateway:
     # Browsable Prometheus. Also set kube-prometheus-stack's prometheusSpec.externalUrl to it:
     # that is what alert emails link to, and the in-cluster default is unreachable from a mail client.
     prometheus: ""
+  # Service kube-prometheus-stack created (its fullnameOverride decides the name); required with hosts.prometheus.
+  prometheusService: ""
 
 # ClickHouse — log storage backend; replaces ELK in steady state.
 # Both backends can be on simultaneously during cutover.

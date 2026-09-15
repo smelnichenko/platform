@@ -100,8 +100,7 @@ spec:
 {{- if .Values.gateway.hosts.prometheus }}
 ---
 # Target of the "View in Prometheus" link in alert emails (prometheusSpec.externalUrl).
-# The Service belongs to kube-prometheus-stack, which names it <release>-prometheus;
-# both charts are released as "schnappy".
+# The Service belongs to kube-prometheus-stack, so its name is passed in, not derived.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -118,7 +117,7 @@ spec:
     - matches:
         - path: { type: PathPrefix, value: / }
       backendRefs:
-        - name: {{ .Release.Name }}-prometheus
+        - name: {{ required "gateway.prometheusService is required when gateway.hosts.prometheus is set" .Values.gateway.prometheusService }}
           port: 9090
 {{- end }}
 {{- end }}
