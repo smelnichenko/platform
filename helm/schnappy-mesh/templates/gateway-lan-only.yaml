@@ -1,4 +1,4 @@
-{{- if .Values.gatewayLanOnly.hosts }}
+{{- if and .Values.gateway.enabled .Values.gatewayLanOnly.hosts }}
 {{- $fn := include "schnappy.fullname" . }}
 {{- if not .Values.gatewayLanOnly.allowedCidrs }}
 {{- fail "gatewayLanOnly.allowedCidrs must list at least one range when gatewayLanOnly.hosts is set" }}

@@ -114,6 +114,16 @@ spec:
       namespace: {{ $gwNamespace }}
       sectionName: https
   rules:
+    # Lifecycle endpoints are on for the operator's config-reloader, which calls them on
+    # localhost; nobody needs them through the gateway. (PathPrefix outranks "/" by length.)
+    - matches:
+        - path: { type: PathPrefix, value: /-/quit }
+        - path: { type: PathPrefix, value: /-/reload }
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path: { type: ReplaceFullPath, replaceFullPath: / }
+            statusCode: 302
     - matches:
         - path: { type: PathPrefix, value: / }
       backendRefs:

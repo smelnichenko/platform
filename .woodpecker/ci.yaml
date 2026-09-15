@@ -22,10 +22,7 @@ steps:
       - helm lint helm/schnappy-sonarqube/
       - helm lint helm/schnappy-mesh/
       # Lint renders defaults, where the gateway routes and the LAN-only policy are off.
-      - helm template t helm/schnappy-mesh/ --set 'gatewayLanOnly.hosts={a.example}' --set 'gatewayLanOnly.allowedCidrs={10.0.0.0/8}' | grep -q 'notRemoteIpBlocks'
-      - "! helm template t helm/schnappy-mesh/ --set 'gatewayLanOnly.hosts={a.example}' >/dev/null 2>&1"
-      - helm template t helm/schnappy-observability/ --set gateway.enabled=true --set gateway.name=gw --set gateway.namespace=ns --set gateway.hosts.prometheus=p.example --set gateway.prometheusService=prom-svc | grep -q 'name: prom-svc'
-      - "! helm template t helm/schnappy-observability/ --set gateway.enabled=true --set gateway.name=gw --set gateway.namespace=ns --set gateway.hosts.prometheus=p.example >/dev/null 2>&1"
+      - sh .woodpecker/chart-render-checks.sh
       - helm lint helm/schnappy-realtime/
       # smokeTest is off by default; without the flag nothing renders.
       - helm lint helm/schnappy-test/ --set smokeTest.enabled=true

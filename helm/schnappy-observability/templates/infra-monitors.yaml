@@ -122,4 +122,28 @@ spec:
         {{- range .Values.prometheus.publicProbeUrls | default (list "https://pmon.dev" "https://test.pmon.dev" "https://auth.pmon.dev/realms/master" "https://cd.pmon.dev" "https://grafana.pmon.dev" "https://logs.pmon.dev") }}
         - {{ . }}
         {{- end }}
+{{- if .Values.prometheus.lanOnlyProbeUrls }}
+---
+# Hosts the gateway must refuse outside the LAN (schnappy-mesh gatewayLanOnly). The prober
+# is a pod, which is outside the allowed ranges, so success means a 403.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: {{ $fn }}-lan-only-urls
+  labels:
+    release: schnappy
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  jobName: blackbox-lan-only
+  interval: 60s
+  module: http_403_lan_only
+  prober:
+    url: {{ $fn }}-blackbox-exporter:9115
+  targets:
+    staticConfig:
+      static:
+        {{- range .Values.prometheus.lanOnlyProbeUrls }}
+        - {{ . }}
+        {{- end }}
+{{- end }}
 {{- end }}

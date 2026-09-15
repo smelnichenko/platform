@@ -68,6 +68,8 @@ fluentbit:
 prometheus:
   enabled: false
   scrapeInterval: 15s
+  # URLs on hosts in schnappy-mesh gatewayLanOnly; probed from a pod, each must return 403.
+  lanOnlyProbeUrls: []
   woodpecker:
     enabled: false
   forgejo:
