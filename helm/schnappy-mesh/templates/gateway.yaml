@@ -66,11 +66,14 @@ spec:
               until kubectl get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null; do
                 sleep 2
               done
-              echo "Patching externalIPs + externalTrafficPolicy=Local..."
-              # Local, not Cluster: a gateway pod on a node that does not own the IP would get
-              # traffic SNATed to a LAN node address, and gatewayLanOnly would then allow everyone.
+              echo "Patching externalIPs (externalTrafficPolicy=Cluster)..."
+              # Cluster, not Local: with Local, Cilium stopped delivering pod -> externalIP traffic
+              # (every in-cluster probe of *.pmon.dev lost its connection). Cluster is explicit here
+              # so a previous Local cannot survive. gatewayLanOnly relies on the gateway pods running
+              # on the node that owns this IP (single node today); LanOnlyHostReachable cannot see a
+              # SNAT regression, so revisit this before adding nodes.
               kubectl patch svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} \
-                --type merge -p '{"spec":{"externalIPs":["{{ .Values.gateway.loadBalancerIP }}"],"externalTrafficPolicy":"Local"}}'
+                --type merge -p '{"spec":{"externalIPs":["{{ .Values.gateway.loadBalancerIP }}"],"externalTrafficPolicy":"Cluster"}}'
               echo "Done."
 ---
 apiVersion: v1
