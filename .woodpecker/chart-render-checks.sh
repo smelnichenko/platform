@@ -55,4 +55,55 @@ helm template t helm/schnappy-observability/ $probe --show-only templates/blackb
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
   | grep -q 'alert: LanOnlyHostReachable$' || fail "LanOnlyHostReachable rule not rendered"
 
+# --- schnappy-data: Jobs are Argo Sync hooks; every postgres database is wired end to end ---
+# Lint renders defaults, where cnpg and vault are off: the init-users Job and every
+# ExternalSecret are invisible to it. Render them here.
+data() { helm template t helm/schnappy-data/ --set postgres.password=test --set cnpg.enabled=true --set vault.secretsEnabled=true "$@"; }
+rendered=$(data)
+
+# A plain synced Job with a sync-wave is immutable once its template changes (a database added,
+# an image bumped): Argo's patch fails and rolls the whole data sync back (s3gw-buckets
+# 2026-06-29, init-users 2026-09-17). Such Jobs must be Sync hooks with BeforeHookCreation.
+# `sync-options: Delete=true` is merely Argo's default (it guards nothing) and must not reappear.
+jobs=$(echo "$rendered" | awk '
+  function emit() { if (kind == "Job") print name "|" hook "|" del "|" wave "|" opts }
+  /^---/ { emit(); kind = name = hook = del = wave = opts = ""; next }
+  /^kind: / { kind = $2 }
+  kind == "Job" && /^  name: / && name == "" { name = $2 }
+  kind == "Job" && /^    argocd.argoproj.io\/hook: / { hook = $2 }
+  kind == "Job" && /^    argocd.argoproj.io\/hook-delete-policy: / { del = $2 }
+  kind == "Job" && /^    argocd.argoproj.io\/sync-wave: / { gsub(/"/, "", $2); wave = $2 }
+  kind == "Job" && /^    argocd.argoproj.io\/sync-options: / { opts = $2 }
+  END { emit() }')
+[ -n "$jobs" ] || fail "schnappy-data rendered no Job"
+for line in $jobs; do
+  name=${line%%|*}; rest=${line#*|}; hook=${rest%%|*}; rest=${rest#*|}; del=${rest%%|*}; rest=${rest#*|}; wave=${rest%%|*}; opts=${rest#*|}
+  [ -z "$opts" ] || fail "Job $name carries sync-options '$opts'; make it a Sync hook instead"
+  [ "${wave:-0}" -lt 1 ] || [ "$hook" = "Sync" ] || fail "Job $name has sync-wave $wave but is not a Sync hook"
+  [ "$hook" != "Sync" ] || [ "$del" = "BeforeHookCreation" ] || fail "hook Job $name lacks hook-delete-policy BeforeHookCreation"
+done
+
+# Every postgres.databases[].name must yield an ExternalSecret <fullname>-postgres-<db> reading
+# <prefix>/postgres-<db> with DB_PASSWORD, and the init-users Job must consume THAT Secret
+# for DB_PASSWORD_<DB> and carry the psql block that creates the role and database.
+names=$(helm show values helm/schnappy-data/ | awk '
+  /^postgres:/ { p = 1; next }  p && /^[^ ]/ { p = 0 }
+  p && /^  databases:/ { d = 1; next }  p && d && /^  [^ ]/ { d = 0 }
+  p && d && /^    - name: / { print $3 }')
+[ -n "$names" ] || fail "postgres.databases is empty in schnappy-data values"
+es=$(echo "$rendered" | awk '/^kind: ExternalSecret$/ { e = 1 } e && /^  name: / { print $2; e = 0 }')
+init=$(echo "$rendered" | awk '/^# Source: schnappy-data\/templates\/cnpg-init-users.yaml/ { on = 1; next } /^---/ { on = 0 } on')
+[ -n "$init" ] || fail "init-users Job not rendered"
+for db in $names; do
+  up=$(echo "$db" | tr '[:lower:]' '[:upper:]')
+  echo "$es" | grep -qx "t-schnappy-postgres-$db" || fail "no ExternalSecret t-schnappy-postgres-$db"
+  echo "$rendered" | awk -v n="t-schnappy-postgres-$db" '/^---/ { on = 0 } $0 == "  name: " n { on = 1 } on' \
+    | grep -A2 'secretKey: DB_PASSWORD$' | grep -q "key: secret/data/schnappy/postgres-$db\$" \
+    || fail "ExternalSecret t-schnappy-postgres-$db does not read DB_PASSWORD from postgres-$db"
+  echo "$init" | grep -A4 "^            - name: DB_PASSWORD_$up\$" | grep -q "name: t-schnappy-postgres-$db\$" \
+    || fail "init-users DB_PASSWORD_$up does not read Secret t-schnappy-postgres-$db"
+  echo "$init" | grep -q "CREATE ROLE $db LOGIN PASSWORD '\$(printenv DB_PASSWORD_$up)'" || fail "init-users has no CREATE ROLE for $db"
+  echo "$init" | grep -q "CREATE DATABASE $db OWNER $db;" || fail "init-users has no CREATE DATABASE for $db"
+done
+
 echo "chart render checks: OK"

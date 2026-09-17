@@ -6,8 +6,12 @@ metadata:
   labels:
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
   annotations:
+    # Sync hook, like cnpg-init-users.yaml: a plain synced Job cannot be updated once its
+    # spec.template changes (an image bump did exactly that), and BeforeHookCreation
+    # replaces the previous run — including the pre-hook plain Job of the same name.
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "10"
-    argocd.argoproj.io/sync-options: Delete=true
 spec:
   backoffLimit: 10
   template:
