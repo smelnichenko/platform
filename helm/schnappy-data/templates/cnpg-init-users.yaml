@@ -6,8 +6,18 @@ metadata:
   labels:
     {{- include "schnappy.postgres.labels" . | nindent 4 }}
   annotations:
+    # Run as a Sync hook so Argo owns this Job's lifecycle and creates a fresh one
+    # each sync (hook-delete-policy BeforeHookCreation deletes the prior run first,
+    # including the pre-hook plain Job of the same name). A plain synced Job cannot
+    # be updated once its spec.template changes — and adding a database to
+    # postgres.databases changes it — and the `sync-options: Delete=true` it used
+    # to carry is merely Argo's default, so it guarded nothing. The script is
+    # idempotent (IF NOT EXISTS / ALTER) and fails on its own errors, so a re-run
+    # on every sync is harmless and "Succeeded" means every role and database
+    # exists. Same pattern as s3gw-buckets-job.yaml.
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "10"
-    argocd.argoproj.io/sync-options: Delete=true
 spec:
   backoffLimit: 5
   activeDeadlineSeconds: 120
@@ -53,18 +63,24 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
+              set -eu
               echo "Waiting for PostgreSQL..."
-              until psql -c "SELECT 1" 2>/dev/null; do
+              until psql -c "SELECT 1" >/dev/null 2>&1; do
                 echo "Not ready, retrying in 3s..."
                 sleep 3
               done
               echo "PostgreSQL is ready. Creating per-service users and databases..."
+              # As a Sync hook, "Succeeded" must mean every role and database exists:
+              # no swallowed errors, an existence check instead of a create-or-alter
+              # guess, the password passed as a psql variable (a quote in it cannot
+              # break the SQL) and ${VAR:?} so a missing secret aborts instead of
+              # setting an empty password.
               {{- range .Values.postgres.databases }}
 
               # --- {{ .name }} ---
-              psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN PASSWORD '$(printenv DB_PASSWORD_{{ .name | upper }})'; END IF; END \$\$;"
-              psql -c "ALTER ROLE {{ .name }} PASSWORD '$(printenv DB_PASSWORD_{{ .name | upper }})';"
-              psql -c "CREATE DATABASE {{ .name }} OWNER {{ .name }};" 2>/dev/null || psql -c "ALTER DATABASE {{ .name }} OWNER TO {{ .name }};"
+              psql -v pw="${DB_PASSWORD_{{ .name | upper }}:?}" -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN; END IF; END \$\$;" -c "ALTER ROLE {{ .name }} PASSWORD :'pw';"
+              psql -tAc "SELECT 1 FROM pg_database WHERE datname = '{{ .name }}'" | grep -q 1 || psql -c "CREATE DATABASE {{ .name }} OWNER {{ .name }};"
+              psql -c "ALTER DATABASE {{ .name }} OWNER TO {{ .name }};"
               {{- end }}
 
               echo "Per-service users and databases configured."

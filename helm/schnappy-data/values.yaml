@@ -16,7 +16,9 @@ postgres:
   username: monitor
   password: ""
   existingSecret: ""
-  # Per-service databases: each gets own user and credentials
+  # Per-service databases: each gets own user and credentials. Per-environment
+  # lists live in the infra values (test/production); this default also feeds
+  # schnappy-infra-data, so add a service here only if EVERY consumer wants it.
   databases:
     - name: admin
     - name: chat
