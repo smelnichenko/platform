@@ -29,6 +29,20 @@ steps:
       # The k6 smoke script ships in both charts and must not drift.
       - cmp helm/schnappy/files/smoke-test.js helm/schnappy-test/files/smoke-test.js
 
+  # The init-users hook script against a real Postgres: what "Succeeded" must
+  # mean (roles, ownership, quoted passwords, idempotent rotation, abort on a
+  # missing secret or an SQL error). A stub psql cannot see that -c strings are
+  # not variable-interpolated; this did.
+  - name: init-users-script
+    image: postgres:17-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: test
+    commands:
+      - sh .woodpecker/init-users-script-test.sh
+    depends_on: [helm-lint]
+
   - name: sonar
     image: git.pmon.dev/schnappy/sonar-scanner:latest
     commands:
@@ -46,3 +60,9 @@ steps:
             key: sonar_host_url
             target:
               env: SONAR_HOST_URL
+
+services:
+  - name: postgres
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: test
