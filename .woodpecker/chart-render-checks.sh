@@ -110,5 +110,16 @@ for db in $names; do
   echo "$init" | grep -q "ALTER ROLE $db PASSWORD :'pw';" || fail "init-users does not set $db's password from the psql variable"
   echo "$init" | grep -q "CREATE DATABASE $db OWNER $db;" || fail "init-users has no CREATE DATABASE for $db"
 done
+# Hand the hook script to init-users-script-test.sh (a later CI step with a real
+# Postgres): the args block scalar is the 14-space-indented body after `- |`.
+mkdir -p .ci-out
+echo "$init" | awk '
+  /^            - \|$/ { on = 1; next }
+  on && /^              / { sub(/^              /, ""); print; next }
+  on && /^$/ { print; next }
+  on { exit }' > .ci-out/init-users.sh
+[ -s .ci-out/init-users.sh ] || fail "could not extract the init-users script"
+sh -n .ci-out/init-users.sh || fail "init-users script is not valid sh"
+echo "$names" | tr ' ' '\n' | grep -v '^$' > .ci-out/init-users.databases
 
 echo "chart render checks: OK"

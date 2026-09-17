@@ -71,14 +71,18 @@ spec:
               done
               echo "PostgreSQL is ready. Creating per-service users and databases..."
               # As a Sync hook, "Succeeded" must mean every role and database exists:
-              # no swallowed errors, an existence check instead of a create-or-alter
-              # guess, the password passed as a psql variable (a quote in it cannot
-              # break the SQL) and ${VAR:?} so a missing secret aborts instead of
-              # setting an empty password.
+              # set -e plus ON_ERROR_STOP (no swallowed errors), an existence check
+              # instead of a create-or-alter guess, the password passed as a psql
+              # variable through stdin (psql does NOT interpolate :'var' inside -c;
+              # a quote in the value cannot break the SQL) and ${VAR:?} so a missing
+              # secret aborts instead of setting an empty password.
               {{- range .Values.postgres.databases }}
 
               # --- {{ .name }} ---
-              psql -v pw="${DB_PASSWORD_{{ .name | upper }}:?}" -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN; END IF; END \$\$;" -c "ALTER ROLE {{ .name }} PASSWORD :'pw';"
+              psql -v ON_ERROR_STOP=1 -v pw="${DB_PASSWORD_{{ .name | upper }}:?}" <<'SQL'
+              DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN; END IF; END $$;
+              ALTER ROLE {{ .name }} PASSWORD :'pw';
+              SQL
               psql -tAc "SELECT 1 FROM pg_database WHERE datname = '{{ .name }}'" | grep -q 1 || psql -c "CREATE DATABASE {{ .name }} OWNER {{ .name }};"
               psql -c "ALTER DATABASE {{ .name }} OWNER TO {{ .name }};"
               {{- end }}
