@@ -37,6 +37,7 @@ data:
           { "name": "EMAIL", "description": "Email inbox" },
           { "name": "METRICS", "description": "View monitors and metrics" },
           { "name": "MANAGE_USERS", "description": "User administration" },
+          { "name": "JOBS", "description": "masi: job registry, CV tuning, sources, reports (never in Users)" },
           {
             "name": "Users",
             "description": "Default user group",
@@ -47,7 +48,7 @@ data:
             "name": "Admins",
             "description": "Admin group with all permissions",
             "composite": true,
-            "composites": { "realm": ["PLAY", "CHAT", "EMAIL", "METRICS", "MANAGE_USERS"] }
+            "composites": { "realm": ["PLAY", "CHAT", "EMAIL", "METRICS", "MANAGE_USERS", "JOBS"] }
           }
         ]
       },
@@ -167,7 +168,7 @@ data:
           "emailVerified": true,
           "enabled": true,
           "serviceAccountClientId": "k6-smoke",
-          "realmRoles": ["METRICS", "PLAY", "CHAT", "EMAIL", "MANAGE_USERS"]
+          "realmRoles": ["METRICS", "PLAY", "CHAT", "EMAIL", "MANAGE_USERS", "JOBS"]
         }
         {{- end }}
       ]
