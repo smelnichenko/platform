@@ -6,8 +6,16 @@ metadata:
   labels:
     {{- include "schnappy.postgres.labels" . | nindent 4 }}
   annotations:
+    # Run as a Sync hook so Argo owns this Job's lifecycle and creates a fresh one
+    # each sync (hook-delete-policy BeforeHookCreation deletes the prior run first,
+    # including the pre-hook plain Job of the same name). A plain synced Job cannot
+    # be updated once its spec.template changes — and adding a database to
+    # postgres.databases changes it — while `Delete=true` is not an Argo sync
+    # option at all. The script is idempotent (IF NOT EXISTS / ALTER), so a re-run
+    # on every sync is harmless. Same pattern as s3gw-buckets-job.yaml.
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "10"
-    argocd.argoproj.io/sync-options: Delete=true
 spec:
   backoffLimit: 5
   activeDeadlineSeconds: 120

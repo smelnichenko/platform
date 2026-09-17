@@ -21,6 +21,7 @@ postgres:
     - name: admin
     - name: chat
     - name: chess
+    - name: masi
   sharedBuffers: "512MB"
   effectiveCacheSize: "1536MB"
   workMem: "16MB"
