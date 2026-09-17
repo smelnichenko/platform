@@ -119,6 +119,11 @@ echo "$init" | awk '
   on && /^$/ { print; next }
   on { exit }' > .ci-out/init-users.sh
 [ -s .ci-out/init-users.sh ] || fail "could not extract the init-users script"
+# kubelet rewrites container args before the shell sees them: `$(NAME)` becomes
+# the env value and `$$` becomes `$`. Refuse the former (nothing here wants it)
+# and apply the latter, so the tested script is the one the pod actually runs.
+grep -Eq '\$\([A-Za-z_][A-Za-z0-9_]*\)' .ci-out/init-users.sh && fail "init-users script contains a \$(NAME) reference kubelet would expand"
+sed -i 's/\$\$/$/g' .ci-out/init-users.sh
 sh -n .ci-out/init-users.sh || fail "init-users script is not valid sh"
 echo "$names" | tr ' ' '\n' | grep -v '^$' > .ci-out/init-users.databases
 
