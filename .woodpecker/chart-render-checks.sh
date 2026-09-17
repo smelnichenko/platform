@@ -160,6 +160,7 @@ cnp=$(doc CiliumNetworkPolicy t-schnappy-masi-browser-deny)
 echo "$cnp" | sed -n '/^  endpointSelector:/,/^  egressDeny:/p' | grep -q 'app.kubernetes.io/component: masi-browser$' || fail "Cilium deny policy selects the wrong endpoints"
 for e in host remote-node kube-apiserver; do sect "$cnp" egressDeny | grep -qx "        - $e" || fail "Cilium deny lost egress entity $e"; done
 sect "$cnp" egressDeny | grep -q 'operator: Exists' && sect "$cnp" egressDeny | grep -q 'values: \["kube-dns"\]' || fail "Cilium deny must cover every pod in every namespace except kube-dns"
+sect "$cnp" egressDeny | grep -q 'key: k8s:app, operator: NotIn, values: \["istiod"\]' || fail "Cilium deny must exempt istiod or the sidecar never bootstraps (15012)"
 for c in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10; do sect "$cnp" egressDeny | grep -q -- "- cidr: $c\$" || fail "Cilium deny lost CIDR $c"; done
 sect "$cnp" ingressDeny | grep -q 'values: \["masi"\]' && sect "$cnp" ingressDeny | grep -qx '        - world' || fail "Cilium ingress deny must leave only masi (and a scraper) in"
 mnp=$(doc NetworkPolicy t-schnappy-masi-service)

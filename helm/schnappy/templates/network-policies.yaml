@@ -562,10 +562,13 @@ spec:
         - host
         - remote-node
         - kube-apiserver
+    # every pod in every namespace except kube-dns and istiod (the sidecar's xDS/CA on 15012;
+    # without it the pod never becomes ready — seen on the first rollout, Hubble: "denylist")
     - toEndpoints:
         - matchExpressions:
             - { key: k8s:io.kubernetes.pod.namespace, operator: Exists }
             - { key: k8s:k8s-app, operator: NotIn, values: ["kube-dns"] }
+            - { key: k8s:app, operator: NotIn, values: ["istiod"] }
     - toCIDRSet:
         - cidr: 10.0.0.0/8
         - cidr: 172.16.0.0/12
