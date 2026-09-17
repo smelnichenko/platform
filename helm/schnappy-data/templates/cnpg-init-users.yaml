@@ -61,6 +61,10 @@ spec:
                   key: DB_PASSWORD
             {{- end }}
           command: ["sh", "-c"]
+          # kubelet rewrites container args before the shell sees them: a double
+          # dollar becomes a single one (its escape inside env-var expansion), so
+          # the script never contains one — not even in a comment. CI extracts the
+          # script, applies the same rewrite and runs it against a real Postgres.
           args:
             - |
               set -eu
@@ -75,12 +79,13 @@ spec:
               # instead of a create-or-alter guess, the password passed as a psql
               # variable through stdin (psql does NOT interpolate :'var' inside -c;
               # a quote in the value cannot break the SQL) and ${VAR:?} so a missing
-              # secret aborts instead of setting an empty password.
+              # secret aborts instead of setting an empty password. The DO block is
+              # dollar-quoted with a tag: see the note above `args` about kubelet.
               {{- range .Values.postgres.databases }}
 
               # --- {{ .name }} ---
               psql -v ON_ERROR_STOP=1 -v pw="${DB_PASSWORD_{{ .name | upper }}:?}" <<'SQL'
-              DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN; END IF; END $$;
+              DO $do$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ .name }}') THEN CREATE ROLE {{ .name }} LOGIN; END IF; END $do$;
               ALTER ROLE {{ .name }} PASSWORD :'pw';
               SQL
               psql -tAc "SELECT 1 FROM pg_database WHERE datname = '{{ .name }}'" | grep -q 1 || psql -c "CREATE DATABASE {{ .name }} OWNER {{ .name }};"
