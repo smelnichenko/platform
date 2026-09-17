@@ -1,0 +1,17 @@
+{{- if eq (.Values.masiService.enabled | toString) "true" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.masi.serviceName" . }}
+  labels:
+    {{- include "schnappy.masi.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.masiService.service.type }}
+  ports:
+    - port: {{ .Values.masiService.service.port }}
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "schnappy.masi.selectorLabels" . | nindent 4 }}
+{{- end }}

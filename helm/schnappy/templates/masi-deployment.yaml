@@ -1,0 +1,199 @@
+{{- if eq (.Values.masiService.enabled | toString) "true" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.masi.serviceName" . }}
+  labels:
+    {{- include "schnappy.masi.labels" . | nindent 4 }}
+spec:
+  # replicas is a constraint, not a knob: the scheduler map and per-source locks are in-memory.
+  replicas: {{ .Values.masiService.replicas }}
+  # Single node: recreate in place (maxSurge 0) so a roll never deadlocks on
+  # CPU-request headroom. A brief blip per deploy is the accepted trade-off.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.masi.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.masi.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+      annotations:
+        prometheus.io/scrape: "true"
+        # context-path is /api/masi (chess's /api layout would route the actuator to monitor)
+        prometheus.io/path: "/api/masi/actuator/prometheus"
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-masi
+      imagePullSecrets:
+        - name: forgejo-registry
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: masi
+          image: "{{ .Values.masiService.image.repository }}:{{ .Values.masiService.image.tag }}"
+          imagePullPolicy: {{ .Values.masiService.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            # PDF scratch (PDFBox) and the Playwright driver unpack (java.io.tmpdir) live here.
+            - name: tmp
+              mountPath: /tmp
+          env:
+            # In-app JWT validation (defense in depth on top of the gateway):
+            # GatewayAuthFilter verifies the Keycloak signature against JWKS.
+            - name: KEYCLOAK_ISSUER
+              value: "https://{{ .Values.keycloak.hostname }}/realms/schnappy"
+            - name: KEYCLOAK_JWKS_URI
+              value: "https://{{ .Values.keycloak.hostname }}/realms/schnappy/protocol/openid-connect/certs"
+            # Token-relay target for user provisioning (POST /api/auth/ensure-user).
+            - name: ADMIN_SERVICE_URL
+              value: "http://{{ include "schnappy.admin.serviceName" . }}:8080"
+            - name: JAVA_OPTS
+              value: {{ .Values.masiService.javaOpts | default "-Xmx768m" | quote }}
+            - name: MASI_ENABLED
+              value: "true"
+            - name: DB_HOST
+              value: {{ include "schnappy.postgres.serviceName" . }}
+            - name: SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES
+              value: "sslmode=require"
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.fullname" . }}-postgres-masi
+                  key: DB_NAME
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.fullname" . }}-postgres-masi
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.fullname" . }}-postgres-masi
+                  key: DB_PASSWORD
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ include "schnappy.kafka.serviceName" . }}:9092"
+            {{- if and (eq (.Values.masiService.ai.enabled | toString) "true") .Values.masiService.ai.existingSecret }}
+            # masi's OWN Anthropic key (Vault <prefix>/ai-masi), never the shared `ai` key.
+            - name: AI_ENABLED
+              value: "true"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.masiService.ai.existingSecret }}
+                  key: ANTHROPIC_API_KEY
+            # Per-service model choice: never the chart-level AI_MODEL (Haiku in test values).
+            - name: MASI_AI_TUNING_MODEL
+              value: {{ .Values.masiService.ai.tuningModel | quote }}
+            - name: MASI_AI_EXTRACT_MODEL
+              value: {{ .Values.masiService.ai.extractModel | quote }}
+            - name: AI_DAILY_BUDGET_USD
+              value: {{ .Values.masiService.ai.dailyBudgetUsd | quote }}
+            - name: AI_MONTHLY_BUDGET_USD
+              value: {{ .Values.masiService.ai.monthlyBudgetUsd | quote }}
+            - name: MASI_AI_IN_FLIGHT
+              value: {{ .Values.masiService.ai.inFlight | quote }}
+            {{- else }}
+            - name: AI_ENABLED
+              value: "false"
+            {{- end }}
+            - name: MASI_TUNING_AUTO
+              value: {{ .Values.masiService.tuning.auto | toString | quote }}
+            {{- if eq (.Values.masiService.browser.enabled | toString) "true" }}
+            - name: MASI_BROWSER_ENABLED
+              value: "true"
+            # CDP over the Service port named `http`: the websocket upgrades through Envoy.
+            - name: MASI_BROWSER_ENDPOINT
+              value: "ws://{{ include "schnappy.masiBrowser.serviceName" . }}:3000"
+            - name: MASI_BROWSER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.masiService.browser.existingSecret }}
+                  key: TOKEN
+            - name: MASI_BROWSER_MAX_PARALLEL
+              value: {{ .Values.masiService.browser.maxParallel | quote }}
+            - name: MASI_BROWSER_RUN_DEADLINE_MS
+              value: {{ .Values.masiService.browser.timeoutMs | quote }}
+            {{- else }}
+            - name: MASI_BROWSER_ENABLED
+              value: "false"
+            {{- end }}
+            # The masi image never contains a browser; Playwright must not try to fetch one.
+            - name: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+              value: "1"
+            {{- if eq (.Values.tracing.enabled | toString) "true" }}
+            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+              value: {{ .Values.tracing.samplingProbability | default "0.1" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
+              value: {{ .Values.tracing.tempoEndpoint | default "http://schnappy-tempo.schnappy-infra.svc:4317" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TRANSPORT
+              value: {{ .Values.tracing.tempoTransport | default "grpc" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TIMEOUT
+              value: {{ .Values.tracing.exporterTimeout | default "30s" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_CONNECT_TIMEOUT
+              value: {{ .Values.tracing.exporterConnectTimeout | default "30s" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_SCHEDULE_DELAY
+              value: {{ .Values.tracing.scheduleDelay | default "1s" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_MAX_QUEUE_SIZE
+              value: {{ .Values.tracing.maxQueueSize | default "8192" | quote }}
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_MAX_BATCH_SIZE
+              value: {{ .Values.tracing.maxBatchSize | default "2048" | quote }}
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,prometheus,env,configprops"
+            - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
+              value: "false"
+            - name: MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILESHISTOGRAM_HTTP_SERVER_REQUESTS
+              value: "true"
+            - name: MANAGEMENT_METRICS_DISTRIBUTION_MINIMUMEXPECTEDVALUE_HTTP_SERVER_REQUESTS
+              value: "1ms"
+            - name: MANAGEMENT_METRICS_DISTRIBUTION_MAXIMUMEXPECTEDVALUE_HTTP_SERVER_REQUESTS
+              value: "10s"
+            - name: SPRING_APPLICATION_NAME
+              value: masi
+            {{- end }}
+          resources:
+            {{- toYaml .Values.masiService.resources | nindent 12 }}
+          # 5-minute startup budget. Until startupProbe succeeds, kubelet
+          # holds off on liveness/readiness so a slow Spring Boot boot
+          # (DB+Kafka init) doesn't trigger a CrashLoop.
+          startupProbe:
+            httpGet:
+              path: /api/masi/actuator/health/liveness
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/masi/actuator/health/liveness
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/masi/actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

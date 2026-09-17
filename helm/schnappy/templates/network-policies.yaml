@@ -175,6 +175,9 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.masi.selectorLabels" . | nindent 14 }}
       ports:
         - protocol: TCP
           port: 8080
@@ -364,6 +367,223 @@ spec:
         - protocol: TCP
           port: 443
 ---
+{{- end }}
+{{- if eq (.Values.masiService.enabled | toString) "true" }}
+# masi (job registry) network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-masi-service
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.masi.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Gateway (cross-namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              gateway: "true"
+          podSelector:
+            matchLabels:
+              gateway.istio.io/managed: istio.io-gateway-controller
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- if eq (.Values.hyperfoil.enabled | toString) "true" }}
+    # Allow from Hyperfoil load/stress tests
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-load
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hyperfoil-stress
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # masi → PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # masi → Kafka (user.events consume, group masi-user)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.kafka.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9092
+    # masi → admin (token-relay user provisioning: POST /api/auth/ensure-user)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.admin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- if eq (.Values.masiService.browser.enabled | toString) "true" }}
+    # masi → its headless browser (CDP)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.masiBrowser.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 3000
+    {{- end }}
+    # masi → job boards, ATS feeds, open-data dumps and the Anthropic API: public internet
+    # on 80/443 only. The except list is wider than the other services': link-local
+    # (cloud metadata) and CGNAT ranges are excluded as well, because this pod fetches
+    # operator-configured URLs (the app's UrlValidator is the first layer, this the second).
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+    # masi → Pi Keycloak via VIP (JWKS fetch for in-app JWT validation)
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.5/32
+      ports:
+        - protocol: TCP
+          port: 443
+---
+{{- if eq (.Values.masiService.browser.enabled | toString) "true" }}
+# masi-browser network policy — THE SSRF control for the headless browser: Chromium resolves
+# DNS itself, so only this policy proves where it can connect. Ingress from masi alone;
+# egress DNS plus public internet on 80/443 with private, link-local and CGNAT ranges
+# excluded; no Keycloak VIP, no SMTP, no cluster services.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-masi-browser
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.masiBrowser.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.masi.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # DNS — kube-dns only (an untrusted-content pod gets no "any IP on 53")
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+---
+# NetworkPolicies only ADD: the namespace default-deny (infra cluster-config) already lets
+# every pod reach every pod in the namespace, any address on :443/:6443, the Pi VIP on
+# 3000/8080/8200, argocd, woodpecker, Tempo and Mimir. For the pod that renders untrusted
+# pages that is the whole cluster. Cilium DENY rules take precedence over every allow, so
+# this is the policy that actually bounds the browser: no node, no API server, no pod
+# anywhere but kube-dns, no private/link-local/CGNAT address; inbound only from masi (and a
+# Prometheus scraper of the sidecar). Verified from inside the pod before production use.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-masi-browser-deny
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      {{- include "schnappy.masiBrowser.selectorLabels" . | nindent 6 }}
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+    - toEndpoints:
+        - matchExpressions:
+            - { key: k8s:io.kubernetes.pod.namespace, operator: Exists }
+            - { key: k8s:k8s-app, operator: NotIn, values: ["kube-dns"] }
+    - toCIDRSet:
+        - cidr: 10.0.0.0/8
+        - cidr: 172.16.0.0/12
+        - cidr: 192.168.0.0/16
+        - cidr: 169.254.0.0/16
+        - cidr: 100.64.0.0/10
+  ingressDeny:
+    - fromEntities:
+        - world
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchExpressions:
+            - { key: k8s:io.kubernetes.pod.namespace, operator: Exists }
+            - { key: k8s:app.kubernetes.io/component, operator: NotIn, values: ["masi"] }
+            - { key: k8s:app.kubernetes.io/name, operator: NotIn, values: ["prometheus"] }
+---
+{{- end }}
 {{- end }}
 {{- if eq (.Values.chatService.enabled | toString) "true" }}
 # Chat microservice network policy

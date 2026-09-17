@@ -178,6 +178,64 @@ chessService:
     port: 8080
 
 
+# masi — IT job & company registry with reviewed CV tuning (served at /api/masi).
+# Single replica by design: the source scheduler map and per-source locks are in-memory.
+masiService:
+  enabled: false
+  image:
+    repository: git.pmon.dev/schnappy/masi
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  javaOpts: "-Xmx768m"
+  resources:
+    requests: { memory: "512Mi", cpu: "100m" }
+    limits: { memory: "1536Mi", cpu: "2000m" }
+  service:
+    type: ClusterIP
+    port: 8080
+  # Anthropic access on masi's OWN key (Vault <prefix>/ai-masi, property api_key), never the
+  # shared `ai` key: a runaway must be revocable without breaking admin's registration
+  # approval, and the console usage report must split per service. existingSecret names the
+  # Secret the ExternalSecret creates (key ANTHROPIC_API_KEY); empty = no AI env at all.
+  ai:
+    enabled: false
+    existingSecret: ""
+    tuningModel: "claude-opus-5"
+    extractModel: "claude-haiku-4-5-20251001"
+    dailyBudgetUsd: "1"
+    monthlyBudgetUsd: "20"
+    inFlight: 2
+  tuning:
+    # Prepare a package for every new open job automatically (else "Prepare" is manual).
+    auto: false
+  # Headless Chromium for BROWSER collectors: its own pod, connected over CDP. The masi image
+  # never contains a browser. Pinned by DIGEST (v2.56.7); the CD sed anchor (`# masi$`) never
+  # touches this block. Requires no token: access is the NetworkPolicy (ingress from masi
+  # only) plus the dedicated mesh ALLOW policy for masi's principal.
+  browser:
+    enabled: false
+    image:
+      repository: ghcr.io/browserless/chromium
+      digest: "sha256:b1ba7b054af2891a8199f884d4bd249cf8c3bd2fa8a97b339077e40f92803ba8"
+      pullPolicy: IfNotPresent
+    # REQUIRED when enabled: the Secret (created by an ExternalSecret from Vault
+    # <prefix>/masi-browser, property token) holding browserless's TOKEN. Without a token
+    # browserless serves CDP to anyone who reaches :3000 — including a page it renders,
+    # over loopback, which no NetworkPolicy can see; from there Envoy's admin port is one
+    # request away. masi sends the same token on every connect.
+    existingSecret: ""
+    # Sessions the server itself runs at once (a third gets 429) and the per-session
+    # deadline; masi's browser.max-parallel / run-deadline mirror these.
+    maxParallel: 2
+    timeoutMs: 600000
+    # /dev/shm as a memory emptyDir: Kubernetes' default 64 MiB crashes renderers.
+    shmSize: 512Mi
+    resources:
+      requests: { memory: "512Mi", cpu: "100m" }
+      limits: { memory: "2Gi", cpu: "2000m", ephemeral-storage: "2Gi" }
+
+
 chat:
   e2eEnabled: false
 

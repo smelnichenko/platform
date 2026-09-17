@@ -129,6 +129,34 @@ app.kubernetes.io/component: chess
 {{- printf "%s-chess" (include "schnappy.fullname" .) }}
 {{- end }}
 
+{{- define "schnappy.masi.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: masi
+{{- end }}
+
+{{- define "schnappy.masi.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: masi
+{{- end }}
+
+{{- define "schnappy.masi.serviceName" -}}
+{{- printf "%s-masi" (include "schnappy.fullname" .) }}
+{{- end }}
+
+{{- define "schnappy.masiBrowser.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: masi-browser
+{{- end }}
+
+{{- define "schnappy.masiBrowser.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: masi-browser
+{{- end }}
+
+{{- define "schnappy.masiBrowser.serviceName" -}}
+{{- printf "%s-masi-browser" (include "schnappy.fullname" .) }}
+{{- end }}
+
 {{/* ========== Gateway ========== */}}
 
 

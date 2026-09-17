@@ -1,0 +1,126 @@
+{{- if and (eq (.Values.masiService.enabled | toString) "true") (eq (.Values.masiService.browser.enabled | toString) "true") -}}
+{{- if not .Values.masiService.browser.existingSecret }}
+{{- fail "masiService.browser.existingSecret is required when the browser is enabled: browserless without a TOKEN hands a CDP session to any page it renders" }}
+{{- end }}
+# Headless Chromium (browserless) for masi's BROWSER collectors. It renders UNTRUSTED pages
+# inside the mesh with Chromium's own sandbox off (the copied pod hardening forbids user
+# namespaces), so the POD boundary is the sandbox: no service-account token, no secrets,
+# non-root image uid, read-only root with emptyDirs only where Chromium writes, dropped
+# capabilities, a TOKEN on every request (a rendered page must not get a CDP session over
+# loopback), and the masi-browser CiliumNetworkPolicy as THE SSRF control (Chromium resolves
+# DNS itself, nothing masi validates proves where the browser connects; the namespace
+# default-deny ALLOWS every pod, the VIP and any :443, so only a Cilium DENY can subtract).
+# The server enforces its own session cap and deadline, so a stuck run is killed here even
+# if masi's watchdog is not.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "schnappy.masiBrowser.serviceName" . }}
+  labels:
+    {{- include "schnappy.masiBrowser.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.masiBrowser.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.masiBrowser.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+      # No prometheus.io/scrape: browserless's /metrics is JSON, not an exposition.
+    spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-masi-browser
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        # the image's own user (blessuser); a name alone fails runAsNonRoot verification
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: chromium
+          image: "{{ .Values.masiService.browser.image.repository }}@{{ .Values.masiService.browser.image.digest }}"
+          imagePullPolicy: {{ .Values.masiService.browser.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "3000"
+            # Every HTTP and websocket request must carry this token (?token= / header);
+            # masi reads the same Secret. The probes below use it from the environment so
+            # it never appears in the pod spec.
+            - name: TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.masiService.browser.existingSecret }}
+                  key: TOKEN
+            # The image bakes America/Los_Angeles; pages must see the operator's "today".
+            - name: TZ
+              value: "Europe/Tallinn"
+            # Sessions running at once; a further one is refused (429) instead of queued, so
+            # masi's own permit is the only queue and saturation is visible immediately.
+            - name: CONCURRENT
+              value: {{ .Values.masiService.browser.maxParallel | quote }}
+            - name: QUEUED
+              value: "0"
+            - name: TIMEOUT
+              value: {{ .Values.masiService.browser.timeoutMs | quote }}
+          volumeMounts:
+            # Chromium writes exactly here (verified with docker diff): profile/data dirs and
+            # the X lock in /tmp, cache/config under HOME, renderer shm.
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/blessuser
+            - name: shm
+              mountPath: /dev/shm
+          resources:
+            {{- toYaml .Values.masiService.browser.resources | nindent 12 }}
+          # /pressure answers 200 (with the token) as long as the server is up — also when
+          # every session slot is taken: a saturated browser stays in the Service and masi
+          # gets 429 on connect, which it treats as "retry shortly", never as a source
+          # failure. (/active looked like a saturation signal; verified it is not.)
+          startupProbe:
+            exec:
+              command: ["sh", "-c", "curl -fsS -o /dev/null \"http://127.0.0.1:3000/pressure?token=$TOKEN\""]
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "curl -fsS -o /dev/null \"http://127.0.0.1:3000/pressure?token=$TOKEN\""]
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "curl -fsS -o /dev/null \"http://127.0.0.1:3000/pressure?token=$TOKEN\""]
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: home
+          emptyDir:
+            sizeLimit: 512Mi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.masiService.browser.shmSize }}
+{{- end }}

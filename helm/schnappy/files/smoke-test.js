@@ -19,7 +19,7 @@ const KEYCLOAK_URL = __ENV.KEYCLOAK_URL || 'https://auth.pmon.dev';
 // over-broad list aborts the run (k6 exit 107) instead of passing vacuously;
 // 'health' is the floor and can never be skipped.
 const PUBLIC_GROUPS = ['health', 'approval-mode', 'permissions', 'keycloak', 'frontend', 'actuator'];
-const AUTH_GROUPS = ['monitors', 'rss', 'inbox', 'chat', 'chess'];
+const AUTH_GROUPS = ['monitors', 'rss', 'inbox', 'chat', 'chess', 'masi'];
 const SKIP = new Set((__ENV.K6_SKIP_GROUPS || '').split(',').map((s) => s.trim()).filter(Boolean));
 for (const name of SKIP) {
   if (!PUBLIC_GROUPS.includes(name) && !AUTH_GROUPS.includes(name)) {
@@ -135,5 +135,11 @@ export default function smokeTest() {
   smoke('chess', () => {
     const r = http.get(`${BASE_URL}/api/chess/games`, auth);
     check(r, { 'chess-games 200': (r) => r.status === 200 });
+  });
+
+  // The only check that sees the route, the policy, the role and the image together.
+  smoke('masi', () => {
+    const r = http.get(`${BASE_URL}/api/masi/jobs`, auth);
+    check(r, { 'masi-jobs 200': (r) => r.status === 200 });
   });
 }

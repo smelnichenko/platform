@@ -1,0 +1,18 @@
+{{- if and (eq (.Values.masiService.enabled | toString) "true") (eq (.Values.masiService.browser.enabled | toString) "true") -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "schnappy.masiBrowser.serviceName" . }}
+  labels:
+    {{- include "schnappy.masiBrowser.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    # named http so the CDP websocket upgrade goes through Envoy as HTTP/1.1
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "schnappy.masiBrowser.selectorLabels" . | nindent 4 }}
+{{- end }}

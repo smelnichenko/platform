@@ -1,7 +1,8 @@
 {{- if and .Values.prometheus.enabled .Values.alerts.enabled }}
 {{- $fn := include "schnappy.fullname" . }}
 {{- $ns := .Release.Namespace }}
-{{- $jobRegex := "schnappy-(monitor|admin|chat|chess|game-scp|site)" }}
+{{- /* masi-browser stays out: its /metrics is JSON, not an exposition */ -}}
+{{- $jobRegex := "schnappy-(monitor|admin|chat|chess|masi|game-scp|site)" }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
