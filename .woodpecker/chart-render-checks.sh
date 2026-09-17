@@ -94,7 +94,11 @@ names=$(helm show values helm/schnappy-data/ | awk '
 es=$(echo "$rendered" | awk '/^kind: ExternalSecret$/ { e = 1 } e && /^  name: / { print $2; e = 0 }')
 init=$(echo "$rendered" | awk '/^# Source: schnappy-data\/templates\/cnpg-init-users.yaml/ { on = 1; next } /^---/ { on = 0 } on')
 [ -n "$init" ] || fail "init-users Job not rendered"
+# the init-users NetworkPolicy selects this label; a drift here silently isolates the pod
+echo "$init" | grep -q '^        app.kubernetes.io/name: postgres-init-users$' || fail "init-users pod lost the postgres-init-users label the NetworkPolicy selects"
 for db in $names; do
+  # names go unquoted into SQL and, upper-cased, into an env-var name
+  echo "$db" | grep -Eq '^[a-z][a-z0-9_]*$' || fail "postgres.databases name '$db' is not a plain lowercase identifier"
   up=$(echo "$db" | tr '[:lower:]' '[:upper:]')
   echo "$es" | grep -qx "t-schnappy-postgres-$db" || fail "no ExternalSecret t-schnappy-postgres-$db"
   echo "$rendered" | awk -v n="t-schnappy-postgres-$db" '/^---/ { on = 0 } $0 == "  name: " n { on = 1 } on' \
@@ -102,7 +106,8 @@ for db in $names; do
     || fail "ExternalSecret t-schnappy-postgres-$db does not read DB_PASSWORD from postgres-$db"
   echo "$init" | grep -A4 "^            - name: DB_PASSWORD_$up\$" | grep -q "name: t-schnappy-postgres-$db\$" \
     || fail "init-users DB_PASSWORD_$up does not read Secret t-schnappy-postgres-$db"
-  echo "$init" | grep -q "CREATE ROLE $db LOGIN PASSWORD '\$(printenv DB_PASSWORD_$up)'" || fail "init-users has no CREATE ROLE for $db"
+  echo "$init" | grep -q "CREATE ROLE $db LOGIN;" || fail "init-users has no CREATE ROLE for $db"
+  echo "$init" | grep -q "ALTER ROLE $db PASSWORD :'pw';" || fail "init-users does not set $db's password from the psql variable"
   echo "$init" | grep -q "CREATE DATABASE $db OWNER $db;" || fail "init-users has no CREATE DATABASE for $db"
 done
 
