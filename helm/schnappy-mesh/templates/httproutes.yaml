@@ -59,6 +59,23 @@ spec:
         - name: {{ $fn }}-chess
           port: 8080
 ---
+# masi routes (longest-prefix match beats the /api catch-all regardless of order)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fn }}-masi-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - name: {{ $gw }}
+      sectionName: https
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /api/masi }
+      backendRefs:
+        - name: {{ $fn }}-masi
+          port: 8080
+---
 # Core app (catch-all /api)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

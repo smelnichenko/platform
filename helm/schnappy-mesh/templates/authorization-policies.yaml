@@ -21,6 +21,7 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-masi
       to:
         - operation:
             ports: ["5432"]
@@ -70,6 +71,7 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-centrifugo
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kafka
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-masi
       to:
         - operation:
             ports: ["9092", "9093"]
@@ -227,7 +229,28 @@ spec:
   tokens. (Prometheus scrapes via the sidecar :15020 merge, not :8080, so it is
   unaffected.)
 */}}
-{{- $httpCallers := dict "monitor" (list) "admin" (list "monitor" "chat" "chess") "chat" (list "admin") "chess" (list "admin") }}
+{{- $httpCallers := dict "monitor" (list) "admin" (list "monitor" "chat" "chess" "masi") "chat" (list "admin") "chess" (list "admin") "masi" (list) }}
+---
+# masi-browser :3000 — ONLY masi's principal. Not in $httpCallers on purpose: that template
+# admits the ingress gateway and Hyperfoil, neither of which may drive the browser.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-masi-browser-http
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: masi-browser
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-masi
+      to:
+        - operation:
+            ports: ["3000"]
 {{- range $svc, $callers := $httpCallers }}
 ---
 apiVersion: security.istio.io/v1

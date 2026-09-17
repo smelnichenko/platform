@@ -1,7 +1,8 @@
 {{- $fn := include "schnappy.fullname" . }}
 {{- $ns := .Release.Namespace }}
 {{- if not .Values.gateway.infraOnly }}
-{{- range list "monitor" "admin" "chat" "chess" "site" }}
+{{- /* masi-browser: the CDP websocket lives for a whole collector run; idleTimeout 3600s covers the 600 s deadline */}}
+{{- range list "monitor" "admin" "chat" "chess" "masi" "masi-browser" "site" }}
 ---
 apiVersion: networking.istio.io/v1
 kind: DestinationRule

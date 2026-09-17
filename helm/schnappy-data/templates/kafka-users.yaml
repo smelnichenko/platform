@@ -10,6 +10,7 @@
 #   chat          — produce + consume chat.*, produce events.chat.*, consume user.events
 #   chess         — produce + consume chess.*, produce events.chess.*, consume user.events
 #   admin         — produce + consume user.events, admin.*
+#   masi          — consume user.events (group masi-user); no topics of its own yet
 #   centrifugo    — consume events.* (fans out to subscribed clients)
 #   clickhouse    — consume events.*, chat.*, chess.* (analytics mirror)
 #
@@ -74,6 +75,19 @@ spec:
       - { resource: { type: topic, name: "events.chess.", patternType: prefix }, operations: [Write, Describe] }
       - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
       - { resource: { type: group, name: "schnappy-chess-", patternType: prefix }, operations: [Read] }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: schnappy-masi
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+      - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
+      - { resource: { type: group, name: "masi-user", patternType: literal }, operations: [Read] }
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaUser
