@@ -163,6 +163,7 @@ sect "$cnp" egressDeny | grep -q 'operator: Exists' && sect "$cnp" egressDeny | 
 sect "$cnp" egressDeny | grep -q 'key: k8s:app, operator: NotIn, values: \["istiod"\]' || fail "Cilium deny must exempt istiod or the sidecar never bootstraps (15012)"
 for c in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10; do sect "$cnp" egressDeny | grep -q -- "- cidr: $c\$" || fail "Cilium deny lost CIDR $c"; done
 sect "$cnp" ingressDeny | grep -q 'values: \["masi"\]' && sect "$cnp" ingressDeny | grep -qx '        - world' || fail "Cilium ingress deny must leave only masi (and a scraper) in"
+sect "$cnp" ingressDeny | grep -qx '        - host' && fail "Cilium ingress deny must not include host: it blocks the kubelet probe of the sidecar (:15021)"
 mnp=$(doc NetworkPolicy t-schnappy-masi-service)
 [ -n "$mnp" ] || fail "masi NetworkPolicy not rendered"
 for t in Ingress Egress; do sect "$mnp" policyTypes | grep -qx "    - $t" || fail "masi policy lost policyType $t"; done

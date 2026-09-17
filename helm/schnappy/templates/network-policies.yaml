@@ -576,9 +576,10 @@ spec:
         - cidr: 169.254.0.0/16
         - cidr: 100.64.0.0/10
   ingressDeny:
+    # not `host`: the kubelet's readiness probe of the sidecar (:15021) comes from the host
+    # entity, and a denied probe keeps the pod NotReady forever (seen on the first rollout)
     - fromEntities:
         - world
-        - host
         - remote-node
     - fromEndpoints:
         - matchExpressions:
