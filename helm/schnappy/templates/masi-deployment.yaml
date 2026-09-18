@@ -30,6 +30,8 @@ spec:
         prometheus.io/port: "8080"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-masi
+      # the tuning lane drains for up to 40 s on SIGTERM so a running Opus call settles its ledger row and its package
+      terminationGracePeriodSeconds: 60
       imagePullSecrets:
         - name: forgejo-registry
       securityContext:
