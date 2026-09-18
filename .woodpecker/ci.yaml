@@ -37,6 +37,19 @@ steps:
       # The k6 smoke script ships in both charts and must not drift.
       - cmp helm/schnappy/files/smoke-test.js helm/schnappy-test/files/smoke-test.js
 
+  # Alert rules are code: promtool checks the syntax and runs the unit tests under
+  # helm/schnappy/tests/rules/ against the rules rendered as production sees them, in the
+  # Prometheus image the cluster runs (see helm/schnappy-observability for the version).
+  - name: render-rules
+    image: alpine/helm:latest
+    commands:
+      - sh .woodpecker/render-rules.sh
+  - name: rules-unit-tests
+    image: quay.io/prometheus/prometheus:v3.10.0
+    depends_on: [render-rules]
+    commands:
+      - sh .woodpecker/rules-unit-tests.sh
+
   # The init-users hook script against a real Postgres: what "Succeeded" must
   # mean (roles, ownership, quoted passwords, idempotent rotation, abort on a
   # missing secret or an SQL error). A stub psql cannot see that -c strings are

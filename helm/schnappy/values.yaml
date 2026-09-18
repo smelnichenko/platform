@@ -209,6 +209,9 @@ masiService:
   tuning:
     # Prepare a package for every new open job automatically (else "Prepare" is manual).
     auto: false
+  alerts:
+    # MasiCostRate fires above this hourly LLM spend (USD/h); the budgets are the daily/monthly caps.
+    costRateUsdPerHour: 1
   # Headless Chromium for BROWSER collectors: its own pod, connected over CDP. The masi image
   # never contains a browser. Pinned by DIGEST (v2.56.7); the CD sed anchor (`# masi$`) never
   # touches this block. Requires no token: access is the NetworkPolicy (ingress from masi

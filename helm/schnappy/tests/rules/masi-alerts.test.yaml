@@ -1,0 +1,129 @@
+# promtool unit tests for the masi alert group (rendered by .woodpecker/rules-unit-tests.sh).
+# Series names carry the job and namespace the rendered expressions select on.
+rule_files:
+  - rendered-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'masi_llm_budget_used_ratio{job="schnappy-masi", namespace="schnappy-production", period="day"}'
+        values: '0.5 0.5 0.85 0.85 0.85 0.85 0.85 0.85 0.85 0.85'
+      - series: 'masi_llm_budget_used_ratio{job="schnappy-masi", namespace="schnappy-production", period="month"}'
+        values: '0.95x10'
+      - series: 'up{job="schnappy-masi", namespace="schnappy-production"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: MasiBudgetDay
+        exp_alerts: []          # 0.85 for 0 minutes: not yet
+      - eval_time: 8m
+        alertname: MasiBudgetDay
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, period: day }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiBudgetDay
+              summary: "masi has spent 85% of today's LLM budget"
+      - eval_time: 8m
+        alertname: MasiBudgetMonth
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production, job: schnappy-masi, period: month }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiBudgetMonth
+              summary: "masi has spent 95% of this month's LLM budget"
+      - eval_time: 8m
+        alertname: MasiBudgetGaugeAbsent
+        exp_alerts: []          # the gauge is present
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="schnappy-masi", namespace="schnappy-production"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: MasiBudgetGaugeAbsent
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, period: day }   # absent() carries the equality matchers
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiBudgetGaugeAbsent
+              summary: "masi is up but reports no budget ratio: the budget alerts are blind"
+
+  - interval: 1m
+    input_series:
+      - series: 'masi_llm_cost_usd_total{job="schnappy-masi", namespace="schnappy-production", purpose="TUNE", model="claude-opus-5", source="none"}'
+        values: '0+0.05x80'     # 3 USD/h
+      - series: 'masi_llm_ledger_failures_total{job="schnappy-masi", namespace="schnappy-production", what="reserve"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'masi_llm_model_mismatch_total{job="schnappy-masi", namespace="schnappy-production", configured="claude-opus-5", returned="claude-opus-5-20270101"}'
+        values: '0 1x19'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: MasiCostRate
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiCostRate
+              summary: "masi is spending 3.00 USD per hour on LLM calls"
+      - eval_time: 5m
+        alertname: MasiLedgerFailures
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production, job: schnappy-masi, what: reserve }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiLedgerFailures
+              summary: "masi could not write its LLM ledger: spend may be escaping the budget"
+      - eval_time: 5m
+        alertname: MasiModelMismatch
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, configured: claude-opus-5, returned: claude-opus-5-20270101 }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiModelMismatch
+              summary: "the API answered with a model other than the one masi priced (claude-opus-5 → claude-opus-5-20270101)"
+
+  - interval: 1m
+    input_series:
+      - series: 'masi_source_health{job="schnappy-masi", namespace="schnappy-production", source="cvee"}'
+        values: '3x10'
+      - series: 'masi_source_health{job="schnappy-masi", namespace="schnappy-production", source="bolt"}'
+        values: '2x10'          # FAILING is not DISABLED_AUTO
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="cvee"}'
+        values: '0x60'          # last success at t=0
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="cvee"}'
+        values: '600x60'        # every 10 minutes: stale after 30 minutes, alert after 15 more
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="bolt"}'
+        values: '0x60'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="bolt"}'
+        values: '21600x60'      # every 6 hours: not stale within the hour
+      - series: 'masi_browser_reachable{job="schnappy-masi", namespace="schnappy-production"}'
+        values: '0x60'
+      - series: 'masi_browser_sessions_active{job="schnappy-masi", namespace="schnappy-production"}'
+        values: '2x60'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: MasiSourceDisabledAuto
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, source: cvee }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSourceDisabledAuto
+              summary: "source cvee was disabled after ten consecutive failures"
+      - eval_time: 50m
+        alertname: MasiSourceStale
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, source: cvee }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSourceStale
+              summary: "source cvee has had no successful run for three intervals"
+      - eval_time: 12m
+        alertname: MasiBrowserUnreachable
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiBrowserUnreachable
+              summary: "masi cannot reach its browser pod; browser sources are being skipped"
+      - eval_time: 16m
+        alertname: MasiBrowserSaturated
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiBrowserSaturated
+              summary: "every browser session slot has been busy for 15 minutes"

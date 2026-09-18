@@ -126,6 +126,108 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/ProcessCPUHigh"
             summary: "Process CPU usage high"
 
+{{- if eq (.Values.masiService.enabled | toString) "true" }}
+    # masi: the LLM ledger and budgets, source health, the browser pod. The ratios are
+    # computed by the app, so each has an absent() cover: a silent gauge is itself a
+    # finding, not a green board. Unit tests: helm/schnappy/tests/rules/masi-alerts.test.yaml.
+    - name: {{ $ns }}-masi
+      rules:
+        - alert: MasiBudgetDay
+          expr: masi_llm_budget_used_ratio{job="schnappy-masi", namespace="{{ $ns }}", period="day"} > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiBudgetDay"
+            summary: "masi has spent {{"{{"}} $value | humanizePercentage {{"}}"}} of today's LLM budget"
+        - alert: MasiBudgetMonth
+          expr: masi_llm_budget_used_ratio{job="schnappy-masi", namespace="{{ $ns }}", period="month"} > 0.9
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiBudgetMonth"
+            summary: "masi has spent {{"{{"}} $value | humanizePercentage {{"}}"}} of this month's LLM budget"
+        - alert: MasiBudgetGaugeAbsent
+          expr: |
+            absent(masi_llm_budget_used_ratio{job="schnappy-masi", namespace="{{ $ns }}", period="day"})
+            and on() (up{job="schnappy-masi", namespace="{{ $ns }}"} == 1)
+          for: 30m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiBudgetGaugeAbsent"
+            summary: "masi is up but reports no budget ratio: the budget alerts are blind"
+        - alert: MasiCostRate
+          expr: sum(rate(masi_llm_cost_usd_total{job="schnappy-masi", namespace="{{ $ns }}"}[1h])) * 3600 > {{ .Values.masiService.alerts.costRateUsdPerHour }}
+          for: 10m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiCostRate"
+            summary: "masi is spending {{"{{"}} $value | printf \"%.2f\" {{"}}"}} USD per hour on LLM calls"
+        - alert: MasiLedgerFailures
+          expr: increase(masi_llm_ledger_failures_total{job="schnappy-masi", namespace="{{ $ns }}"}[15m]) > 0
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiLedgerFailures"
+            summary: "masi could not write its LLM ledger: spend may be escaping the budget"
+        - alert: MasiModelMismatch
+          expr: increase(masi_llm_model_mismatch_total{job="schnappy-masi", namespace="{{ $ns }}"}[1h]) > 0
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiModelMismatch"
+            summary: "the API answered with a model other than the one masi priced ({{"{{"}} $labels.configured {{"}}"}} → {{"{{"}} $labels.returned {{"}}"}})"
+        - alert: MasiSourceDisabledAuto
+          # SourceHealth ordinal: OK 0, DEGRADED 1, FAILING 2, DISABLED_AUTO 3
+          expr: masi_source_health{job="schnappy-masi", namespace="{{ $ns }}"} == 3
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiSourceDisabledAuto"
+            summary: "source {{"{{"}} $labels.source {{"}}"}} was disabled after ten consecutive failures"
+        - alert: MasiSourceStale
+          # an enabled source whose last success is older than three of its own intervals
+          expr: |
+            (time() - masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
+            > on(source, job, namespace) (3 * masi_source_interval_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
+          for: 15m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiSourceStale"
+            summary: "source {{"{{"}} $labels.source {{"}}"}} has had no successful run for three intervals"
+        - alert: MasiBrowserUnreachable
+          expr: masi_browser_reachable{job="schnappy-masi", namespace="{{ $ns }}"} == 0
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiBrowserUnreachable"
+            summary: "masi cannot reach its browser pod; browser sources are being skipped"
+        - alert: MasiBrowserSaturated
+          expr: masi_browser_sessions_active{job="schnappy-masi", namespace="{{ $ns }}"} >= {{ .Values.masiService.browser.maxParallel }}
+          for: 15m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiBrowserSaturated"
+            summary: "every browser session slot has been busy for 15 minutes"
+{{- end }}
+
     - name: {{ $ns }}-smoke-tests
       rules:
         # k6 pushes to Mimir, not to this Prometheus: these series arrive through
