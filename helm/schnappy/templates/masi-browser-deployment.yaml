@@ -80,8 +80,11 @@ spec:
               value: {{ .Values.masiService.browser.maxParallel | quote }}
             - name: QUEUED
               value: "0"
+            # Outlasts masi's run deadline (timeoutMs) by a navigation timeout plus grace: the
+            # run must be ended by masi (recorded TIMEOUT, watchdog kills the driver), never by
+            # browserless mid-navigation, which the collector would see as a failed run.
             - name: TIMEOUT
-              value: {{ .Values.masiService.browser.timeoutMs | quote }}
+              value: {{ add .Values.masiService.browser.timeoutMs 60000 | quote }}
           volumeMounts:
             # Chromium writes exactly here (verified with docker diff): profile/data dirs and
             # the X lock in /tmp, cache/config under HOME, renderer shm.

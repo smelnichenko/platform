@@ -130,7 +130,10 @@ echo "$br" | grep -q 'ephemeral-storage:' || fail "masi-browser limits lost ephe
 [ "$(envv "$br" QUEUED)" = '"0"' ] || fail "masi-browser must refuse, not queue, a third session"
 [ -n "$(envv "$br" TIMEOUT)" ] || fail "masi-browser has no per-session deadline"
 [ "$(envv "$br" CONCURRENT)" = "$(envv "$dep" MASI_BROWSER_MAX_PARALLEL)" ] || fail "browser CONCURRENT and masi MASI_BROWSER_MAX_PARALLEL differ"
-[ "$(envv "$br" TIMEOUT)" = "$(envv "$dep" MASI_BROWSER_RUN_DEADLINE_MS)" ] || fail "browser TIMEOUT and masi run deadline differ"
+# the pod's deadline must OUTLAST masi's run deadline (by a navigation timeout plus grace), so a
+# long run is ended by masi's watchdog, never by browserless mid-navigation
+bt=$(envv "$br" TIMEOUT | tr -d '"'); md=$(envv "$dep" MASI_BROWSER_RUN_DEADLINE_MS | tr -d '"')
+[ "$bt" -ge $((md + 60000)) ] || fail "browser TIMEOUT ($bt) does not outlast masi run deadline ($md) by 60 s"
 [ "$(envv "$br" TZ)" = '"Europe/Tallinn"' ] || fail "masi-browser renders pages in the wrong time zone"
 [ "$(echo "$br" | grep -c 'pressure?token=\$TOKEN')" = 3 ] || fail "masi-browser probes must hit /pressure with the token from the environment"
 echo "$br" | grep -q 'path: /' && fail "masi-browser must not use httpGet probes (the token would be in the pod spec, or the probe would be refused)"

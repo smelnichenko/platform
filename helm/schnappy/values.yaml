@@ -225,8 +225,9 @@ masiService:
     # over loopback, which no NetworkPolicy can see; from there Envoy's admin port is one
     # request away. masi sends the same token on every connect.
     existingSecret: ""
-    # Sessions the server itself runs at once (a third gets 429) and the per-session
-    # deadline; masi's browser.max-parallel / run-deadline mirror these.
+    # Sessions the server itself runs at once (a third gets 429) and masi's run deadline
+    # (MASI_BROWSER_RUN_DEADLINE_MS); browserless's own TIMEOUT is this plus 60 s so the
+    # run is always ended by masi, not by the pod mid-navigation.
     maxParallel: 2
     timeoutMs: 600000
     # /dev/shm as a memory emptyDir: Kubernetes' default 64 MiB crashes renderers.
