@@ -10,4 +10,6 @@ helm template t helm/schnappy/ --namespace schnappy-production --set site.dnsRes
   | awk 'found { sub(/^  /, ""); print } /^spec:/ { found = 1 }' > "$out/rendered-rules.yaml"
 grep -q '^groups:' "$out/rendered-rules.yaml" || { echo "rendered rules have no groups" >&2; exit 1; }
 grep -q 'alert: MasiBudgetDay' "$out/rendered-rules.yaml" || { echo "masi group not rendered" >&2; exit 1; }
+# the next step runs as the Prometheus image's user (nobody), not as root: it must be able to write here
+chmod -R a+rwX "$out"
 echo "rendered $(grep -c 'alert:' "$out/rendered-rules.yaml") alert rules"
