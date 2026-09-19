@@ -127,3 +127,28 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiBrowserSaturated
               summary: "every browser session slot has been busy for 15 minutes"
+
+  # the weekly report gauge. promtool's clock starts at epoch 0, so "the gauge holds an old
+  # period end" is modelled by holding it at 0 while time() runs past the nine-day threshold.
+  # The series is sampled every minute because the rule's `for` needs an unbroken hour of it.
+  - interval: 1m
+    input_series:
+      - series: 'masi_report_period_end_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", kind="WEEKLY"}'
+        values: '0+0x14460'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: MasiReportsStale
+        exp_alerts: []             # one hour after the period end: fresh
+      - eval_time: 216h
+        alertname: MasiReportsStale
+        exp_alerts: []             # exactly nine days: the threshold is not crossed yet
+      - eval_time: 217h
+        alertname: MasiReportsStale
+        exp_alerts: []             # over the threshold, but not yet for a whole hour
+      - eval_time: 218h
+        alertname: MasiReportsStale
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, kind: WEEKLY }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiReportsStale
+              summary: "masi has not written a weekly report for over nine days"

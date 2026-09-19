@@ -208,6 +208,18 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiSourceStale"
             summary: "source {{"{{"}} $labels.source {{"}}"}} has had no successful run for three intervals"
+        - alert: MasiReportsStale
+          # the weekly snapshot is written Monday 06:00 and caught up on every cron and restart;
+          # nine days without one means the generator itself is failing, which nothing else shows
+          expr: |
+            (time() - masi_report_period_end_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}", kind="WEEKLY"}) > 9 * 86400
+          for: 1h
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiReportsStale"
+            summary: "masi has not written a weekly report for over nine days"
         - alert: MasiBrowserUnreachable
           expr: masi_browser_reachable{job="schnappy-masi", namespace="{{ $ns }}"} == 0
           for: 10m
