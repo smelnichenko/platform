@@ -242,6 +242,18 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiSourceNotClosing"
             summary: "source {{"{{"}} $labels.source {{"}}"}} has counted no misses for three intervals: none of its listings can close"
+        - alert: MasiSweepStarved
+          # the sweep that closes listings past their deadline stands aside while an ingest writes (one lock guards
+          # listing and job state). Twelve sweeps fit in two hours: ten skipped means it practically never runs
+          expr: |
+            sum by (job, namespace, sweep) (increase(masi_sweep_skipped_total{job="schnappy-masi", namespace="{{ $ns }}", reason="ingest_busy"}[2h])) >= 10
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiSweepStarved"
+            summary: "masi's {{"{{"}} $labels.sweep {{"}}"}} sweep was skipped {{"{{"}} $value | printf \"%.0f\" {{"}}"}} times in two hours: an ingest holds the lock almost all the time"
         - alert: MasiReportsStale
           # the weekly snapshot is written Monday 06:00 and caught up on every cron and restart;
           # nine days without one means the generator itself is failing, which nothing else shows

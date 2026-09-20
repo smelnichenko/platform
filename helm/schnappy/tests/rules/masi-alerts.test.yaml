@@ -176,6 +176,24 @@ tests:
               runbook_url: https://runbooks.pmon.dev/MasiSourceNotClosing
               summary: "source ats:wise has counted no misses for three intervals: none of its listings can close"
 
+  # the expiry sweep runs every ten minutes and stands aside while an ingest writes: skipped once is nothing,
+  # skipped ten times in two hours is a sweep that never runs
+  - interval: 10m
+    input_series:
+      - series: 'masi_sweep_skipped_total{job="schnappy-masi", namespace="schnappy-production", sweep="expired", reason="ingest_busy"}'
+        values: '0 1 1 1 2 2 2 2 2 2 2 2 2 3+1x12'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: MasiSweepStarved
+        exp_alerts: []          # two skips in two hours
+      - eval_time: 4h
+        alertname: MasiSweepStarved
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, sweep: expired }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSweepStarved
+              summary: "masi's expired sweep was skipped 12 times in two hours: an ingest holds the lock almost all the time"
+
   # the weekly report gauge. promtool's clock starts at epoch 0, so "the gauge holds an old
   # period end" is modelled by holding it at 0 while time() runs past the nine-day threshold.
   # The series is sampled every minute because the rule's `for` needs an unbroken hour of it.
