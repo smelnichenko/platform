@@ -210,7 +210,7 @@ masiService:
     # Prepare a package for every new open job automatically (else "Prepare" is manual).
     auto: false
   http:
-    # The ONLY hosts masi may contact — exact names, no wildcard, checked in the fetcher and in the
+    # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
     # browser's request guard. A host that is not here cannot be contacted; an empty list means
     # none can. One entry per seeded source's own host (list page, API and job-detail host); a new
     # source, or a job-detail host a source links to, is added HERE before it can be fetched — the

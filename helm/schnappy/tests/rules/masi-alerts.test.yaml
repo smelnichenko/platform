@@ -128,6 +128,25 @@ tests:
               runbook_url: https://runbooks.pmon.dev/MasiBrowserSaturated
               summary: "every browser session slot has been busy for 15 minutes"
 
+  # a source whose own hosts the allow-list does not name: the chart list and the source rows drifted
+  - interval: 1m
+    input_series:
+      - series: 'masi_source_refused_hosts{job="schnappy-masi", namespace="schnappy-production", source="teamdash:helmes"}'
+        values: '2x30'
+      - series: 'masi_source_refused_hosts{job="schnappy-masi", namespace="schnappy-production", source="cvee"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: MasiSourceHostNotAllowed
+        exp_alerts: []          # a row being edited: not yet
+      - eval_time: 20m
+        alertname: MasiSourceHostNotAllowed
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, source: "teamdash:helmes" }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSourceHostNotAllowed
+              summary: "source teamdash:helmes names 2 host(s) that masiService.http.allowedHosts does not list; its fetches to them are refused"
+
   # the weekly report gauge. promtool's clock starts at epoch 0, so "the gauge holds an old
   # period end" is modelled by holding it at 0 while time() runs past the nine-day threshold.
   # The series is sampled every minute because the rule's `for` needs an unbroken hour of it.

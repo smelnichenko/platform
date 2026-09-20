@@ -36,6 +36,8 @@ steps:
       - helm lint helm/schnappy-test/ --set smokeTest.enabled=true
       # The k6 smoke script ships in both charts and must not drift.
       - cmp helm/schnappy/files/smoke-test.js helm/schnappy-test/files/smoke-test.js
+      # An alert's runbook_url must land on a page, not on the index.
+      - sh .woodpecker/runbooks-exist.sh
 
   # Alert rules are code: promtool checks the syntax and runs the unit tests under
   # helm/schnappy/tests/rules/ against the rules rendered as production sees them, in the

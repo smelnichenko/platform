@@ -208,6 +208,18 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiSourceStale"
             summary: "source {{"{{"}} $labels.source {{"}}"}} has had no successful run for three intervals"
+        - alert: MasiSourceHostNotAllowed
+          # the allow-list is masiService.http.allowedHosts here, the sources are rows in masi's database:
+          # a source added or edited there whose host was never listed here has every fetch refused
+          expr: |
+            masi_source_refused_hosts{job="schnappy-masi", namespace="{{ $ns }}"} > 0
+          for: 15m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiSourceHostNotAllowed"
+            summary: "source {{"{{"}} $labels.source {{"}}"}} names {{"{{"}} $value {{"}}"}} host(s) that masiService.http.allowedHosts does not list; its fetches to them are refused"
         - alert: MasiReportsStale
           # the weekly snapshot is written Monday 06:00 and caught up on every cron and restart;
           # nine days without one means the generator itself is failing, which nothing else shows

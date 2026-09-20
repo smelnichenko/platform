@@ -21,6 +21,21 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [KagentOAuthProxyDown](KagentOAuthProxyDown.md)
 - [KagentUIDown](KagentUIDown.md)
 
+### masi (every alert of the group; CI: `.woodpecker/runbooks-exist.sh`)
+
+- [MasiBudgetDay](MasiBudgetDay.md)
+- [MasiBudgetMonth](MasiBudgetMonth.md)
+- [MasiBudgetGaugeAbsent](MasiBudgetGaugeAbsent.md)
+- [MasiCostRate](MasiCostRate.md)
+- [MasiLedgerFailures](MasiLedgerFailures.md)
+- [MasiModelMismatch](MasiModelMismatch.md)
+- [MasiSourceDisabledAuto](MasiSourceDisabledAuto.md)
+- [MasiSourceStale](MasiSourceStale.md)
+- [MasiSourceHostNotAllowed](MasiSourceHostNotAllowed.md)
+- [MasiReportsStale](MasiReportsStale.md)
+- [MasiBrowserUnreachable](MasiBrowserUnreachable.md)
+- [MasiBrowserSaturated](MasiBrowserSaturated.md)
+
 ## Stub (summary only)
 
 All remaining alerts live in `prometheus-rules.yaml` and carry a
