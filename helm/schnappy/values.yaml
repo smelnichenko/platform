@@ -209,6 +209,38 @@ masiService:
   tuning:
     # Prepare a package for every new open job automatically (else "Prepare" is manual).
     auto: false
+  http:
+    # The ONLY hosts masi may contact — exact names, no wildcard, checked in the fetcher and in the
+    # browser's request guard. A host that is not here cannot be contacted; an empty list means
+    # none can. One entry per seeded source's own host (list page, API and job-detail host); a new
+    # source, or a job-detail host a source links to, is added HERE before it can be fetched — the
+    # run's warning names the refused host.
+    allowedHosts:
+      - cv.ee
+      - www.cv.ee
+      - www.tootukassa.ee
+      - bolt.eu
+      - avaandmed.ariregister.rik.ee
+      - itl.ee
+      - www.tehnopol.ee
+      - api.smartrecruiters.com
+      - boards-api.greenhouse.io
+      - api.lever.co
+      - api.ashbyhq.com
+      - jobs.swedbank.com
+      - luminorbank.teamtailor.com
+      - starship.teamtailor.com
+      - fractory.teamtailor.com
+      - comodule.teamtailor.com
+      - careers.datel.ee
+      - careers.milrem.com
+      - careers.pactum.com
+      - www.helmes.com
+      - helmes.teamdash.com
+      - cyber.ee
+      - jobs.bigbank.eu
+      - www.tehik.ee
+      - lhv.teamdash.com
   alerts:
     # MasiCostRate fires above this hourly LLM spend (USD/h); the budgets are the daily/monthly caps.
     costRateUsdPerHour: 1

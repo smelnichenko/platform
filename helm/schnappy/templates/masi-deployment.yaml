@@ -119,6 +119,9 @@ spec:
             {{- end }}
             - name: MASI_TUNING_AUTO
               value: {{ .Values.masiService.tuning.auto | toString | quote }}
+            # the ONLY hosts masi may contact, in the fetcher and in the browser; empty = none
+            - name: MASI_HTTP_ALLOWED_HOSTS
+              value: {{ join "," .Values.masiService.http.allowedHosts | quote }}
             {{- if eq (.Values.masiService.browser.enabled | toString) "true" }}
             - name: MASI_BROWSER_ENABLED
               value: "true"
