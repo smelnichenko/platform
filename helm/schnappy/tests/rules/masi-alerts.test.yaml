@@ -145,7 +145,36 @@ tests:
           - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, source: "teamdash:helmes" }
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiSourceHostNotAllowed
-              summary: "source teamdash:helmes names 2 host(s) that masiService.http.allowedHosts does not list; its fetches to them are refused"
+              summary: "the last run of source teamdash:helmes was refused 2 host(s) that masiService.http.allowedHosts does not list"
+
+  # a source that keeps succeeding but has not counted a miss for three of its intervals: nothing of it ever closes.
+  # promtool's clock starts at epoch 0: the gauge held at 0 is "the last such run was at t=0".
+  - interval: 1m
+    input_series:
+      - series: 'masi_source_last_misses_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise"}'
+        values: '0x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise"}'
+        values: '600x120'
+      # ats:wise keeps succeeding (last success follows the clock); ats:dead succeeds no more — that one is MasiSourceStale's
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise"}'
+        values: '0+60x120'
+      - series: 'masi_source_last_misses_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:dead"}'
+        values: '0x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:dead"}'
+        values: '600x120'
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:dead"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: MasiSourceNotClosing
+        exp_alerts: []          # 1500 s: under three intervals
+      - eval_time: 100m
+        alertname: MasiSourceNotClosing
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, source: "ats:wise" }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSourceNotClosing
+              summary: "source ats:wise has counted no misses for three intervals: none of its listings can close"
 
   # the weekly report gauge. promtool's clock starts at epoch 0, so "the gauge holds an old
   # period end" is modelled by holding it at 0 while time() runs past the nine-day threshold.

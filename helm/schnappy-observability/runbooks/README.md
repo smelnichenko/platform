@@ -32,6 +32,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [MasiSourceDisabledAuto](MasiSourceDisabledAuto.md)
 - [MasiSourceStale](MasiSourceStale.md)
 - [MasiSourceHostNotAllowed](MasiSourceHostNotAllowed.md)
+- [MasiSourceNotClosing](MasiSourceNotClosing.md)
 - [MasiReportsStale](MasiReportsStale.md)
 - [MasiBrowserUnreachable](MasiBrowserUnreachable.md)
 - [MasiBrowserSaturated](MasiBrowserSaturated.md)
