@@ -4,7 +4,7 @@
 
 ## What fired
 
-A Woodpecker pipeline on `$labels.repo` ended in `status="failure"` within the last 5 min. The metric is `increase(woodpecker_pipeline_count{status="failure"}[5m]) > 0`.
+A Woodpecker pipeline on the **main** branch of `$labels.repo` ended in `status="failure"` within the last 5 min. The metric is `increase(woodpecker_pipeline_count{status="failure", branch="main"}[5m]) > 0`. Pull-request branches do not fire it: a red PR is feedback for its author, on the PR.
 
 ## Impact
 

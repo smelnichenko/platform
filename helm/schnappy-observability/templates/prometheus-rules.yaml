@@ -373,15 +373,17 @@ spec:
     - name: ci-woodpecker
       rules:
         - alert: WoodpeckerBuildFailed
-          # Woodpecker increments this counter when a pipeline ends in a
-          # failure state. Any non-zero increase in the last 5min fires.
-          expr: increase(woodpecker_pipeline_count{status="failure"}[5m]) > 0
+          # Woodpecker increments this counter when a pipeline ends in a failure state.
+          # MAIN only: a red pull-request branch is feedback for its author, shown on the PR
+          # (12 of them on masi in one day of review work, 2026-09-21, each an e-mail); a red
+          # main is a build nobody can deploy from, and the only one worth a mail.
+          expr: increase(woodpecker_pipeline_count{status="failure", branch="main"}[5m]) > 0
           labels:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
-            summary: "Woodpecker build failed (repo {{ "{{" }} $labels.repo {{ "}}" }})"
-            description: "A pipeline on {{ "{{" }} $labels.repo {{ "}}" }} ended in failure. Check ci.pmon.dev."
+            summary: "Woodpecker build of main failed (repo {{ "{{" }} $labels.repo {{ "}}" }})"
+            description: "A pipeline on main of {{ "{{" }} $labels.repo {{ "}}" }} ended in failure: nothing deploys from it until it is green. Check ci.pmon.dev."
         - alert: WoodpeckerScrapeDown
           expr: up{job="woodpecker-server-metrics"} == 0
           for: 10m

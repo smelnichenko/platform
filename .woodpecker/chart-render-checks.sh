@@ -55,6 +55,11 @@ helm template t helm/schnappy-observability/ $probe --show-only templates/blackb
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
   | grep -q 'alert: LanOnlyHostReachable$' || fail "LanOnlyHostReachable rule not rendered"
 
+# --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
+# shellcheck disable=SC2086
+helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
+  | grep -A6 'alert: WoodpeckerBuildFailed$' | grep -q 'status="failure", branch="main"' || fail "WoodpeckerBuildFailed fires for pull-request branches again"
+
 # --- schnappy-observability: no alert reaches the LLM agents unless somebody switches that on ------------------------
 am='--set prometheus.enabled=true --set alertmanager.enabled=true --set alertmanager.alertEmailTo=ops@example.org'
 # shellcheck disable=SC2086
