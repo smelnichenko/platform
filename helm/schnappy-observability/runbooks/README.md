@@ -28,6 +28,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [MasiBudgetGaugeAbsent](MasiBudgetGaugeAbsent.md)
 - [MasiCostRate](MasiCostRate.md)
 - [MasiLedgerFailures](MasiLedgerFailures.md)
+- [MasiLlmAccountRefused](MasiLlmAccountRefused.md)
 - [MasiModelMismatch](MasiModelMismatch.md)
 - [MasiSourceDisabledAuto](MasiSourceDisabledAuto.md)
 - [MasiSourceStale](MasiSourceStale.md)

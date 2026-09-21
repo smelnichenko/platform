@@ -82,6 +82,21 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'masi_llm_account_refusals_total{job="schnappy-masi", namespace="schnappy-production", reason="NO_CREDIT"}'
+        values: '0 0 1 1 1 1'
+      - series: 'masi_llm_account_refusals_total{job="schnappy-masi", namespace="schnappy-production", reason="KEY_REFUSED"}'
+        values: '0x5'          # a counter that exists and never moved is not a refusal
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: MasiLlmAccountRefused
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production, job: schnappy-masi, reason: NO_CREDIT }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiLlmAccountRefused
+              summary: "the Anthropic API refuses masi's account (NO_CREDIT): nothing is analysed or tuned"
+
+  - interval: 1m
+    input_series:
       - series: 'masi_source_health{job="schnappy-masi", namespace="schnappy-production", source="cvee"}'
         values: '3x10'
       - series: 'masi_source_health{job="schnappy-masi", namespace="schnappy-production", source="bolt"}'
