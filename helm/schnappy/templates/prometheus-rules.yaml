@@ -186,6 +186,15 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiModelMismatch"
             summary: "the API answered with a model other than the one masi priced ({{"{{"}} $labels.configured {{"}}"}} → {{"{{"}} $labels.returned {{"}}"}})"
+        - alert: MasiDigestGivenUp
+          # a weekly digest was tried max-attempts times and never left: the reader was not told about their week
+          expr: increase(masi_report_notifications_total{job="schnappy-masi", namespace="{{ $ns }}", outcome="given_up"}[6h]) > 0
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiDigestGivenUp"
+            summary: "masi gave up on mailing a weekly digest: the report is on the site, the reader was not told"
         - alert: MasiLlmAccountRefused
           # the API refused the ACCOUNT (no credit, the key): masi pauses its lanes and prepares nothing until someone acts
           expr: increase(masi_llm_account_refusals_total{job="schnappy-masi", namespace="{{ $ns }}"}[2h]) > 0

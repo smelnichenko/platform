@@ -477,6 +477,22 @@ spec:
           port: 80
         - protocol: TCP
           port: 443
+    {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}
+    # masi → SMTP submission (the weekly digest). Its own rule, not a port added to the fetch rule above: what masi
+    # FETCHES is refused any port but 80/443 by the app's UrlValidator, and this port exists only where mail is on.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
+      ports:
+        - protocol: TCP
+          port: {{ .Values.mail.port | default "587" | int }}
+    {{- end }}
     # masi → Pi Keycloak via VIP (JWKS fetch for in-app JWT validation)
     - to:
         - ipBlock:

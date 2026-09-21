@@ -82,6 +82,23 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'masi_report_notifications_total{job="schnappy-masi", namespace="schnappy-production", outcome="given_up"}'
+        values: '0 0 1 1 1 1'
+      - series: 'masi_report_notifications_total{job="schnappy-masi", namespace="schnappy-production", outcome="failed"}'
+        values: '0 1 2 3 4 4'          # a retry that is still going is not a digest given up on
+      - series: 'masi_report_notifications_total{job="schnappy-masi", namespace="schnappy-production", outcome="sent"}'
+        values: '0 0 0 0 1 1'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: MasiDigestGivenUp
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, outcome: given_up }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiDigestGivenUp
+              summary: "masi gave up on mailing a weekly digest: the report is on the site, the reader was not told"
+
+  - interval: 1m
+    input_series:
       - series: 'masi_llm_account_refusals_total{job="schnappy-masi", namespace="schnappy-production", reason="NO_CREDIT"}'
         values: '0 0 1 1 1 1'
       - series: 'masi_llm_account_refusals_total{job="schnappy-masi", namespace="schnappy-production", reason="KEY_REFUSED"}'

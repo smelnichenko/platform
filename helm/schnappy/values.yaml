@@ -209,6 +209,12 @@ masiService:
   tuning:
     # Prepare a package for every new open job automatically (else "Prepare" is manual).
     auto: false
+  mail:
+    # The weekly digest by e-mail to every enabled user with an active CV master: figures and company names, nothing of
+    # a CV. Uses the chart's mail.* server settings and its Vault secret (<prefix>/mail), which this switch alone pulls
+    # in — mail.enabled (monitor's and admin's mails) may stay off. Opens one egress rule to the SMTP port.
+    enabled: false
+    siteUrl: ""   # where the digest's links point, e.g. https://pmon.dev
   analysis:
     # Read open jobs with the cheap model BEFORE a package is asked for, so every job gets a match score against the
     # active CV master (the score itself is free and always computed). Costs a fraction of a cent per job, capped by the

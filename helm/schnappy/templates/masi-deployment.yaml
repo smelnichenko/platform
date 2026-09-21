@@ -124,6 +124,26 @@ spec:
               value: {{ .Values.masiService.analysis.auto | toString | quote }}
             - name: MASI_ANALYSIS_PER_TICK
               value: {{ .Values.masiService.analysis.perTick | quote }}
+            {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}
+            # the weekly digest by mail. SPRING_MAIL_HOST is what makes a mail sender exist at all: set only here
+            - name: MASI_MAIL_ENABLED
+              value: "true"
+            - name: MASI_SITE_URL
+              value: {{ required "masiService.mail.siteUrl is required when masiService.mail.enabled" .Values.masiService.mail.siteUrl | quote }}
+            - name: MAIL_FROM
+              value: {{ .Values.mail.fromAddress | default "noreply@example.com" | quote }}
+            - name: SPRING_MAIL_HOST
+              value: {{ .Values.mail.host | default "smtp.resend.com" | quote }}
+            - name: SPRING_MAIL_PORT
+              value: {{ .Values.mail.port | default "587" | quote }}
+            - name: SPRING_MAIL_USERNAME
+              value: {{ .Values.mail.username | default "resend" | quote }}
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.mail.secretName" . }}
+                  key: MAIL_PASSWORD
+            {{- end }}
             # the only hosts the collectors may contact, in the fetcher and in the browser; empty = none
             - name: MASI_HTTP_ALLOWED_HOSTS
               value: {{ join "," .Values.masiService.http.allowedHosts | quote }}

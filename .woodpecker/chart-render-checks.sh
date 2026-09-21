@@ -179,6 +179,26 @@ echo "$meg" | grep -q '^ *port: 587$' && fail "masi policy must not reach SMTP"
 echo "$meg" | grep -q 'app.kubernetes.io/component: valkey' && fail "masi policy reaches Valkey"
 echo "$meg" | awk '/cidr: 0.0.0.0\/0/,/cidr: 192/' | grep -q 'port: 443$' && echo "$meg" | awk '/cidr: 0.0.0.0\/0/,/cidr: 192/' | grep -q 'port: 80$' || fail "masi internet egress lost its 80/443 port list"
 sect "$mnp" ingress | grep -q 'gateway.istio.io/managed' || fail "masi ingress lost the gateway"
+# --- masi's weekly digest by mail: one switch brings the sender's env, the secret and ONE extra egress port ---------
+echo "$dep" | grep -q 'name: SPRING_MAIL_HOST$' && fail "masi has a mail host with its mail switched off: Boot would make a sender"
+mm=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set vault.secretsEnabled=true --set masiService.enabled=true \
+  --set masiService.mail.enabled=true --set masiService.mail.siteUrl=https://site.example --set mail.existingSecret=t-mail)
+mdoc() { echo "$mm" | awk -v k="$1" -v n="$2" '/^---/ { on = 0; k1 = 0 } $0 == "kind: " k { k1 = 1 } k1 && $0 == "  name: " n { on = 1; k1 = 0 } on'; }
+mdep=$(mdoc Deployment t-schnappy-masi)
+for want in 'name: MASI_MAIL_ENABLED$' 'name: SPRING_MAIL_HOST$' 'value: "https://site.example"$' 'name: t-mail$' 'key: MAIL_PASSWORD$'; do
+  echo "$mdep" | grep -q "$want" || fail "masi with mail on lost '$want'"
+done
+[ -n "$(mdoc ExternalSecret t-mail)" ] || fail "masi's mail switch alone must pull in the mail ExternalSecret (mail.enabled is off)"
+mmeg=$(sect "$(mdoc NetworkPolicy t-schnappy-masi-service)" egress)
+[ "$(echo "$mmeg" | grep -c '^ *port: 587$')" = 1 ] || fail "masi with mail on must reach SMTP in exactly one rule"
+# the SMTP port is a rule of its own with the full except list, never a port of the fetch rule
+smtp=$(echo "$mmeg" | awk '/cidr: 0.0.0.0\/0/ { blk = "" } { blk = blk "\n" $0 } /port: 587$/ { print blk; exit }')
+echo "$smtp" | grep -q 'port: 443$' && fail "the SMTP port was added to masi's fetch rule"
+for c in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10; do echo "$smtp" | grep -q -- "- $c\$" || fail "masi SMTP egress does not exclude $c"; done
+err=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set masiService.enabled=true --set masiService.mail.enabled=true 2>&1 >/dev/null) \
+  && fail "masi mail without a siteUrl rendered"
+echo "$err" | grep -q 'masiService.mail.siteUrl is required' || fail "unexpected error: $err"
+
 # admin admits masi in its INGRESS, and only there
 adm=$(doc NetworkPolicy t-schnappy-admin)
 sect "$adm" ingress | grep -q 'app.kubernetes.io/component: masi$' || fail "admin ingress does not admit masi"
