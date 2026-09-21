@@ -119,6 +119,11 @@ spec:
             {{- end }}
             - name: MASI_TUNING_AUTO
               value: {{ .Values.masiService.tuning.auto | toString | quote }}
+            # open jobs analysed by the cheap model ahead of any request, so they can be ranked; spends under the EXTRACT share
+            - name: MASI_ANALYSIS_AUTO
+              value: {{ .Values.masiService.analysis.auto | toString | quote }}
+            - name: MASI_ANALYSIS_PER_TICK
+              value: {{ .Values.masiService.analysis.perTick | quote }}
             # the only hosts the collectors may contact, in the fetcher and in the browser; empty = none
             - name: MASI_HTTP_ALLOWED_HOSTS
               value: {{ join "," .Values.masiService.http.allowedHosts | quote }}

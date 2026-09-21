@@ -209,6 +209,12 @@ masiService:
   tuning:
     # Prepare a package for every new open job automatically (else "Prepare" is manual).
     auto: false
+  analysis:
+    # Read open jobs with the cheap model BEFORE a package is asked for, so every job gets a match score against the
+    # active CV master (the score itself is free and always computed). Costs a fraction of a cent per job, capped by the
+    # daily/monthly budgets and the EXTRACT purpose share; needs ai.enabled. perTick jobs every five minutes.
+    auto: false
+    perTick: 10
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
     # browser's request guard. A host that is not here cannot be contacted; an empty list means
