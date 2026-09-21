@@ -4,7 +4,7 @@
 
 ## What fired
 
-masi tried `masi.mail.max-attempts` (5) times to mail a weekly digest to one reader and gave up (`masi_report_notifications_total{outcome="given_up"}`). The passes run Monday 06:00 Europe/Tallinn, after a restart, and hourly at :30.
+masi tried `masi.mail.max-attempts` (7) times, the delay doubling from one hour, to mail a weekly digest to one reader and gave up (`masi_report_notifications_total{outcome="given_up"}`). The passes run Monday 06:00 Europe/Tallinn, after a restart, and hourly at :30 (a retry is sent only once its delay has passed).
 
 ## Impact
 
@@ -35,7 +35,7 @@ kubectl -n <ns> get externalsecret | grep mail
 - Repair the cause, then give the digest its attempts back — it is sent on the next hourly pass, if the week ended less than `masi.mail.notify-within` (3 d) ago:
 
 ```sql
-update report_notification set attempts = 0, last_error = null where sent_at is null and report_id = <id>;
+update report_notification set attempts = 0, last_attempt_at = null, last_error = null where sent_at is null and report_id = <id>;
 ```
 
 - Older than that, the week is history: read it on the site.
