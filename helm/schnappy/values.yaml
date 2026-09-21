@@ -215,6 +215,11 @@ masiService:
     # in — mail.enabled (monitor's and admin's mails) may stay off. Opens one egress rule to the SMTP port.
     enabled: false
     siteUrl: ""   # where the digest's links point, e.g. https://pmon.dev
+    # Mail on a schedule (Monday's digest, its retries) is OPT-IN. Off, a digest leaves only when somebody asks for it.
+    weeklyAuto: false
+    # A NON-production environment's mail sink: its user table follows the identity provider and holds real people's
+    # addresses, so with this set every digest goes here and none to a reader. Leave empty in production.
+    deliverAllTo: ""
   analysis:
     # Read open jobs with the cheap model BEFORE a package is asked for, so every job gets a match score against the
     # active CV master (the score itself is free and always computed). Costs a fraction of a cent per job, capped by the

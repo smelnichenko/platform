@@ -128,6 +128,14 @@ spec:
             # the weekly digest by mail. SPRING_MAIL_HOST is what makes a mail sender exist at all: set only here
             - name: MASI_MAIL_ENABLED
               value: "true"
+            # unattended mail is opt-in: off, a digest leaves only when somebody asks for it ("mail me this report")
+            - name: MASI_MAIL_WEEKLY_AUTO
+              value: {{ .Values.masiService.mail.weeklyAuto | default false | toString | quote }}
+            {{- if .Values.masiService.mail.deliverAllTo }}
+            # a NON-production environment's mail sink: every digest goes here, none to a reader's own address
+            - name: MASI_MAIL_DELIVER_ALL_TO
+              value: {{ .Values.masiService.mail.deliverAllTo | quote }}
+            {{- end }}
             - name: MASI_SITE_URL
               value: {{ required "masiService.mail.siteUrl is required when masiService.mail.enabled" .Values.masiService.mail.siteUrl | quote }}
             - name: MAIL_FROM

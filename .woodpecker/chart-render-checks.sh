@@ -203,6 +203,12 @@ mdep=$(mdoc Deployment t-schnappy-masi)
 for want in 'name: MASI_MAIL_ENABLED$' 'name: SPRING_MAIL_HOST$' 'value: "https://site.example"$' 'name: t-mail$' 'key: MAIL_PASSWORD$'; do
   echo "$mdep" | grep -q "$want" || fail "masi with mail on lost '$want'"
 done
+echo "$mdep" | grep -A1 'name: MASI_MAIL_WEEKLY_AUTO$' | grep -q 'value: "false"$' || fail "masi mails on a schedule by default: unattended mail must be opt-in"
+echo "$mdep" | grep -q 'name: MASI_MAIL_DELIVER_ALL_TO$' && fail "masi has a mail sink nobody configured"
+msink=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set masiService.enabled=true --set masiService.mail.enabled=true \
+  --set masiService.mail.siteUrl=https://site.example --set masiService.mail.deliverAllTo=sink@example.org --set masiService.mail.weeklyAuto=true --set mail.existingSecret=t-mail)
+echo "$msink" | grep -A1 'name: MASI_MAIL_DELIVER_ALL_TO$' | grep -q 'value: "sink@example.org"$' || fail "the configured mail sink does not reach masi"
+echo "$msink" | grep -A1 'name: MASI_MAIL_WEEKLY_AUTO$' | grep -q 'value: "true"$' || fail "weeklyAuto cannot be switched on"
 [ -n "$(mdoc ExternalSecret t-mail)" ] || fail "masi's mail switch alone must pull in the mail ExternalSecret (mail.enabled is off)"
 mmeg=$(sect "$(mdoc NetworkPolicy t-schnappy-masi-service)" egress)
 [ "$(echo "$mmeg" | grep -c '^ *port: 587$')" = 1 ] || fail "masi with mail on must reach SMTP in exactly one rule"
