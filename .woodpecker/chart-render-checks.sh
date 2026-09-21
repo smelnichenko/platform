@@ -55,6 +55,16 @@ helm template t helm/schnappy-observability/ $probe --show-only templates/blackb
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
   | grep -q 'alert: LanOnlyHostReachable$' || fail "LanOnlyHostReachable rule not rendered"
 
+# --- schnappy-observability: no alert reaches the LLM agents unless somebody switches that on ------------------------
+am='--set prometheus.enabled=true --set alertmanager.enabled=true --set alertmanager.alertEmailTo=ops@example.org'
+# shellcheck disable=SC2086
+routes=$(helm template t helm/schnappy-observability/ $am --show-only templates/alertmanager-configmap.yaml | awk '/^    route:/,/^    receivers:/')
+echo "$routes" | grep -q 'receiver: kagent-investigate' && fail "critical alerts are routed to kagent by default"
+echo "$routes" | grep -q 'severity: critical' || fail "the human route for critical alerts is gone"
+# shellcheck disable=SC2086
+helm template t helm/schnappy-observability/ $am --set alertmanager.kagentInvestigate.enabled=true --show-only templates/alertmanager-configmap.yaml \
+  | awk '/^    route:/,/^    receivers:/' | grep -q 'receiver: kagent-investigate' || fail "the kagent route cannot be switched on"
+
 # --- schnappy: masi + masi-browser ----------------------------------------------------------
 # masi is off by default; enabled with its browser and both secrets, the render must carry the
 # controls the plan names: they are the SSRF and cost boundaries. Assertions follow a value to

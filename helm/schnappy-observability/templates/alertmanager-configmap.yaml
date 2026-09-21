@@ -21,16 +21,19 @@ data:
       group_interval: {{ .Values.alertmanager.groupInterval }}
       repeat_interval: {{ .Values.alertmanager.repeatInterval }}
       routes:
+        {{- if .Values.alertmanager.kagentInvestigate.enabled }}
         # Critical alerts also fan out to kagent for an LLM auto-investigation.
-        # continue:true so the human email route below still fires; group_wait +
-        # repeat_interval rate-bound it so a flapping critical doesn't trigger an
-        # agent call every cycle (one investigation, then at most every 12h).
+        # continue:true so the human email route below still fires. OFF by default: on
+        # 2026-09-15 one gateway incident fired nine criticals, each became an agent run
+        # of its own, and 108 model calls emptied the API balance in four minutes. It
+        # comes back only behind a per-incident cap in alert2agent.
         - match:
             severity: critical
           receiver: kagent-investigate
           continue: true
           group_wait: 1m
           repeat_interval: 12h
+        {{- end }}
         - match:
             severity: critical
           repeat_interval: 1h

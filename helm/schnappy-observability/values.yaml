@@ -109,6 +109,10 @@ alertmanager:
   image: prom/alertmanager:v0.31.1
   alertEmailTo: ""
   alertEmailFrom: "alerts@pmon.dev"
+  kagentInvestigate:
+    # Critical alerts fan out to kagent's alert2agent for an LLM investigation. OFF: it has no per-incident cap, and one
+    # incident (nine criticals, 2026-09-15) spent the whole API balance in four minutes. The human e-mail route is unaffected.
+    enabled: false
   smtp:
     host: smtp.resend.com
     port: "587"
