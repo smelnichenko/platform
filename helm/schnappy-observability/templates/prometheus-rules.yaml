@@ -373,11 +373,17 @@ spec:
     - name: ci-woodpecker
       rules:
         - alert: WoodpeckerBuildFailed
-          # Woodpecker increments this counter when a pipeline ends in a failure state.
-          # MAIN only: a red pull-request branch is feedback for its author, shown on the PR
-          # (12 of them on masi in one day of review work, 2026-09-21, each an e-mail); a red
-          # main is a build nobody can deploy from, and the only one worth a mail.
-          expr: increase(woodpecker_pipeline_count{status="failure", branch="main"}[5m]) > 0
+          # A red MAIN only: a red pull request is feedback for its author, shown on the PR
+          # (12 of them on masi in one day of review work, 2026-09-21, each an e-mail).
+          # woodpecker_pipeline_count cannot tell the two apart — a pull request's pipeline
+          # carries its TARGET branch, so every PR run is branch="main" (tried, 2026-09-21: it
+          # still mailed for a PR). The per-step counter names the WORKFLOW: in the app repos
+          # "cd" runs only on a push to main; platform, infra and ops push to main directly, so
+          # there "ci" is main too. A service container that exits is not a failed step.
+          expr: |
+            sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="cd", type!="service"}[10m])) > 0
+            or
+            sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"}[10m])) > 0
           labels:
             severity: warning
           annotations:

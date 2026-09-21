@@ -58,7 +58,10 @@ helm template t helm/schnappy-observability/ $probe --show-only templates/promet
 # --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
-  | grep -A6 'alert: WoodpeckerBuildFailed$' | grep -q 'status="failure", branch="main"' || fail "WoodpeckerBuildFailed fires for pull-request branches again"
+  | grep -A14 'alert: WoodpeckerBuildFailed$' | grep -v '^ *#' > .ci-out/build-failed.rule || true
+grep -q 'woodpecker_step_failures_total{workflow="cd", type!="service"}' .ci-out/build-failed.rule || fail "WoodpeckerBuildFailed no longer watches the cd workflow"
+grep -q 'woodpecker_pipeline_count' .ci-out/build-failed.rule && fail "WoodpeckerBuildFailed is back on woodpecker_pipeline_count, which counts every pull request as main"
+grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the repos that push to main directly are no longer watched"
 
 # --- schnappy-observability: no alert reaches the LLM agents unless somebody switches that on ------------------------
 am='--set prometheus.enabled=true --set alertmanager.enabled=true --set alertmanager.alertEmailTo=ops@example.org'
