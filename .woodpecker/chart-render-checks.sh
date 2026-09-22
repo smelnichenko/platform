@@ -263,6 +263,10 @@ echo "$off" | grep -q '^  name: .*masi-browser' && fail "a masi-browser resource
 # browser enabled without its token secret must refuse to render (no open CDP server, ever)
 helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set masiService.enabled=true --set masiService.browser.enabled=true >/dev/null 2>&1 \
   && fail "masi-browser rendered without a token secret"
+# the API docs are off unless switched on: the default renders "false", test renders "true"
+echo "$masi" | grep -A1 'name: MASI_API_DOCS_ENABLED' | grep -q 'value: "false"' || fail "masi API docs must be off by default"
+helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set masiService.enabled=true --set masiService.apiDocs.enabled=true \
+  | grep -A1 'name: MASI_API_DOCS_ENABLED' | grep -q 'value: "true"' || fail "masi API docs switch does not reach the pod"
 # the browser image digest is pinned beside the masi CI sidecar; a bump must move both
 helm show values helm/schnappy/ | grep -q 'digest: .sha256:b1ba7b054af2891a8199f884d4bd249cf8c3bd2fa8a97b339077e40f92803ba8' \
   || fail "browserless digest in values changed — update the masi CI sidecar pin in the same change"

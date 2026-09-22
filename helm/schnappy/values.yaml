@@ -206,6 +206,10 @@ masiService:
     dailyBudgetUsd: "1"
     monthlyBudgetUsd: "20"
     inFlight: 2
+  apiDocs:
+    # The OpenAPI document and Swagger UI (/api/masi/api-docs, /api/masi/swagger-ui/): off unless an environment
+    # switches them on — test does, production never; the gateway answers the docs paths to LAN callers only besides.
+    enabled: false
   tuning:
     # Prepare a package for every new open job automatically (else "Prepare" is manual).
     auto: false

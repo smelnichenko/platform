@@ -72,6 +72,9 @@ spec:
               value: {{ .Values.masiService.javaOpts | default "-Xmx768m" | quote }}
             - name: MASI_ENABLED
               value: "true"
+            # the OpenAPI document and Swagger UI: served only where this says so (test); the gateway keeps them LAN-only besides
+            - name: MASI_API_DOCS_ENABLED
+              value: {{ .Values.masiService.apiDocs.enabled | toString | quote }}
             - name: DB_HOST
               value: {{ include "schnappy.postgres.serviceName" . }}
             - name: SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES
