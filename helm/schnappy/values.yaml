@@ -258,6 +258,12 @@ masiService:
       - jobs.bigbank.eu
       - www.tehik.ee
       - lhv.teamdash.com
+      # the TeamDash job pages behind those three employer sites (first live runs 2026-09-22: cards found, every page refused)
+      - cyber.teamdash.com
+      - bigbank.teamdash.com
+      - tehik.teamdash.com
+      # an ATS row auto-detected from a MeetFrank apply link
+      - sisutech.teamtailor.com
       # masi #25 and #28 (2026-09-22): the employer feeds and MeetFrank's API - seeded disabled, enabled on the Sources page
       - apply.workable.com
       - salv.jobs.personio.de
