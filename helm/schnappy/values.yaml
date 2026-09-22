@@ -258,6 +258,11 @@ masiService:
       - jobs.bigbank.eu
       - www.tehik.ee
       - lhv.teamdash.com
+      # masi #25 and #28 (2026-09-22): the employer feeds and MeetFrank's API - seeded disabled, enabled on the Sources page
+      - apply.workable.com
+      - salv.jobs.personio.de
+      - ridango.bamboohr.com
+      - api.meetfrank.com
   alerts:
     # MasiCostRate fires above this hourly LLM spend (USD/h); the budgets are the daily/monthly caps.
     costRateUsdPerHour: 1
