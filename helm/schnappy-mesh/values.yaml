@@ -66,3 +66,10 @@ jwt:
 gatewayLanOnly:
   hosts: []
   allowedCidrs: []
+  # the API roots whose OpenAPI document and Swagger UI answer LAN callers only (every service ships springdoc)
+  docsPrefixes:
+    - /api
+    - /api/masi
+    - /api/chess
+    - /api/chat
+    - /api/admin

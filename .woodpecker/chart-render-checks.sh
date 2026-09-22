@@ -6,8 +6,10 @@ set -eu
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 # --- schnappy-mesh: gatewayLanOnly ---------------------------------------------------------
-mesh() { helm template t helm/schnappy-mesh/ --set gateway.enabled=true "$@"; }
-lan='--set gatewayLanOnly.hosts={a.example} --set gatewayLanOnly.allowedCidrs={10.0.0.0/8}'
+# the gateway on means the docs policy renders, and that policy needs the allowed ranges: every environment
+# with a gateway sets them, so the helper does too (the guard itself is tested below with the ranges unset)
+mesh() { helm template t helm/schnappy-mesh/ --set gateway.enabled=true --set 'gatewayLanOnly.allowedCidrs={10.0.0.0/8}' "$@"; }
+lan='--set gatewayLanOnly.hosts={a.example}'
 
 # shellcheck disable=SC2086
 policy=$(mesh $lan --show-only templates/gateway-lan-only.yaml)
@@ -21,13 +23,26 @@ gw=$(mesh $lan --show-only templates/gateway.yaml | awk '/^kind: Gateway$/ {g=1}
 [ -n "$gw" ] || fail "no Gateway rendered"
 echo "$policy" | grep -q "gateway-name: $gw\$" || fail "LAN-only policy does not select Gateway $gw"
 
-err=$(mesh --set 'gatewayLanOnly.hosts={a.example}' 2>&1 >/dev/null) && fail "hosts without allowedCidrs rendered"
+err=$(mesh --set 'gatewayLanOnly.hosts={a.example}' --set 'gatewayLanOnly.allowedCidrs=null' 2>&1 >/dev/null) && fail "hosts without allowedCidrs rendered"
 echo "$err" | grep -q 'gatewayLanOnly.allowedCidrs must list' || fail "unexpected error: $err"
 
 # shellcheck disable=SC2086
-err=$(helm template t helm/schnappy-mesh/ $lan --show-only templates/gateway-lan-only.yaml 2>&1 >/dev/null) \
+err=$(helm template t helm/schnappy-mesh/ $lan --set 'gatewayLanOnly.allowedCidrs={10.0.0.0/8}' --show-only templates/gateway-lan-only.yaml 2>&1 >/dev/null) \
   && fail "LAN-only policy rendered with the gateway disabled"
 echo "$err" | grep -q 'could not find template' || fail "unexpected error: $err"
+
+# --- schnappy-mesh: the docs paths are LAN-only on every host ----------------------------
+# shellcheck disable=SC2086
+docs=$(mesh --show-only templates/gateway-docs-lan-only.yaml)
+echo "$docs" | grep -q '^  action: DENY$' || fail "docs LAN-only policy is not a DENY"
+for p in /api /api/masi /api/chess /api/chat /api/admin; do
+  echo "$docs" | grep -q "\"$p/api-docs\*\"\$" || fail "docs policy does not cover $p/api-docs"
+  echo "$docs" | grep -q "\"$p/swagger-ui\*\"\$" || fail "docs policy does not cover $p/swagger-ui"
+done
+echo "$docs" | grep -q 'hosts:' && fail "docs policy is bound to hosts: it must deny the paths on every host"
+echo "$docs" | grep -q '"10.0.0.0/8"$' || fail "docs policy lost its allowed range"
+err=$(mesh --set 'gatewayLanOnly.allowedCidrs=null' 2>&1 >/dev/null) && fail "docs prefixes without allowedCidrs rendered"
+echo "$err" | grep -q 'gatewayLanOnly.allowedCidrs must list' || fail "unexpected error: $err"
 
 # --- schnappy-observability: Prometheus route ----------------------------------------------
 obs() {
@@ -253,7 +268,7 @@ helm show values helm/schnappy/ | grep -q 'digest: .sha256:b1ba7b054af2891a8199f
   || fail "browserless digest in values changed — update the masi CI sidecar pin in the same change"
 
 # --- schnappy-mesh + schnappy-data: masi ----------------------------------------------------
-mesh=$(helm template t helm/schnappy-mesh/ --set gateway.enabled=true)
+mesh=$(mesh)
 # every service account the app chart references exists in the mesh chart (enable masi before
 # 2d and the ReplicaSet creates no pod)
 for sa in $(echo "$masi" | awk '/serviceAccountName:/ { print $2 }' | sort -u); do

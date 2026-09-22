@@ -1,0 +1,36 @@
+{{- if and .Values.gateway.enabled .Values.gatewayLanOnly.docsPrefixes }}
+{{- $fn := include "schnappy.fullname" . }}
+{{- if not .Values.gatewayLanOnly.allowedCidrs }}
+{{- fail "gatewayLanOnly.allowedCidrs must list at least one range when gatewayLanOnly.docsPrefixes is set" }}
+{{- end }}
+# The services' API documentation (springdoc: the OpenAPI document and Swagger UI) is served without a
+# login, on hosts that DO have one: it must not answer the internet either (operator, 2026-09-22).
+# One DENY for the docs paths under every API prefix, any host, from any source outside the allowed
+# ranges — the same shape as the host rule beside it. Istio paths match exact, prefix (x*) or suffix
+# (*x): a prefix per API root covers the document, its groups and the UI's files.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-gateway-docs-lan-only
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ $fn }}-gateway
+  action: DENY
+  rules:
+    - to:
+        - operation:
+            paths:
+              {{- range $prefix := .Values.gatewayLanOnly.docsPrefixes }}
+              - {{ printf "%s/api-docs*" $prefix | quote }}
+              - {{ printf "%s/v3/api-docs*" $prefix | quote }}
+              - {{ printf "%s/swagger-ui*" $prefix | quote }}
+              {{- end }}
+      from:
+        - source:
+            notRemoteIpBlocks:
+              {{- range $cidr := .Values.gatewayLanOnly.allowedCidrs }}
+              - {{ $cidr | quote }}
+              {{- end }}
+{{- end }}
