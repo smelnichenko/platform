@@ -29,10 +29,8 @@ spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-s3gw
       containers:
         - name: create-buckets
-          image: minio/mc:latest
-          # docker.io/minio/mc is gone and quay.io/minio/mc went private (2026-09-24): ":latest" implies Always and
-          # the hook would hang on the pull, blocking the data app's sync. Use the copy the node has.
-          imagePullPolicy: IfNotPresent
+          # rclone, not MinIO's mc: MinIO withdrew the mc images on 2026-09-24 (quay.io 401, docker.io gone)
+          image: rclone/rclone:1.75.1@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
           resources:
             requests: { cpu: 25m, memory: 64Mi }
             limits: { cpu: 200m, memory: 128Mi }
@@ -40,27 +38,36 @@ spec:
             - /bin/sh
             - -c
             - |
-              mc alias set s3gw http://{{ include "schnappy.fullname" . }}-s3gw:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              set -e
               {{- range .Values.s3gw.buckets }}
-              mc mb s3gw/{{ . }} --ignore-existing
+              rclone mkdir s3gw:{{ . }}
               {{- end }}
-              mc ls s3gw/
-              # Signal istio-proxy sidecar to exit (required for Job completion)
-              curl -sf -X POST http://localhost:15020/quitquitquit || true
+              rclone lsd s3gw:
           env:
-            - name: MC_CONFIG_DIR
-              value: /tmp/.mc
-            - name: MINIO_ROOT_USER
+            # the remote "s3gw" is configured by environment alone: no config file on the read-only root
+            - name: RCLONE_CONFIG
+              value: ""
+            - name: RCLONE_CONFIG_S3GW_TYPE
+              value: s3
+            - name: RCLONE_CONFIG_S3GW_PROVIDER
+              value: Other
+            - name: RCLONE_CONFIG_S3GW_ENDPOINT
+              value: http://{{ include "schnappy.fullname" . }}-s3gw:9000
+            - name: HOME
+              value: /tmp
+            - name: RCLONE_CONFIG_S3GW_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}
                   key: ACCESS_KEY
-            - name: MINIO_ROOT_PASSWORD
+            - name: RCLONE_CONFIG_S3GW_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}
                   key: SECRET_KEY
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
