@@ -29,38 +29,42 @@ spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-s3gw
       containers:
         - name: create-buckets
-          # rclone, not MinIO's mc: MinIO withdrew the mc images on 2026-09-24 (quay.io 401, docker.io gone)
-          image: rclone/rclone:1.75.1@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
+          # AWS's own CLI, not MinIO's mc: MinIO withdrew the mc images on 2026-09-24 (quay.io 401, docker.io
+          # gone). aws-cli, unlike rclone, also sets the bucket policy a public-read bucket needs.
+          image: amazon/aws-cli:2.37.1@sha256:b0dd5a4d216a1786863541a201baa7b7b4c5032bec9c6e72c38d01cafd7e8db8
           resources:
             requests: { cpu: 25m, memory: 64Mi }
-            limits: { cpu: 200m, memory: 128Mi }
+            limits: { cpu: 200m, memory: 256Mi }
           command:
             - /bin/sh
             - -c
             - |
               set -e
+              s3() { aws --endpoint-url "http://{{ include "schnappy.fullname" . }}-s3gw:9000" s3api "$@"; }
               {{- range .Values.s3gw.buckets }}
-              rclone mkdir s3gw:{{ . }}
+              s3 head-bucket --bucket {{ . }} >/dev/null 2>&1 || s3 create-bucket --bucket {{ . }} >/dev/null
               {{- end }}
-              rclone lsd s3gw:
+              {{- range .Values.s3gw.publicReadBuckets }}
+              # anonymous GET and LIST on this bucket only; writes still need the credentials
+              cat > /tmp/policy.json <<'POLICY'
+              {"Version":"2012-10-17","Statement":[
+               {"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetBucketLocation","s3:ListBucket"],"Resource":["arn:aws:s3:::{{ . }}"]},
+               {"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetObject"],"Resource":["arn:aws:s3:::{{ . }}/*"]}]}
+              POLICY
+              s3 put-bucket-policy --bucket {{ . }} --policy file:///tmp/policy.json
+              {{- end }}
+              aws --endpoint-url "http://{{ include "schnappy.fullname" . }}-s3gw:9000" s3 ls
           env:
-            # the remote "s3gw" is configured by environment alone: no config file on the read-only root
-            - name: RCLONE_CONFIG
-              value: ""
-            - name: RCLONE_CONFIG_S3GW_TYPE
-              value: s3
-            - name: RCLONE_CONFIG_S3GW_PROVIDER
-              value: Other
-            - name: RCLONE_CONFIG_S3GW_ENDPOINT
-              value: http://{{ include "schnappy.fullname" . }}-s3gw:9000
             - name: HOME
               value: /tmp
-            - name: RCLONE_CONFIG_S3GW_ACCESS_KEY_ID
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}
                   key: ACCESS_KEY
-            - name: RCLONE_CONFIG_S3GW_SECRET_ACCESS_KEY
+            - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.s3gw.secretName" . }}

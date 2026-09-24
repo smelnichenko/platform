@@ -130,6 +130,7 @@ s3gw:
   existingSecret: ""          # REQUIRED per-env: name of the shared S3 creds secret
   allowCrossNamespace: false  # allow Hyperfoil (production) + reports (infra) cross-ns reads
   buckets: []                 # buckets to create (e.g. mimir-blocks, tempo-traces, hyperfoil-reports)
+  publicReadBuckets: []       # of those, readable without credentials (the reports page proxies anonymously)
   resources:
     requests: { memory: "256Mi", cpu: "100m" }
     limits: { memory: "1Gi", cpu: "1000m" }
