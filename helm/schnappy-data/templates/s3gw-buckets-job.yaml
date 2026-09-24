@@ -30,6 +30,9 @@ spec:
       containers:
         - name: create-buckets
           image: minio/mc:latest
+          # docker.io/minio/mc is gone and quay.io/minio/mc went private (2026-09-24): ":latest" implies Always and
+          # the hook would hang on the pull, blocking the data app's sync. Use the copy the node has.
+          imagePullPolicy: IfNotPresent
           resources:
             requests: { cpu: 25m, memory: 64Mi }
             limits: { cpu: 200m, memory: 128Mi }
