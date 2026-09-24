@@ -6,6 +6,8 @@
 
 Job `$labels.namespace/$labels.job_name` has failed pods, none succeeded, and nothing still running — it exhausted its `backoffLimit` retries without ever completing. (Derived from the `kube_job_status_*` counters; `kube_job_failed` is emitted only while a job sits in the Failed condition. The `unless` joins are pinned `on(namespace, job_name)` because `kube_job_status_failed` carries a `reason` label the succeeded/active series lack.)
 
+A failed run of a **CronJob** stops firing once a later run of the same CronJob succeeds (its Job was created before `kube_cronjob_status_last_successful_time`): the failed Job stays until `failedJobsHistoryLimit` newer failures push it out, which a recovered CronJob never produces. So a CronJob alert that is still firing means it has not succeeded since that run failed.
+
 ## Impact
 
 Depends on the Job. The k6-smoke PostSync hook failing means a deploy's smoke test did not pass — treat as a possibly-broken release. The etcd-backup CronJob (kube-system) failing means no fresh etcd snapshot to the Pi backup store (DR gap). velero kopia-maintain, sonarqube-setup, gateway-patch, hyperfoil are advisory or one-shot. After a node reboot, old Jobs left in Failed phase are cosmetic cruft, not an incident.
@@ -28,6 +30,8 @@ kubectl -n $NS describe job $NAME | sed -n '/Events/,$p'
 The k6 PostSync hook uses `hook-delete-policy: BeforeHookCreation`, so a failed Job and its pods are NOT cleaned up on failure — they linger (up to the 24h `ttlSecondsAfterFinished`) for inspection.
 
 ## Common causes
+
+- **An image the registry no longer serves.** `ErrImagePull` / `ImagePullBackOff` with `401 Unauthorized` or `not found` in the pod events, until the Job's `activeDeadlineSeconds`. 2026-09-24: `quay.io/minio/mc` went private and `docker.io/minio/mc` disappeared; etcd-backup (`:latest`, so pulled on every run) failed hourly until it was set to `imagePullPolicy: IfNotPresent` on the copy the node had.
 
 | Symptom in logs | Cause |
 |---|---|

@@ -1,0 +1,58 @@
+# promtool unit tests for KubeJobFailed (schnappy-observability; rendered by .woodpecker/render-rules.sh).
+# A CronJob's failed run stops alerting once a later run of that CronJob succeeds; a run that fails after
+# the last success, and a Job no CronJob owns, still alert.
+rule_files:
+  - rendered-infra-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      # etcd-backup-100 failed; the CronJob succeeded again later (at t=200 > created 100): history
+      - series: 'kube_job_status_failed{namespace="kube-system", job_name="etcd-backup-100", reason="DeadlineExceeded"}'
+        values: '1x30'
+      - series: 'kube_job_status_succeeded{namespace="kube-system", job_name="etcd-backup-100"}'
+        values: '0x30'
+      - series: 'kube_job_status_active{namespace="kube-system", job_name="etcd-backup-100"}'
+        values: '0x30'
+      - series: 'kube_job_created{namespace="kube-system", job_name="etcd-backup-100"}'
+        values: '100x30'
+      - series: 'kube_job_owner{namespace="kube-system", job_name="etcd-backup-100", owner_kind="CronJob", owner_name="etcd-backup", owner_is_controller="true"}'
+        values: '1x30'
+      # etcd-backup-300 failed after that last success: a live failure
+      - series: 'kube_job_status_failed{namespace="kube-system", job_name="etcd-backup-300", reason="DeadlineExceeded"}'
+        values: '1x30'
+      - series: 'kube_job_status_succeeded{namespace="kube-system", job_name="etcd-backup-300"}'
+        values: '0x30'
+      - series: 'kube_job_status_active{namespace="kube-system", job_name="etcd-backup-300"}'
+        values: '0x30'
+      - series: 'kube_job_created{namespace="kube-system", job_name="etcd-backup-300"}'
+        values: '300x30'
+      - series: 'kube_job_owner{namespace="kube-system", job_name="etcd-backup-300", owner_kind="CronJob", owner_name="etcd-backup", owner_is_controller="true"}'
+        values: '1x30'
+      - series: 'kube_cronjob_status_last_successful_time{namespace="kube-system", cronjob="etcd-backup"}'
+        values: '200x30'
+      # a hook Job no CronJob owns: its failure always alerts
+      - series: 'kube_job_status_failed{namespace="schnappy-test", job_name="k6-smoke", reason="BackoffLimitExceeded"}'
+        values: '1x30'
+      - series: 'kube_job_status_succeeded{namespace="schnappy-test", job_name="k6-smoke"}'
+        values: '0x30'
+      - series: 'kube_job_status_active{namespace="schnappy-test", job_name="k6-smoke"}'
+        values: '0x30'
+      - series: 'kube_job_created{namespace="schnappy-test", job_name="k6-smoke"}'
+        values: '100x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KubeJobFailed
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: kube-system, job_name: etcd-backup-300, reason: DeadlineExceeded }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KubeJobFailed
+              summary: "Job kube-system/etcd-backup-300 failed"
+              description: "A Job exhausted its retries without completing. Check the job's pod logs."
+          - exp_labels: { severity: warning, namespace: schnappy-test, job_name: k6-smoke, reason: BackoffLimitExceeded }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KubeJobFailed
+              summary: "Job schnappy-test/k6-smoke failed"
+              description: "A Job exhausted its retries without completing. Check the job's pod logs."

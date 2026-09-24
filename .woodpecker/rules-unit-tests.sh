@@ -5,8 +5,10 @@
 # cluster runs, so a PromQL feature the rules use is one that Prometheus has.
 set -eu
 out=build/rules
-test -f "$out/rendered-rules.yaml" || { echo "rendered rules missing: run .woodpecker/render-rules.sh first" >&2; exit 1; }
-promtool check rules "$out/rendered-rules.yaml" 2>&1
+for f in rendered-rules.yaml rendered-infra-rules.yaml; do
+  test -f "$out/$f" || { echo "$f missing: run .woodpecker/render-rules.sh first" >&2; exit 1; }
+  promtool check rules "$out/$f" 2>&1
+done
 for t in helm/schnappy/tests/rules/*.test.yaml; do
   cp "$t" "$out/" || { echo "cannot copy $t into $out (is the directory writable for $(id -u)?)" >&2; exit 1; }
 done

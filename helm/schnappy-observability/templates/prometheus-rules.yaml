@@ -166,7 +166,19 @@ spec:
           # The unless joins are pinned on(namespace, job_name): kube_job_status_failed
           # carries a `reason` label (e.g. BackoffLimitExceeded) that the succeeded/
           # active series lack, so a bare unless would match nothing and suppress nothing.
-          expr: (kube_job_status_failed > 0) unless on(namespace, job_name) (kube_job_status_succeeded > 0) unless on(namespace, job_name) (kube_job_status_active > 0)
+          # A CronJob's failed run is history once a later run of the same CronJob has
+          # succeeded: its Job stays until failedJobsHistoryLimit newer failures push it
+          # out, which a recovered CronJob never produces, so it would fire for ever.
+          # A failed Job created before its CronJob's last success does not fire.
+          expr: |
+            (kube_job_status_failed > 0)
+            unless on(namespace, job_name) (kube_job_status_succeeded > 0)
+            unless on(namespace, job_name) (kube_job_status_active > 0)
+            unless on(namespace, job_name) (
+              (kube_job_created * on(namespace, job_name) group_left(owner_name) kube_job_owner{owner_kind="CronJob"})
+              < on(namespace, owner_name) group_left()
+              label_replace(kube_cronjob_status_last_successful_time, "owner_name", "$1", "cronjob", "(.*)")
+            )
           for: 15m
           labels:
             severity: warning
