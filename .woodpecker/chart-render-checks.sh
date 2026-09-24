@@ -4,6 +4,8 @@
 set -eu
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
+# scratch for extracted fragments (gitignored): made here, before the first check writes to it — a fresh CI clone has none
+mkdir -p .ci-out
 
 # --- schnappy-mesh: gatewayLanOnly ---------------------------------------------------------
 # the gateway on means the docs policy renders, and that policy needs the allowed ranges: every environment
@@ -363,7 +365,6 @@ for db in $names; do
 done
 # Hand the hook script to init-users-script-test.sh (a later CI step with a real
 # Postgres): the args block scalar is the 14-space-indented body after `- |`.
-mkdir -p .ci-out
 echo "$init" | awk '
   /^            - \|$/ { on = 1; next }
   on && /^              / { sub(/^              /, ""); print; next }
