@@ -203,6 +203,8 @@ masiService:
     existingSecret: ""
     tuningModel: "claude-opus-5"
     extractModel: "claude-haiku-4-5-20251001"
+    # the AI match: a verdict per requirement against the master's evidence (about 0.008 USD a posting)
+    matchModel: "claude-haiku-4-5-20251001"
     dailyBudgetUsd: "1"
     monthlyBudgetUsd: "20"
     inFlight: 2
@@ -227,9 +229,13 @@ masiService:
   analysis:
     # Read open jobs with the cheap model BEFORE a package is asked for, so every job gets a match score against the
     # active CV master (the score itself is free and always computed). Costs a fraction of a cent per job, capped by the
-    # daily/monthly budgets and the EXTRACT purpose share; needs ai.enabled. perTick jobs every five minutes.
+    # daily/monthly budgets and the SCORE purpose share; needs ai.enabled. perTick jobs every five minutes.
     auto: false
     perTick: 10
+    # Then match analysed jobs against the active masters by AI: the verified verdict per requirement replaces the free
+    # word score. Under the MATCH purpose share (0.25 of the day); needs ai.enabled. matchPerTick postings a tick.
+    matchAuto: false
+    matchPerTick: 10
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
     # browser's request guard. A host that is not here cannot be contacted; an empty list means

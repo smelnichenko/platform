@@ -110,6 +110,8 @@ spec:
               value: {{ .Values.masiService.ai.tuningModel | quote }}
             - name: MASI_AI_EXTRACT_MODEL
               value: {{ .Values.masiService.ai.extractModel | quote }}
+            - name: MASI_AI_MATCH_MODEL
+              value: {{ .Values.masiService.ai.matchModel | quote }}
             - name: AI_DAILY_BUDGET_USD
               value: {{ .Values.masiService.ai.dailyBudgetUsd | quote }}
             - name: AI_MONTHLY_BUDGET_USD
@@ -122,11 +124,16 @@ spec:
             {{- end }}
             - name: MASI_TUNING_AUTO
               value: {{ .Values.masiService.tuning.auto | toString | quote }}
-            # open jobs analysed by the cheap model ahead of any request, so they can be ranked; spends under the EXTRACT share
+            # open jobs analysed by the cheap model ahead of any request, so they can be ranked; spends under the SCORE share
             - name: MASI_ANALYSIS_AUTO
               value: {{ .Values.masiService.analysis.auto | toString | quote }}
             - name: MASI_ANALYSIS_PER_TICK
               value: {{ .Values.masiService.analysis.perTick | quote }}
+            # then the AI match of analysed jobs against the active masters, under the MATCH share
+            - name: MASI_MATCH_AUTO
+              value: {{ .Values.masiService.analysis.matchAuto | toString | quote }}
+            - name: MASI_MATCH_PER_TICK
+              value: {{ .Values.masiService.analysis.matchPerTick | quote }}
             {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}
             # the weekly digest by mail. SPRING_MAIL_HOST is what makes a mail sender exist at all: set only here
             - name: MASI_MAIL_ENABLED
