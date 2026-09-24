@@ -69,14 +69,14 @@ data:
 
     # Upload report to s3gw
     if [ -f /tmp/report-dir/index.html ] && [ -n "$MINIO_USER" ]; then
-      export MC_CONFIG_DIR=/tmp/.mc
-      mc alias set s3 http://{{ .Values.hyperfoil.s3Endpoint }} "$MINIO_USER" "$MINIO_PASSWORD" --api S3v4
-      mc mb --ignore-existing s3/hyperfoil-reports
-      mc anonymous set download s3/hyperfoil-reports
+      # rclone's remote "s3" by environment alone; the bucket and its public read are made by the s3gw-buckets hook
+      export RCLONE_CONFIG="" RCLONE_CONFIG_S3_TYPE=s3 RCLONE_CONFIG_S3_PROVIDER=Other \
+        RCLONE_CONFIG_S3_ENDPOINT=http://{{ .Values.hyperfoil.s3Endpoint }} \
+        RCLONE_CONFIG_S3_ACCESS_KEY_ID="$MINIO_USER" RCLONE_CONFIG_S3_SECRET_ACCESS_KEY="$MINIO_PASSWORD"
 
       REPORT_DIR="${REPORT_PREFIX}/$(date -u +%Y-%m-%d_%H%M%S)"
       echo "Uploading report to s3/hyperfoil-reports/${REPORT_DIR}/"
-      mc cp --recursive /tmp/report-dir/ "s3/hyperfoil-reports/${REPORT_DIR}/"
+      rclone copy /tmp/report-dir "s3:hyperfoil-reports/${REPORT_DIR}"
 
       # Generate index page listing all reports
       echo "Generating index page..."
@@ -85,14 +85,14 @@ data:
         echo '<style>body{font-family:sans-serif;max-width:800px;margin:2em auto;padding:0 1em}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #ddd}th{background:#f5f5f5}a{color:#0366d6}</style>'
         echo '</head><body><h1>Hyperfoil Reports</h1><table><tr><th>Type</th><th>Date</th><th>Link</th></tr>'
         for type in load stress spike soak; do
-          mc ls "s3/hyperfoil-reports/${type}/" 2>/dev/null | while read -r line; do
-            dir=$(echo "$line" | awk '{print $NF}' | sed 's|/$||')
+          rclone lsf --dirs-only "s3:hyperfoil-reports/${type}/" 2>/dev/null | while read -r line; do
+            dir=${line%/}
             [ -n "$dir" ] && echo "<tr><td>${type}</td><td>${dir}</td><td><a href=\"${type}/${dir}/index.html\">View Report</a></td></tr>"
           done
         done
         echo '</table></body></html>'
       } > /tmp/index.html
-      mc cp /tmp/index.html s3/hyperfoil-reports/index.html
+      rclone copyto /tmp/index.html s3:hyperfoil-reports/index.html
       echo ""
       echo "============================================"
       echo "Report: ${REPORTS_URL}/${REPORT_DIR}/index.html"
