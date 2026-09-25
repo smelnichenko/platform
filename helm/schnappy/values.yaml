@@ -279,6 +279,8 @@ masiService:
       - salv.jobs.personio.de
       - ridango.bamboohr.com
       - api.meetfrank.com
+      # the Tax and Customs Board's quarterly company figures (a Nextcloud share; the /s/<token> link redirects on the same host)
+      - ncfailid.emta.ee
   alerts:
     # MasiCostRate fires above this hourly LLM spend (USD/h); the budgets are the daily/monthly caps.
     costRateUsdPerHour: 1
