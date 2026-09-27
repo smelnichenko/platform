@@ -134,6 +134,11 @@ spec:
               value: {{ .Values.masiService.analysis.matchAuto | toString | quote }}
             - name: MASI_MATCH_PER_TICK
               value: {{ .Values.masiService.analysis.matchPerTick | quote }}
+            # the background visits to hiring companies' own sites (the open fetcher: public HTTPS, robots.txt honoured)
+            - name: MASI_ENRICH_ENABLED
+              value: {{ .Values.masiService.enrich.enabled | toString | quote }}
+            - name: MASI_ENRICH_PER_TICK
+              value: {{ .Values.masiService.enrich.perTick | quote }}
             {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}
             # the weekly digest by mail. SPRING_MAIL_HOST is what makes a mail sender exist at all: set only here
             - name: MASI_MAIL_ENABLED

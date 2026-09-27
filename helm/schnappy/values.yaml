@@ -236,6 +236,12 @@ masiService:
     # word score. Under the MATCH purpose share (0.25 of the day); needs ai.enabled. matchPerTick postings a tick.
     matchAuto: false
     matchPerTick: 10
+  enrich:
+    # Visit hiring companies' own sites in the background: a registry code the site proves, its website, careers page
+    # and ATS. Public HTTPS only, robots.txt honoured, at most 10 requests a company a visit, a company revisited after
+    # 30 days. perTick companies every ten minutes, most open jobs first. Off until switched on.
+    enabled: false
+    perTick: 5
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
     # browser's request guard. A host that is not here cannot be contacted; an empty list means
