@@ -224,14 +224,15 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.masiService.resources | nindent 12 }}
-          # 5-minute startup budget. Until startupProbe succeeds, kubelet
-          # holds off on liveness/readiness so a slow Spring Boot boot
-          # (DB+Kafka init) doesn't trigger a CrashLoop.
+          # Startup budget: failureThreshold × 10 s (10 minutes by default). Until startupProbe
+          # succeeds, kubelet holds off on liveness/readiness, so a slow Spring Boot boot
+          # (Liquibase, DB, Kafka, the startup repairs) on a busy node is not killed mid-start —
+          # 2026-09-28 a start took 279 s and the old 5-minute budget killed it once.
           startupProbe:
             httpGet:
               path: /api/masi/actuator/health/liveness
               port: 8080
-            failureThreshold: 30
+            failureThreshold: {{ dig "startupProbe" "failureThreshold" 60 .Values.masiService }}
             periodSeconds: 10
           livenessProbe:
             httpGet:
