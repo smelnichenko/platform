@@ -254,6 +254,7 @@ masiService:
     allowedHosts:
       - cv.ee
       - www.cv.ee
+      - cvpro.ee
       - www.tootukassa.ee
       - bolt.eu
       - avaandmed.ariregister.rik.ee
