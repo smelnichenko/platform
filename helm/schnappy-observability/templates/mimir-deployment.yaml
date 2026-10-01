@@ -82,12 +82,23 @@ spec:
               drop:
                 - ALL
             readOnlyRootFilesystem: true
+          # Start-up (WAL replay, ring join) gets up to 5 min before the liveness probe counts: with liveness alone
+          # (30 s delay, 3 x 10 s) a start on a busy node was killed before /ready and every restart began again
+          # (2026-10-01, a crash loop after a mass restart).
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: 9009
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /ready
               port: 9009
-            initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           readinessProbe:
             httpGet:
               path: /ready
