@@ -1,0 +1,49 @@
+# Build the apt-cacher-ng image (apt-cache/Dockerfile) and push it to the registry, tagged with the commit.
+#
+# Until 2026-10-02 this image was built by hand once (git.pmon.dev/schnappy/apt-cacher-ng:1.0, 2026-03-17) and
+# that tag is gone from the registry: ten ran it only from its node cache, so a rebuilt node could not have pulled
+# it. Now every change to apt-cache/ on main builds it here; deploying a new tag is a values change in infra.
+when:
+  - event: push
+    branch: main
+    path:
+      include: ['apt-cache/**', '.woodpecker/apt-cache.yaml']
+  - event: manual
+
+clone:
+  - name: git
+    image: woodpeckerci/plugin-git
+    settings:
+      partial: false
+      depth: 1
+
+steps:
+  - name: push-image
+    image: gcr.io/kaniko-project/executor:debug
+    commands:
+      - mkdir -p /kaniko/.docker
+      - |
+        echo "{\"auths\":{\"git.pmon.dev\":{\"username\":\"$REGISTRY_USER\",\"password\":\"$REGISTRY_TOKEN\"}}}" > /kaniko/.docker/config.json
+      - GIT_HASH=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+      - |
+        /kaniko/executor \
+          --context=apt-cache \
+          --dockerfile=apt-cache/Dockerfile \
+          --destination=git.pmon.dev/schnappy/apt-cacher-ng:$GIT_HASH \
+          --skip-tls-verify-registry=git.pmon.dev \
+          --registry-mirror=nexus.pmon.dev:8082 \
+          --insecure-registry=nexus.pmon.dev:8082
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { cpu: 500m, memory: 512Mi }
+          limits: { cpu: 2000m }
+        secrets:
+          - name: woodpecker-ci-secrets
+            key: registry_user
+            target:
+              env: REGISTRY_USER
+          - name: woodpecker-ci-secrets
+            key: registry_token
+            target:
+              env: REGISTRY_TOKEN
