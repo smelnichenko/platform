@@ -141,7 +141,7 @@ s3gw:
 # apt-cacher-ng (apt caching proxy for Docker builds)
 aptCache:
   enabled: true
-  image: git.pmon.dev/schnappy/apt-cacher-ng:1.0
+  image: git.pmon.dev/schnappy/apt-cacher-ng:7b46aea
   resources:
     requests: { memory: "32Mi", cpu: "25m" }
     limits: { memory: "128Mi", cpu: "200m" }
