@@ -33,6 +33,24 @@ data:
         zipkin:
           endpoint: 0.0.0.0:9411
 
+    {{- /* the image's major version picks the config, so the image (infra) and this template (platform) may change in
+           either order */}}
+    {{- $major := regexFind "^[0-9]+" (last (splitList ":" .Values.tempo.image)) | default "2" | int }}
+    {{- if ge $major 3 }}
+
+    # Tempo 3 in monolithic mode (no Kafka): the in-process live-store replaces the ingester. Its WAL and shutdown
+    # marker go on the data volume - the default /var/tempo is on the read-only root filesystem.
+    live_store:
+      shutdown_marker_dir: /data/live-store/shutdown-marker
+      wal:
+        path: /data/live-store/traces
+
+    # Tempo 3: retention is the backend worker's (2.x: compactor.compaction)
+    backend_worker:
+      compaction:
+        block_retention: {{ .Values.tempo.retention | default "336h" }}
+    {{- else }}
+
     ingester:
       max_block_duration: 5m
       # stopped (any restart, its replacement by the next major, Tempo 3), all it holds written to the store first: Tempo 3
@@ -42,6 +60,7 @@ data:
     compactor:
       compaction:
         block_retention: {{ .Values.tempo.retention | default "336h" }}
+    {{- end }}
 
     metrics_generator:
       registry:
@@ -52,8 +71,10 @@ data:
         remote_write:
           - url: http://{{ include "schnappy.fullname" . }}-mimir:9009/api/v1/push
             send_exemplars: true
+      {{- if lt $major 3 }}
       traces_storage:
         path: /data/generator/traces
+      {{- end }}
 
     storage:
       trace:
