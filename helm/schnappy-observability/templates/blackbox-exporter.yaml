@@ -75,7 +75,7 @@ spec:
     spec:
       containers:
         - name: blackbox
-          image: prom/blackbox-exporter:v0.27.0
+          image: prom/blackbox-exporter:v0.28.0
           args:
             - --config.file=/etc/blackbox/blackbox.yml
             - --web.listen-address=:9115
@@ -101,7 +101,7 @@ spec:
         # POSTs /-/reload when the mounted config changes, so module/probe edits
         # apply in-place (no pod restart). Reuses the operator's reloader image.
         - name: config-reloader
-          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.89.0
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1
           args:
             - --watched-dir=/etc/blackbox
             - --reload-url=http://127.0.0.1:9115/-/reload

@@ -122,7 +122,7 @@ tempo:
 # Alertmanager
 alertmanager:
   enabled: false
-  image: prom/alertmanager:v0.31.1
+  image: prom/alertmanager:v0.34.1
   alertEmailTo: ""
   alertEmailFrom: "alerts@pmon.dev"
   kagentInvestigate:
@@ -148,7 +148,7 @@ alertmanager:
 # kube-state-metrics
 kubeStateMetrics:
   enabled: false
-  image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0
+  image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
   resources:
     requests: { memory: "64Mi", cpu: "25m" }
     limits: { memory: "256Mi", cpu: "200m" }
