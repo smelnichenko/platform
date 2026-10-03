@@ -26,7 +26,7 @@ gateway:
 # Both backends can be on simultaneously during cutover.
 clickhouse:
   enabled: false
-  image: clickhouse/clickhouse-server:24.8-alpine
+  image: clickhouse/clickhouse-server:25.8.33.6-alpine
   password: ""
   existingSecret: ""
   resources:
