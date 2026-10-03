@@ -17,7 +17,7 @@ gateway:
 
 sonarqube:
   enabled: false
-  image: sonarqube:26.3.0.120487-community
+  image: sonarqube:26.9.0.129388-community
   javaOpts: "-Xms512m -Xmx512m"
   adminPassword: ""
   token: ""
