@@ -16,7 +16,7 @@
 #
 # Each KafkaUser's metadata.name becomes the Secret + SCRAM principal.
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-kafka-admin
@@ -31,7 +31,7 @@ spec:
       - { resource: { type: group, name: "*", patternType: literal }, operations: [All] }
       - { resource: { type: cluster }, operations: [All] }
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-monitor
@@ -46,7 +46,7 @@ spec:
       - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
       - { resource: { type: group, name: "schnappy-monitor-", patternType: prefix }, operations: [Read] }
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-chat
@@ -61,7 +61,7 @@ spec:
       - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
       - { resource: { type: group, name: "schnappy-chat-", patternType: prefix }, operations: [Read] }
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-chess
@@ -76,7 +76,7 @@ spec:
       - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
       - { resource: { type: group, name: "schnappy-chess-", patternType: prefix }, operations: [Read] }
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-masi
@@ -89,7 +89,7 @@ spec:
       - { resource: { type: topic, name: "user.events", patternType: literal }, operations: [Read, Describe] }
       - { resource: { type: group, name: "masi-user", patternType: literal }, operations: [Read] }
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-admin
@@ -103,7 +103,7 @@ spec:
       - { resource: { type: topic, name: "admin.", patternType: prefix }, operations: [Read, Write, Describe] }
       - { resource: { type: group, name: "schnappy-admin-", patternType: prefix }, operations: [Read] }
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-centrifugo
@@ -116,7 +116,7 @@ spec:
       - { resource: { type: topic, name: "events.", patternType: prefix }, operations: [Read, Describe] }
       - { resource: { type: group, name: "centrifugo", patternType: literal }, operations: [Read] }
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaUser
 metadata:
   name: schnappy-clickhouse-events
