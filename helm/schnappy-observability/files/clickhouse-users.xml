@@ -11,6 +11,11 @@
     <default>
       <max_memory_usage>4000000000</max_memory_usage>
       <log_queries>1</log_queries>
+      <!-- Keeps the on-disk formats readable by this version during the 24.8 -> 25.8 -> 26.8 upgrade (each newer
+           release writes parts, String and nested columns the previous one cannot read, which blocks a rollback).
+           Read from the default profile at startup. Raised before each image bump; removing it is the point of no
+           return. -->
+      <compatibility>24.8</compatibility>
     </default>
   </profiles>
   <users replace="replace">
