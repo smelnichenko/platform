@@ -15,7 +15,7 @@
            release writes parts, String and nested columns the previous one cannot read, which blocks a rollback).
            Read from the default profile at startup. Raised before each image bump; removing it is the point of no
            return. -->
-      <compatibility>24.8</compatibility>
+      <compatibility>25.8</compatibility>
     </default>
   </profiles>
   <users replace="replace">
