@@ -127,7 +127,7 @@ scylla:
 # Vault-managed (created by the ExternalSecret) and named via existingSecret.
 s3gw:
   enabled: false
-  image: ghcr.io/versity/versitygw:v1.6.0
+  image: ghcr.io/versity/versitygw:v1.8.0
   existingSecret: ""          # REQUIRED per-env: name of the shared S3 creds secret
   allowCrossNamespace: false  # allow Hyperfoil (production) + reports (infra) cross-ns reads
   buckets: []                 # buckets to create (e.g. mimir-blocks, tempo-traces, hyperfoil-reports)
