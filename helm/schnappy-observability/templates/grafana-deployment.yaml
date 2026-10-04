@@ -7,6 +7,10 @@ metadata:
     {{- include "schnappy.grafana.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  # the old pod gone before the new one starts: one SQLite database on one volume, and Grafana migrates it on start
+  # (one-way from 13) - a rolling update ran both against it at once
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "schnappy.grafana.selectorLabels" . | nindent 6 }}
