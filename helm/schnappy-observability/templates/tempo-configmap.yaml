@@ -45,6 +45,11 @@ data:
       wal:
         path: /data/live-store/traces
 
+    # The backend scheduler's local work cache on the data volume too: its default is /var/tempo, on the read-only
+    # root - the scheduler cannot keep its work there, and no compaction or retention would run
+    backend_scheduler:
+      local_work_path: /data/backend-scheduler
+
     # Tempo 3: retention is the backend worker's (2.x: compactor.compaction)
     backend_worker:
       compaction:
