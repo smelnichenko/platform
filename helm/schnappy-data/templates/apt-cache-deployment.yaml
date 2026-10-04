@@ -22,6 +22,9 @@ spec:
         sidecar.istio.io/inject: "false"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-apt-cache
+      # its image is CI's, in the Forgejo registry - anonymous pulls are refused there (401), as for the apps' images
+      imagePullSecrets:
+        - name: forgejo-registry
       automountServiceAccountToken: false
       priorityClassName: infra-critical
       securityContext:
