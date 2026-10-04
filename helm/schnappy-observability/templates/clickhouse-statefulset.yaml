@@ -63,8 +63,13 @@ spec:
             - { containerPort: 9000, name: native }
             - { containerPort: 9363, name: metrics }
           env:
+            # The image's entrypoint creates no user: users.d/00-users.xml has the one user, schnappy. With
+            # CLICKHOUSE_USER=default it wrote users.d/default-user.xml - a `default` user with this password, from ::/0.
+            # CLICKHOUSE_USER stays for the client in the container: a bare clickhouse-client logs in as schnappy.
+            - name: CLICKHOUSE_SKIP_USER_SETUP
+              value: "1"
             - name: CLICKHOUSE_USER
-              value: default
+              value: schnappy
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
