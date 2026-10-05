@@ -154,7 +154,7 @@ aptCache:
 strimzi:
   enabled: false
   # the Kafka version of the Strimzi cluster - each environment's values move it
-  kafkaVersion: 4.2.0
+  kafkaVersion: 4.3.1
 
 # CloudNativePG operator (replaces custom postgres Deployment)
 # ScyllaDB Operator (replaces manual scylla StatefulSet)
