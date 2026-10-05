@@ -51,7 +51,7 @@ metadata:
     {{- end }}
 spec:
   kafka:
-    version: 4.2.0
+    version: {{ .Values.strimzi.kafkaVersion }}
     {{- if eq (.Values.kafka.scram.enabled | toString) "true" }}
     authorization:
       type: simple
