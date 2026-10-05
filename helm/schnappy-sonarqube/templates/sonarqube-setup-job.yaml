@@ -10,9 +10,9 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
-  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 600 s wait, its revoke's 30 s, 120 s, and 10 s for
-  # each of its calls: 22, and 3 a project (chart-render-checks counts the rendered ones)
-  activeDeadlineSeconds: {{ add 750 (mul 10 (add 22 (mul 3 (len .Values.sonarqube.setup.projects)))) }}
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 40 minutes of waiting (a database migration),
+  # its revoke's 30 s, 120 s, and 10 s for each of its calls: 24, and 3 a project (chart-render-checks counts the rendered ones)
+  activeDeadlineSeconds: {{ add 2550 (mul 10 (add 24 (mul 3 (len .Values.sonarqube.setup.projects)))) }}
   template:
     metadata:
       labels:
@@ -78,17 +78,49 @@ spec:
               # say "created" with nothing done)
               sq() { curl -fsS --max-time 10 -u "admin:${SQ_ADMIN_PASSWORD}" "$@"; }
 
-              # 1. Wait for SonarQube to be ready
+              # 1. Wait for SonarQube to be ready - up to 40 minutes: a new version first migrates its database. It waits in
+              #    DB_MIGRATION_NEEDED until someone starts the migration - what the /setup page does, POST api/system/migrate_db:
+              #    started here (unauthenticated, as /setup; refused that way, as admin), once. Every pass that is not UP reads the
+              #    migration's state first: one running (this Job's earlier container started it) is never started again, and one
+              #    that failed ends the wait at once - SonarQube then stays DOWN, never UP. A start nobody answered is read again
+              #    on the next pass, never started blind a second time
+              migration_state() {  # the migration's state as SonarQube says it (MIGRATION_RUNNING, MIGRATION_FAILED, ...), or none
+                curl -sS --max-time 10 "${SQ_URL}/api/system/db_migration_status" 2>/dev/null \
+                  | grep -o '"state":"[^"]*"' | cut -d'"' -f4 || true
+              }
+              start_migration() {  # start_migration [-u <user:password>]: its answer's state, or "HTTP <code>" (000: no answer)
+                ANSWER=$(curl -sS --max-time 10 "$@" -w '\n%{http_code}' -X POST "${SQ_URL}/api/system/migrate_db") || ANSWER="
+              000"
+                CODE=$(echo "$ANSWER" | tail -1)
+                STARTED_STATE=$(echo "$ANSWER" | grep -o '"state":"[^"]*"' | cut -d'"' -f4 || true)
+                if [ "$CODE" = 200 ] && [ -n "$STARTED_STATE" ]; then echo "$STARTED_STATE"; else echo "HTTP $CODE"; fi
+              }
               echo "Waiting for SonarQube..."
-              end=$(( $(date +%s) + 600 ))
+              end=$(( $(date +%s) + 2400 ))
+              MIGRATION=""
+              STARTED=""
               for i in $(seq 1 1000); do
                 STATUS=$(curl -sf --max-time 5 "${SQ_URL}/api/system/status" 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
                 [ "$STATUS" = "UP" ] && break
+                STATE=$(migration_state)
+                case $STATE in
+                  MIGRATION_FAILED) echo "ERROR: the database migration failed - SonarQube's log says why"; exit 1 ;;
+                  MIGRATION_RUNNING) [ -n "$MIGRATION" ] || echo "Database migration running"; MIGRATION=seen ;;
+                esac
+                if [ "$STATUS" = "DB_MIGRATION_NEEDED" ] && [ "$STATE" != MIGRATION_RUNNING ] && [ -z "$STARTED" ]; then
+                  ANSWER=$(start_migration)
+                  case $ANSWER in "HTTP 401" | "HTTP 403") ANSWER=$(start_migration -u "admin:${SQ_ADMIN_PASSWORD}") ;; esac
+                  case $ANSWER in
+                    MIGRATION_RUNNING | MIGRATION_SUCCEEDED) echo "Database migration started"; STARTED=yes; MIGRATION=seen ;;
+                    "HTTP 000") echo "Database migration start not answered - its state read again" ;;
+                    *) echo "ERROR: database migration not started ($ANSWER)"; exit 1 ;;
+                  esac
+                fi
                 [ "$(date +%s)" -lt "$end" ] || break
                 sleep 5
               done
-              [ "$STATUS" != "UP" ] && echo "ERROR: SonarQube not ready after 10 minutes" && exit 1
-              echo "SonarQube is UP"
+              [ "$STATUS" != "UP" ] && echo "ERROR: SonarQube not ready after 40 minutes (status ${STATUS:-none})" && exit 1
+              echo "SonarQube is UP${MIGRATION:+ (its database migrated)}"
 
               # 2. Change admin password (if still default)
               DEFAULT_CHECK=$(curl -fsS --max-time 10 -u "admin:admin" "${SQ_URL}/api/authentication/validate")
