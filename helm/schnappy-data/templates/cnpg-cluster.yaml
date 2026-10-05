@@ -8,7 +8,7 @@ metadata:
     {{- include "schnappy.postgres.labels" . | nindent 4 }}
 spec:
   instances: {{ if $ephemeral }}1{{ else }}{{ .Values.cnpg.instances | default 1 }}{{ end }}
-  imageName: {{ if $ephemeral }}{{ .Values.cnpg.ephemeralImage | quote }}{{ else }}ghcr.io/cloudnative-pg/postgresql:17{{ end }}
+  imageName: {{ if $ephemeral }}{{ .Values.cnpg.ephemeralImage | quote }}{{ else }}{{ .Values.cnpg.imageName }}{{ end }}
   {{- if not $ephemeral }}
   priorityClassName: data-critical
   {{- end }}
