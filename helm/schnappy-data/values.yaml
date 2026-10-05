@@ -46,7 +46,7 @@ postgres:
 # In both modes apps resolve `<release>-valkey.<ns>.svc` and use VALKEY_PASSWORD.
 valkey:
   enabled: true
-  image: valkey/valkey:8.1-alpine
+  image: valkey/valkey:9.1.2-alpine
   password: ""
   existingSecret: ""
   resources:
