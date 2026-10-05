@@ -86,6 +86,9 @@ mimir:
     limits: { memory: "2Gi", cpu: "2000m" }
   storage: 5Gi
   storageClassName: ""
+  # more flags for Mimir, after the config file's (none in production; the Vagrant upgrade copy shortens the querier's
+  # windows, so its old samples are read from the stored blocks)
+  extraArgs: []
 
 # Grafana Tempo (distributed tracing)
 tempo:

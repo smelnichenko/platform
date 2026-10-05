@@ -53,6 +53,9 @@ spec:
             - -config.file=/etc/mimir/mimir.yaml
             - -config.expand-env=true
             - -target=all
+            {{- range .Values.mimir.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
           ports:
             - containerPort: 9009
               name: http
