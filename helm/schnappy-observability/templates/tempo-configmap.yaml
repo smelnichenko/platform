@@ -35,7 +35,10 @@ data:
 
     {{- /* the image's major version picks the config, so the image (infra) and this template (platform) may change in
            either order */}}
-    {{- $major := regexFind "^[0-9]+" (last (splitList ":" .Values.tempo.image)) | default "2" | int }}
+    {{- /* the tag: after the last "/", before any "@sha256:" pin - a digest read as the version picked 2's config */}}
+    {{- $tag := last (splitList ":" (last (splitList "/" (first (splitList "@" .Values.tempo.image))))) }}
+    {{- if not (regexMatch "^[0-9]+[.]" $tag) }}{{ fail (printf "tempo.image %s: no version tag" .Values.tempo.image) }}{{ end }}
+    {{- $major := regexFind "^[0-9]+" $tag | int }}
     {{- if ge $major 3 }}
 
     # Tempo 3 in monolithic mode (no Kafka): the in-process live-store replaces the ingester. Its WAL and shutdown
