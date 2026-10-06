@@ -63,6 +63,14 @@ spec:
               value: "false"
             - name: GF_PLUGINS_PLUGIN_ADMIN_ENABLED
               value: "false"
+            {{- if hasKey .Values.grafana "pluginsPreinstallAutoUpdate" }}
+            # Grafana 13 updates the datasources it no longer builds in (Prometheus - Mimir's - and the others it
+            # ships beside its binary) at every start, the image's copy removed first: on this read-only root
+            # filesystem the removal fails with the plugin already unregistered, and every Mimir query answers
+            # "Plugin not registered". false: the image's own plugin versions - the ones tested with it.
+            - name: GF_PLUGINS_PREINSTALL_AUTO_UPDATE
+              value: {{ .Values.grafana.pluginsPreinstallAutoUpdate | quote }}
+            {{- end }}
             {{- if and (eq (.Values.clickhouse.enabled | toString) "true") (eq (.Values.clickhouse.installGrafanaPlugin | toString) "true") }}
             - name: GF_INSTALL_PLUGINS
               value: "grafana-clickhouse-datasource {{ required "clickhouse.grafanaPluginVersion: the plugin's version, pinned" .Values.clickhouse.grafanaPluginVersion }}"

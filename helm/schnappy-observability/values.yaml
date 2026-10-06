@@ -168,6 +168,8 @@ pushgateway:
 grafana:
   enabled: false
   image: grafana/grafana:12.4.2
+  # pluginsPreinstallAutoUpdate: false - GF_PLUGINS_PREINSTALL_AUTO_UPDATE when set (unset: Grafana's own default).
+  # Grafana 13 on this chart's read-only root filesystem needs false (grafana-deployment.yaml says why).
   adminUser: admin
   adminPassword: ""
   existingSecret: ""
