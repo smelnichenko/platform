@@ -168,9 +168,24 @@ echo "$err" | grep -q 'fluentbit.readFromHead needs fluentbit.stateHostPath' || 
 
 # --- schnappy-observability: Tempo 2 stopped writes all it holds to the store ---------------------------------------
 # any restart, and its replacement by Tempo 3 (step 54's infra merge): what Tempo 2 holds goes to the store first -
-# Tempo 3 does not replay 2's WAL, and what arrived after the explicit flush before that merge was lost
-helm template t helm/schnappy-observability/ --set tempo.enabled=true --show-only templates/tempo-configmap.yaml \
-  | grep -q '^      flush_all_on_shutdown: true$' || fail "Tempo 2 does not flush all it holds on shutdown"
+# Tempo 3 does not replay 2's WAL, and what arrived after the explicit flush before that merge was lost. Read by
+# the key's path (its parents by indentation - a block scalar's lines too): an indentation grep passed the key moved
+# under compactor:. The pod given the time to write it.
+paths() {  # every "<parent>.<key> <value>" of YAML on stdin
+  awk '/^ *[A-Za-z_][A-Za-z0-9_.-]*:/ {
+    match($0, /^ */); ind = RLENGTH; key = substr($0, ind + 1); sub(/:.*/, "", key)
+    for (i = ind; i <= 80; i++) delete st[i]
+    st[ind] = key; p = ""
+    for (j = 0; j < ind; j++) if (j in st) p = p st[j] "."
+    v = $0; sub(/^[^:]*:[ ]*/, "", v)
+    print p key " " v
+  }'
+}
+tempo2() { helm template t helm/schnappy-observability/ --set tempo.enabled=true --show-only "templates/$1"; }
+tempo2 tempo-configmap.yaml | paths | grep -qx 'data.tempo.yaml.ingester.flush_all_on_shutdown true' \
+  || fail "Tempo 2 does not flush all it holds on shutdown"
+tempo2 tempo-deployment.yaml | paths | grep -qx 'spec.template.spec.terminationGracePeriodSeconds 120' \
+  || fail "Tempo's pod is not given 120 s to write what it holds when stopped"
 
 # --- schnappy: masi + masi-browser ----------------------------------------------------------
 # masi is off by default; enabled with its browser and both secrets, the render must carry the

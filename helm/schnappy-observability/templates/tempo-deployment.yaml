@@ -29,6 +29,8 @@ spec:
         prometheus.io/port: "3200"
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-tempo
+      # stopped, Tempo writes all it holds to the store first (flush_all_on_shutdown): its time for that, not 30 s
+      terminationGracePeriodSeconds: 120
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
