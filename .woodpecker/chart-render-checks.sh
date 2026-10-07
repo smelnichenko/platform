@@ -714,7 +714,9 @@ echo "$hf" | awk '/^      template:/{t=1} t && /^          labels:/{l=1; next} l
 
 # --- schnappy-observability: Tempo's config follows its image's major --------------------------------------------
 # the tag read after the last "/" and before any "@sha256:" pin: a digest read as the version picked Tempo 2's config
-# for a pinned Tempo 3, and a registry's port is no tag; no version tag at all fails the render
+# for a pinned Tempo 3, and a registry's port is no tag; no version tag at all fails the render. The registry-port case
+# does not guard the template's split on "/": without it these checks pass too (measured 2026-10-08) - a port is
+# digits alone, never a version's "N.", so no valid reference tells the two apart; the case stays as a reference read
 tempo() {
   helm template t helm/schnappy-observability/ --set tempo.enabled=true --set "tempo.image=$1" \
     --show-only templates/tempo-configmap.yaml
