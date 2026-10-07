@@ -166,6 +166,12 @@ fbtail | grep -Eqi 'Read_from_Head' && fail "Fluent Bit reads from the head with
 err=$(fbobs --set fluentbit.readFromHead=true 2>&1 >/dev/null) && fail "readFromHead without stateHostPath rendered"
 echo "$err" | grep -q 'fluentbit.readFromHead needs fluentbit.stateHostPath' || fail "unexpected error: $err"
 
+# --- schnappy-observability: Tempo 2 stopped writes all it holds to the store ---------------------------------------
+# any restart, and its replacement by Tempo 3 (step 54's infra merge): what Tempo 2 holds goes to the store first -
+# Tempo 3 does not replay 2's WAL, and what arrived after the explicit flush before that merge was lost
+helm template t helm/schnappy-observability/ --set tempo.enabled=true --show-only templates/tempo-configmap.yaml \
+  | grep -q '^      flush_all_on_shutdown: true$' || fail "Tempo 2 does not flush all it holds on shutdown"
+
 # --- schnappy: masi + masi-browser ----------------------------------------------------------
 # masi is off by default; enabled with its browser and both secrets, the render must carry the
 # controls the plan names: they are the SSRF and cost boundaries. Assertions follow a value to
