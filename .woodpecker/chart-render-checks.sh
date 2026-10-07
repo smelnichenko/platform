@@ -712,4 +712,25 @@ echo "$hf" | awk '/^      template:/{t=1} t && /^          labels:/{l=1; next} l
   | grep -q 'velero.io/exclude-from-backup: "true"' \
   || fail "the hyperfoil-load CronJob's pod template lacks velero.io/exclude-from-backup (it runs into the weekly backup)"
 
+# --- schnappy-observability: Tempo's config follows its image's major --------------------------------------------
+# the tag read after the last "/" and before any "@sha256:" pin: a digest read as the version picked Tempo 2's config
+# for a pinned Tempo 3, and a registry's port is no tag; no version tag at all fails the render
+tempo() {
+  helm template t helm/schnappy-observability/ --set tempo.enabled=true --set "tempo.image=$1" \
+    --show-only templates/tempo-configmap.yaml
+}
+pin=sha256:$(printf '%064d' 0)
+for img in grafana/tempo:3.0.1 "grafana/tempo:3.0.1@$pin" registry.local:5000/grafana/tempo:3.0.1; do
+  cfg=$(tempo "$img") || fail "tempo.image $img did not render"
+  echo "$cfg" | grep -q '^    live_store:$' || fail "tempo.image $img: not Tempo 3's config"
+  echo "$cfg" | grep -q '^    ingester:$' && fail "tempo.image $img: Tempo 2's ingester in Tempo 3's config"
+done
+for img in grafana/tempo:2.7.2 "grafana/tempo:2.7.2@$pin" registry.local:5000/grafana/tempo:2.7.2; do
+  cfg=$(tempo "$img") || fail "tempo.image $img did not render"
+  echo "$cfg" | grep -q '^    ingester:$' || fail "tempo.image $img: not Tempo 2's config"
+  echo "$cfg" | grep -q '^    live_store:$' && fail "tempo.image $img: Tempo 3's live store in Tempo 2's config"
+done
+err=$(tempo "grafana/tempo@$pin" 2>&1 >/dev/null) && fail "tempo.image with a digest and no tag rendered"
+echo "$err" | grep -q 'no version tag' || fail "unexpected error: $err"
+
 echo "chart render checks: OK"
