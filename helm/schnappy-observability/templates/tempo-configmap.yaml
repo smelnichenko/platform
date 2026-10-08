@@ -35,7 +35,7 @@ data:
 
     ingester:
       max_block_duration: 5m
-      # stopped (any restart, its replacement by Tempo 3 at step 54), all it holds written to the store first: Tempo 3
+      # stopped (any restart, its replacement by the next major, Tempo 3), all it holds written to the store first: Tempo 3
       # does not replay 2's WAL
       flush_all_on_shutdown: true
 

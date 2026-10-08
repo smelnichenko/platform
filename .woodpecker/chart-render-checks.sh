@@ -167,7 +167,7 @@ err=$(fbobs --set fluentbit.readFromHead=true 2>&1 >/dev/null) && fail "readFrom
 echo "$err" | grep -q 'fluentbit.readFromHead needs fluentbit.stateHostPath' || fail "unexpected error: $err"
 
 # --- schnappy-observability: Tempo 2 stopped writes all it holds to the store ---------------------------------------
-# any restart, and its replacement by Tempo 3 (step 54's infra merge): what Tempo 2 holds goes to the store first -
+# any restart, and its replacement by the next major (Tempo 3): what Tempo 2 holds goes to the store first -
 # Tempo 3 does not replay 2's WAL, and what arrived after the explicit flush before that merge was lost. Read by
 # the key's path (its parents by indentation - a block scalar's lines too): an indentation grep passed the key moved
 # under compactor:. The pod given the time to write it.
