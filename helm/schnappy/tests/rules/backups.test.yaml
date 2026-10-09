@@ -57,6 +57,9 @@ tests:
       # archives, never a backup: after 26 h
       - series: 'cnpg_cluster_condition{namespace="p", cluster="never", type="ContinuousArchiving"}'
         values: '1x1800'
+      # archives, and backed up: never this alert (its own staleness is PostgresBackupMissed's)
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="fresh", type="ContinuousArchiving"}'
+        values: '1x1800'
     alert_rule_test:
       - eval_time: 25h
         alertname: PostgresBackupMissed
