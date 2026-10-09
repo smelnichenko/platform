@@ -66,6 +66,16 @@ fluentbit:
   resources:
     requests: { memory: "128Mi", cpu: "50m" }
     limits: { memory: "256Mi", cpu: "200m" }
+  # tail's positions and the filesystem buffer in this directory on the node's disk: a roll resumes where the last pod
+  # stopped and sends the chunks it left. Empty: an emptyDir, both go with the pod (a roll starts at the files' ends)
+  stateHostPath: ""
+  # tries of a chunk for ClickHouse before it is dropped; no_limits: it waits however long ClickHouse is down
+  retryLimit: "5"
+  # the filesystem buffer for ClickHouse bounded on disk (e.g. 512M; past it the oldest chunks go). Empty: unbounded
+  bufferLimit: ""
+  # a file found at the start without a position (a container started, a log rotated while Fluent Bit was down) read
+  # from its start. Needs stateHostPath: with the positions gone with the pod every file would ship again
+  readFromHead: false
 
 # Prometheus (scraping via ServiceMonitors, deployed separately via kube-prometheus-stack)
 prometheus:

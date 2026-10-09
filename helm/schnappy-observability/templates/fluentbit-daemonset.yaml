@@ -79,7 +79,13 @@ spec:
           hostPath:
             path: /var/log/pods
         - name: db
+          {{- if .Values.fluentbit.stateHostPath }}
+          hostPath:
+            path: {{ .Values.fluentbit.stateHostPath }}
+            type: DirectoryOrCreate
+          {{- else }}
           emptyDir: {}
+          {{- end }}
       tolerations:
         - effect: NoSchedule
           operator: Exists

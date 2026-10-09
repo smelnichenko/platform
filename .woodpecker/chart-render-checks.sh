@@ -138,6 +138,34 @@ echo "$routes" | grep -q 'severity: critical' || fail "the human route for criti
 helm template t helm/schnappy-observability/ $am --set alertmanager.kagentInvestigate.enabled=true --show-only templates/alertmanager-configmap.yaml \
   | awk '/^    route:/,/^    receivers:/' | grep -q 'receiver: kagent-investigate' || fail "the kagent route cannot be switched on"
 
+# --- schnappy-observability: Fluent Bit keeps its place and its buffer across a roll --------------------------------
+# with stateHostPath tail's positions (its DB) and the filesystem buffer live on the node's disk: on an emptyDir every
+# roll started at the files' ends (lines written while it rolled never shipped) and lost each chunk not yet sent.
+# retryLimit no_limits keeps a chunk while ClickHouse is down (a restart on an upgrade outlasts 5 tries), bufferLimit
+# bounds it on disk; readFromHead reads a file new while Fluent Bit was down from its start - only with the positions
+# kept, or every file would ship again.
+fbobs() { helm template t helm/schnappy-observability/ --set fluentbit.enabled=true --set clickhouse.enabled=true "$@"; }
+fbkept='--set fluentbit.stateHostPath=/var/lib/fluent-bit --set fluentbit.retryLimit=no_limits --set fluentbit.bufferLimit=512M --set fluentbit.readFromHead=true'
+fbdb() { fbobs "$@" --show-only templates/fluentbit-daemonset.yaml | awk '/^      volumes:/ {v=1} v && /- name: db$/ {d=1; next} d && /^        - name:|^      [a-z]/ {exit} d'; }
+fbout() { fbobs "$@" --show-only templates/fluentbit-configmap.yaml | awk '/\[OUTPUT\]/ {o=1} o && /^  [a-z]/ {exit} o'; }
+fbtail() { fbobs "$@" --show-only templates/fluentbit-configmap.yaml | awk '/\[INPUT\]/ {i=1} i && /^ *$/ {exit} i'; }
+# shellcheck disable=SC2086
+fbvol=$(fbdb $fbkept)
+[ "$(echo "$fbvol" | grep -c .)" = 3 ] && echo "$fbvol" | grep -q '^          hostPath:$' \
+  && echo "$fbvol" | grep -q '^            path: /var/lib/fluent-bit$' && echo "$fbvol" | grep -q '^            type: DirectoryOrCreate$' \
+  || fail "Fluent Bit's DB and buffer not in the node's directory: $fbvol"
+[ "$(fbdb)" = '          emptyDir: {}' ] || fail "Fluent Bit's DB without stateHostPath is not an emptyDir: $(fbdb)"
+# shellcheck disable=SC2086
+fbo=$(fbout $fbkept)
+echo "$fbo" | grep -Eq '^ +Retry_Limit +no_limits$' || fail "Fluent Bit's ClickHouse output does not take retryLimit"
+echo "$fbo" | grep -Eq '^ +storage\.total_limit_size +512M$' || fail "Fluent Bit's buffer for ClickHouse does not take bufferLimit"
+fbout | grep -Eq '^ +storage\.total_limit_size' && fail "Fluent Bit's buffer bounded with no bufferLimit"
+# shellcheck disable=SC2086
+fbtail $fbkept | grep -Eq '^ +Read_from_Head +On$' || fail "Fluent Bit does not take readFromHead"
+fbtail | grep -Eqi 'Read_from_Head' && fail "Fluent Bit reads from the head with readFromHead off"
+err=$(fbobs --set fluentbit.readFromHead=true 2>&1 >/dev/null) && fail "readFromHead without stateHostPath rendered"
+echo "$err" | grep -q 'fluentbit.readFromHead needs fluentbit.stateHostPath' || fail "unexpected error: $err"
+
 # --- schnappy: masi + masi-browser ----------------------------------------------------------
 # masi is off by default; enabled with its browser and both secrets, the render must carry the
 # controls the plan names: they are the SSRF and cost boundaries. Assertions follow a value to

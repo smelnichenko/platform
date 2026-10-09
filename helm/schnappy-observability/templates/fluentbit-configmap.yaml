@@ -21,6 +21,12 @@ data:
         Path              /var/log/containers/*.log
         Parser            cri
         DB                /fluent-bit/db/tail.db
+        {{- if .Values.fluentbit.readFromHead }}
+        {{- if not .Values.fluentbit.stateHostPath }}
+        {{- fail "fluentbit.readFromHead needs fluentbit.stateHostPath: with the positions on an emptyDir every file ships again" }}
+        {{- end }}
+        Read_from_Head    On
+        {{- end }}
         Mem_Buf_Limit     64MB
         storage.type      filesystem
         Skip_Long_Lines   On
@@ -119,7 +125,10 @@ data:
         http_user         schnappy
         http_passwd       ${CLICKHOUSE_PASSWORD}
         tls               Off
-        Retry_Limit       5
+        Retry_Limit       {{ .Values.fluentbit.retryLimit }}
+        {{- with .Values.fluentbit.bufferLimit }}
+        storage.total_limit_size {{ . }}
+        {{- end }}
         Workers           2
     {{- end }}
 
