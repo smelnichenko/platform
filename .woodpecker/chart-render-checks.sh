@@ -93,6 +93,24 @@ ksmobs --show-only templates/kube-state-metrics-rbac.yaml | awk '/apiGroups: \["
 helm template t helm/schnappy-data/ --set alerts.enabled=true --set cnpg.enabled=true --set cnpg.backup.enabled=true \
   --set postgres.password=x 2>/dev/null | grep -q 'alert: PostgresBackup' && fail "schnappy-data still alerts on postgres-backup Jobs"
 
+# --- schnappy-observability + schnappy-sonarqube: no PVC pruned ---------------------------------------------------
+# both Argo applications prune, and these PVCs are their own (no StatefulSet's claim), on local-path whose volumes go
+# with their claim: a render that dropped one (a condition flipped in an upgrade) deleted Grafana's database, Mimir's
+# blocks, SonarQube's data. Argo leaves each PVC alone - not pruned, nor deleted with its application.
+pvcs() {  # pvcs <chart> <args...>: each PVC rendered, "<name> <its sync-options>"; a failed render fails the check
+  c=$1; shift
+  r=$(helm template t "helm/$c" "$@") || fail "$c did not render"
+  echo "$r" | awk '/^kind: / {k = $2} /^---/ {k = ""}
+    k == "PersistentVolumeClaim" && /^  name: / {n = $2}
+    k == "PersistentVolumeClaim" && /argocd.argoproj.io\/sync-options:/ {o = $2}
+    k == "PersistentVolumeClaim" && /^spec:/ && n {print n, o; n = ""; o = ""}'
+}
+pvc_all=$(pvcs schnappy-observability --set prometheus.enabled=true --set grafana.enabled=true \
+  --set grafana.adminPassword=x --set mimir.enabled=true --set tempo.enabled=true --set alertmanager.enabled=true \
+  --set pushgateway.enabled=true; pvcs schnappy-sonarqube --set sonarqube.enabled=true --set sonarqube.postgres.password=x)
+[ "$(echo "$pvc_all" | grep -c .)" -ge 6 ] || fail "fewer PVCs rendered than the six these charts own: $pvc_all"
+echo "$pvc_all" | grep -v ' "\?Prune=false,Delete=false"\?$' | grep . && fail "a PVC Argo may prune or delete (above)"
+
 # --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \

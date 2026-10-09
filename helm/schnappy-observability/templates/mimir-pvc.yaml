@@ -6,6 +6,9 @@ metadata:
   labels:
     {{- include "schnappy.labels" . | nindent 4 }}
     app.kubernetes.io/component: mimir
+  annotations:
+    # its application prunes, and local-path's volume goes with its claim: Argo never prunes or deletes this one
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes:
     - ReadWriteOnce
