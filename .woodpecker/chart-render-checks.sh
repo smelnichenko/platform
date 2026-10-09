@@ -120,6 +120,16 @@ gfplug=$(helm template t helm/schnappy-observability/ --set grafana.enabled=true
 echo "$gfplug" | grep -Eq 'value: "?grafana-clickhouse-datasource [0-9]+\.[0-9]+\.[0-9]+"?$' \
   || fail "Grafana's ClickHouse plugin not pinned: $gfplug"
 
+# --- schnappy-observability: ClickHouse's first start on a new release is not killed by its liveness probe ---------
+# liveness (30 s + 3 x 30 s) killed a ClickHouse whose start took 2 minutes - a new release's first start loads every
+# table's parts (53 GB on ten); a startup probe gives it 10 minutes before liveness counts
+chss=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true --show-only templates/clickhouse-statefulset.yaml)
+chsp=$(echo "$chss" | awk '/^          startupProbe:/ {s=1; next} s && /^          [a-z]/ {exit} s')
+echo "$chsp" | grep -q 'path: /ping' || fail "ClickHouse has no startup probe on /ping"
+chper=$(echo "$chsp" | sed -n 's/.*periodSeconds: \([0-9]*\).*/\1/p'); chfail=$(echo "$chsp" | sed -n 's/.*failureThreshold: \([0-9]*\).*/\1/p')
+[ -n "$chper" ] && [ -n "$chfail" ] && [ $((chper * chfail)) -ge 600 ] \
+  || fail "ClickHouse's startup probe allows less than 10 minutes (${chper:-?} s x ${chfail:-?})"
+
 # --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \

@@ -93,6 +93,11 @@ spec:
             - { name: config, mountPath: /etc/clickhouse-server/config.d/00-config.xml, subPath: config.xml }
             - { name: config, mountPath: /etc/clickhouse-server/users.d/00-users.xml, subPath: users.xml }
             - { name: env, mountPath: /env, readOnly: true }
+          # a new release's first start loads every table's parts (53 GB on ten): 10 minutes before liveness counts
+          startupProbe:
+            httpGet: { path: /ping, port: 8123 }
+            periodSeconds: 10
+            failureThreshold: 60
           livenessProbe:
             httpGet: { path: /ping, port: 8123 }
             initialDelaySeconds: 30
