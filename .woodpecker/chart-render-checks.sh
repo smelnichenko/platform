@@ -111,6 +111,15 @@ pvc_all=$(pvcs schnappy-observability --set prometheus.enabled=true --set grafan
 [ "$(echo "$pvc_all" | grep -c .)" -ge 6 ] || fail "fewer PVCs rendered than the six these charts own: $pvc_all"
 echo "$pvc_all" | grep -v ' "\?Prune=false,Delete=false"\?$' | grep . && fail "a PVC Argo may prune or delete (above)"
 
+# --- schnappy-observability: Grafana's ClickHouse plugin at a pinned version ----------------------------------------
+# unversioned, each Grafana got the newest at its first start and kept it on its volume: production 4.22.0, a copy
+# built later 4.22.1 - the full run proved a plugin production does not run
+gfplug=$(helm template t helm/schnappy-observability/ --set grafana.enabled=true --set grafana.adminPassword=x \
+  --set clickhouse.enabled=true --set clickhouse.installGrafanaPlugin=true --show-only templates/grafana-deployment.yaml \
+  | awk '/name: GF_INSTALL_PLUGINS/ {getline; print; exit}')
+echo "$gfplug" | grep -Eq 'value: "?grafana-clickhouse-datasource [0-9]+\.[0-9]+\.[0-9]+"?$' \
+  || fail "Grafana's ClickHouse plugin not pinned: $gfplug"
+
 # --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \

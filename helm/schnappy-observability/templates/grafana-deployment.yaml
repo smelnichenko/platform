@@ -65,7 +65,7 @@ spec:
               value: "false"
             {{- if and (eq (.Values.clickhouse.enabled | toString) "true") (eq (.Values.clickhouse.installGrafanaPlugin | toString) "true") }}
             - name: GF_INSTALL_PLUGINS
-              value: grafana-clickhouse-datasource
+              value: "grafana-clickhouse-datasource {{ required "clickhouse.grafanaPluginVersion: the plugin's version, pinned" .Values.clickhouse.grafanaPluginVersion }}"
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
