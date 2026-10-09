@@ -7,8 +7,8 @@ metadata:
     {{- include "schnappy.scylla.labels" . | nindent 4 }}
 spec:
   repository: {{ .Values.scyllaOperator.repository | default "docker.io/scylladb/scylla" }}
-  version: {{ .Values.scyllaOperator.version | default "6.2" | quote }}
-  agentVersion: {{ .Values.scyllaOperator.agentVersion | default "3.9.0" | quote }}
+  version: {{ required "scyllaOperator.version: each environment sets its ScyllaDB version" .Values.scyllaOperator.version | quote }}
+  agentVersion: {{ required "scyllaOperator.agentVersion: each environment sets its agent version" .Values.scyllaOperator.agentVersion | quote }}
   developerMode: {{ .Values.scyllaOperator.developerMode | default true }}
 
   datacenter:

@@ -107,6 +107,7 @@ kafka:
 # ScyllaDB (chat message storage)
 scylla:
   enabled: true
+  # the legacy StatefulSet's; with the operator each environment sets it (its schema Job's cqlsh, the cluster's version)
   image: scylladb/scylla:6.2
   replicas: 1
   args:
@@ -158,8 +159,7 @@ strimzi:
 scyllaOperator:
   enabled: false
   repository: docker.io/scylladb/scylla
-  version: "6.2"
-  agentVersion: "3.9.0"
+  # version, agentVersion: each environment's - no default under an operator that no longer runs it
   developerMode: true
   backups: []
   # Operator-managed backup + repair via ScyllaDB Manager.
