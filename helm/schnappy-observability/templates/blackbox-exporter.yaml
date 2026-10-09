@@ -75,7 +75,7 @@ spec:
     spec:
       containers:
         - name: blackbox
-          image: prom/blackbox-exporter:v0.28.0
+          image: prom/blackbox-exporter:v0.29.0
           args:
             - --config.file=/etc/blackbox/blackbox.yml
             - --web.listen-address=:9115
