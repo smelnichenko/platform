@@ -79,6 +79,15 @@ rules:
     resources:
       - certificates
     verbs: ["list", "watch"]
+  # CloudNativePG's Clusters (kube-state-metrics-custom-resources.yaml) and the definitions it finds them by
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources:
+      - clusters
+    verbs: ["list", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs: ["list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

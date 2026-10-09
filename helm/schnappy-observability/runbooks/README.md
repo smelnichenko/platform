@@ -25,6 +25,14 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [KagentToolsCrashLooping](KagentToolsCrashLooping.md)
 - [KagentOAuthProxyDown](KagentOAuthProxyDown.md)
 - [KagentUIDown](KagentUIDown.md)
+- [PostgresArchivingFailed](PostgresArchivingFailed.md)
+- [PostgresBackupFailed](PostgresBackupFailed.md)
+- [PostgresBackupMissed](PostgresBackupMissed.md)
+- [PostgresBackupNeverSucceeded](PostgresBackupNeverSucceeded.md)
+- [ScyllaBackupMissed](ScyllaBackupMissed.md)
+- [ScyllaBackupNeverSucceeded](ScyllaBackupNeverSucceeded.md)
+- [ScyllaManagerTaskFailed](ScyllaManagerTaskFailed.md)
+- [ScyllaManagerDown](ScyllaManagerDown.md)
 
 ### masi (every alert of the group; CI: `.woodpecker/runbooks-exist.sh`)
 

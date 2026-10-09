@@ -72,6 +72,27 @@ helm template t helm/schnappy-observability/ $probe --show-only templates/blackb
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
   | grep -q 'alert: LanOnlyHostReachable$' || fail "LanOnlyHostReachable rule not rendered"
 
+# --- schnappy-observability: kube-state-metrics reads CloudNativePG's Cluster status (the Postgres backup alerts) ----
+# Postgres' backups are CNPG's (no Job, nothing scraped its pods' 9187 - meshed): its Cluster's conditions
+# (ContinuousArchiving, LastBackupSucceeded) and last successful backup, as metrics, are what the alerts read
+ksmobs() { helm template t helm/schnappy-observability/ --set prometheus.enabled=true --set kubeStateMetrics.enabled=true "$@"; }
+ksmdep=$(ksmobs --show-only templates/kube-state-metrics-deployment.yaml)
+crsfile=$(echo "$ksmdep" | sed -n "s/.*--custom-resource-state-config-file=\([^']*\).*/\1/p")
+[ -n "$crsfile" ] || fail "kube-state-metrics loads no custom resource state config"
+echo "$ksmdep" | grep -q "mountPath: $(dirname "$crsfile")$" || fail "the custom resource config is not mounted at $(dirname "$crsfile")"
+echo "$ksmdep" | grep -q 'checksum/custom-resources:' || fail "kube-state-metrics does not restart for a change of its custom resource config"
+crs=$(ksmobs --show-only templates/kube-state-metrics-custom-resources.yaml)
+echo "$crs" | grep -q 'kind: Cluster' && echo "$crs" | grep -q 'group: postgresql.cnpg.io' \
+  || fail "the custom resource config does not read CNPG's Cluster"
+for m in condition last_successful_backup_timestamp_seconds; do
+  echo "$crs" | grep -q "name: $m$" || fail "no cnpg_cluster_$m metric"
+done
+ksmobs --show-only templates/kube-state-metrics-rbac.yaml | awk '/apiGroups: \["postgresql.cnpg.io"\]/ {g=1} g && /- clusters/ {print "ok"; exit}' \
+  | grep -q ok || fail "kube-state-metrics may not list CNPG's Clusters"
+# schnappy-data's Postgres backup alerts matched postgres-backup Jobs that do not exist: gone, the CNPG ones instead
+helm template t helm/schnappy-data/ --set alerts.enabled=true --set cnpg.enabled=true --set cnpg.backup.enabled=true \
+  --set postgres.password=x 2>/dev/null | grep -q 'alert: PostgresBackup' && fail "schnappy-data still alerts on postgres-backup Jobs"
+
 # --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \

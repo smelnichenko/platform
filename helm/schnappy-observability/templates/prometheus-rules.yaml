@@ -322,6 +322,82 @@ spec:
             summary: "Velero backup partially failed"
             description: "A backup of schedule {{ "{{" }} $labels.schedule {{ "}}" }} ended PartiallyFailed: some items or volumes are missing from it."
 
+    # Postgres' backups are CloudNativePG's: its Cluster status through kube-state-metrics
+    # (kube-state-metrics-custom-resources.yaml). Scylla's are Scylla Manager's: its scheduler's own metrics (its
+    # ServiceMonitor, infra's scylla-manager values) - per task, counted from Manager's start.
+    - name: infra-backups
+      rules:
+        - alert: PostgresArchivingFailed
+          expr: cnpg_cluster_condition{type="ContinuousArchiving"} == 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/PostgresArchivingFailed"
+            summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: WAL archiving failing"
+        - alert: PostgresBackupFailed
+          expr: cnpg_cluster_condition{type="LastBackupSucceeded"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/PostgresBackupFailed"
+            summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: its last backup failed"
+        - alert: PostgresBackupMissed
+          expr: time() - cnpg_cluster_last_successful_backup_timestamp_seconds > 26 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/PostgresBackupMissed"
+            summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: no successful backup for 26 h"
+        # a cluster that archives (its store set) with no successful backup at all - one with no store (the test
+        # environment's) has no ContinuousArchiving condition
+        - alert: PostgresBackupNeverSucceeded
+          expr: >-
+            cnpg_cluster_condition{type="ContinuousArchiving"}
+            unless on (namespace, cluster) cnpg_cluster_last_successful_backup_timestamp_seconds
+          for: 26h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/PostgresBackupNeverSucceeded"
+            summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }} archives but has no successful backup"
+        - alert: ScyllaBackupMissed
+          expr: time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ScyllaBackupMissed"
+            summary: "Scylla Manager: backup task {{ "{{" }} $labels.task {{ "}}" }} of cluster {{ "{{" }} $labels.cluster {{ "}}" }} has not succeeded for 26 h"
+        # Manager restarted (an upgrade): the task's runs are counted again, and no last success until one succeeds
+        - alert: ScyllaBackupNeverSucceeded
+          expr: >-
+            max by (cluster, task) (scylla_manager_scheduler_run_total{type="backup"})
+            unless on (cluster, task) scylla_manager_scheduler_last_success{type="backup"}
+          for: 26h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ScyllaBackupNeverSucceeded"
+            summary: "Scylla Manager: backup task {{ "{{" }} $labels.task {{ "}}" }} of cluster {{ "{{" }} $labels.cluster {{ "}}" }} has not succeeded since Manager started"
+        - alert: ScyllaManagerTaskFailed
+          expr: increase(scylla_manager_scheduler_run_total{type=~"backup|repair", status=~"ERROR|ABORTED"}[1h]) > 0
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ScyllaManagerTaskFailed"
+            summary: "Scylla Manager: a {{ "{{" }} $labels.type {{ "}}" }} run of task {{ "{{" }} $labels.task {{ "}}" }} (cluster {{ "{{" }} $labels.cluster {{ "}}" }}) ended {{ "{{" }} $labels.status {{ "}}" }}"
+        - alert: ScyllaManagerDown
+          expr: absent(up{job="scylla-manager", namespace="scylla-manager"} == 1)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ScyllaManagerDown"
+            summary: "Scylla Manager is not scraped - its backups and repairs are watched by nothing"
+
 {{- if .Values.prometheus.lanOnlyProbeUrls }}
     - name: infra-lan-only-urls
       rules:

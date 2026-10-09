@@ -20,6 +20,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8080"
+        checksum/custom-resources: {{ include (print $.Template.BasePath "/kube-state-metrics-custom-resources.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-kube-state-metrics
       securityContext:
@@ -45,7 +46,13 @@ spec:
             # ClusterRole intentionally does not grant — the SA spam-
             # loops "secrets is forbidden" otherwise. Enumerate the
             # set explicitly so future KSM versions can't re-add it.
+            # CloudNativePG's Cluster status (kube-state-metrics-custom-resources.yaml)
+            - '--custom-resource-state-config-file=/etc/kube-state-metrics/custom-resources.yaml'
             - '--resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpoints,horizontalpodautoscalers,ingresses,jobs,leases,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments'
+          volumeMounts:
+            - name: custom-resources
+              mountPath: /etc/kube-state-metrics
+              readOnly: true
           ports:
             - containerPort: 8080
               name: metrics
@@ -65,4 +72,8 @@ spec:
               port: 8081
             initialDelaySeconds: 5
             periodSeconds: 5
+      volumes:
+        - name: custom-resources
+          configMap:
+            name: {{ include "schnappy.kubeStateMetrics.serviceName" . }}-custom-resources
 {{- end }}

@@ -45,28 +45,8 @@ spec:
             summary: "ScyllaDB {{"{{"}} $labels.pod {{"}}"}} is down"
         {{- end }}
 
-    {{- if .Values.cnpg.backup }}
-    - name: {{ $ns }}-backups
-      rules:
-        - alert: PostgresBackupFailed
-          expr: kube_job_status_failed{namespace="{{ $ns }}", job_name=~".*postgres-backup.*"} > 0
-          for: 5m
-          labels:
-            severity: critical
-            namespace: {{ $ns }}
-          annotations:
-            runbook_url: "https://runbooks.pmon.dev/PostgresBackupFailed"
-            summary: "PostgreSQL backup job failed"
-        - alert: PostgresBackupMissed
-          expr: time() - max(kube_job_status_completion_time{namespace="{{ $ns }}", job_name=~".*postgres-backup.*"}) > 26 * 3600
-          for: 1h
-          labels:
-            severity: warning
-            namespace: {{ $ns }}
-          annotations:
-            runbook_url: "https://runbooks.pmon.dev/PostgresBackupMissed"
-            summary: "PostgreSQL backup missed"
-    {{- end }}
+    {{- /* Postgres' backup alerts are cluster-wide (schnappy-observability's infra-backups group): CNPG's Cluster
+    status through kube-state-metrics - the ones here matched postgres-backup Jobs, which CNPG never runs */}}
 
     - name: {{ $ns }}-pvc
       rules:
