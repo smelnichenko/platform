@@ -4,7 +4,7 @@
 
 ## What fired
 
-No successful `velero-schnappy-daily` backup in the last 30h, or the BackupStorageLocation reports phase `Unavailable`.
+The last backup of a Velero schedule failed (`velero_backup_last_status == 0`) - often the BackupStorageLocation is `Unavailable`.
 
 ## Impact
 

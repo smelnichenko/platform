@@ -11,6 +11,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [VaultSealed](VaultSealed.md)
 - [ClusterSecretStoreNotReady](ClusterSecretStoreNotReady.md)
 - [VeleroBSLUnavailable](VeleroBSLUnavailable.md)
+- [VeleroDailyBackupMissing](VeleroDailyBackupMissing.md)
 - [PublicEndpointDown](PublicEndpointDown.md)
 - [LanOnlyHostReachable](LanOnlyHostReachable.md)
 - [PrometheusNotificationsFailing](PrometheusNotificationsFailing.md)

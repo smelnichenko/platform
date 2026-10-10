@@ -249,14 +249,25 @@ spec:
 
     - name: infra-velero
       rules:
+        # a scheduled backup's last run failed, and the daily one missing, are two alerts: an environment hours old
+        # (the upgrade's Vagrant copy) has no daily backup by nature and allows the second alone, never the first
         - alert: VeleroBSLUnavailable
-          expr: velero_backup_last_status{schedule!=""} == 0 or absent(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"} > time() - 30 * 3600)
+          expr: velero_backup_last_status{schedule!=""} == 0
           for: 10m
           labels:
             severity: critical
           annotations:
             runbook_url: "https://runbooks.pmon.dev/VeleroBSLUnavailable"
-            summary: "Velero daily backup missing or failed"
+            summary: "Velero scheduled backup failed"
+            description: "The last backup of schedule {{ "{{" }} $labels.schedule {{ "}}" }} failed."
+        - alert: VeleroDailyBackupMissing
+          expr: absent(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"} > time() - 30 * 3600)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/VeleroDailyBackupMissing"
+            summary: "Velero daily backup missing"
             description: "No successful schnappy-daily backup in the last 30h."
         - alert: VeleroBackupFailing
           expr: increase(velero_backup_failure_total[1h]) > 0
