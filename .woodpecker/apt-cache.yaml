@@ -36,8 +36,7 @@ steps:
     backend_options:
       kubernetes:
         resources:
-          requests: { cpu: 500m, memory: 512Mi }
-          limits: { cpu: 2000m }
+          requests: { memory: 512Mi }
         secrets:
           - name: woodpecker-ci-secrets
             key: registry_user
