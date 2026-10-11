@@ -56,5 +56,6 @@ rc=$?
 [ "$rc" -ne 0 ] || fail "an unreachable Postgres exited 0"
 [ "$rc" -ne 143 ] && [ "$rc" -ne 124 ] || fail "an unreachable Postgres: the wait did not end at its bound (killed at 60 s)"
 grep -q "not ready after" .ci-out/run5.log || fail "an unreachable Postgres not said: $(tail -2 .ci-out/run5.log)"
+grep -q "is ready" .ci-out/run5.log && fail "an unreachable Postgres taken for ready (the wait broke out, not failed)"
 
 echo "init-users script test: OK ($(echo "$names" | wc -l) databases)"

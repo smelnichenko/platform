@@ -265,3 +265,15 @@ tests:
               runbook_url: https://runbooks.pmon.dev/VeleroWeeklyBackupMissing
               summary: "Velero weekly backup missing"
               description: "No fully successful full-weekly backup in the last 8 days (a PartiallyFailed one does not count)."
+  # a Velero gone for 10 minutes and back (a restart, a drain): VeleroDown pending, never firing - its 15 minutes
+  - interval: 1m
+    input_series:
+      - series: 'up{namespace="velero", container="velero"}'
+        values: '1x5 _x10 1x20'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: VeleroDown
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: VeleroDown
+        exp_alerts: []

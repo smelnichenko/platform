@@ -20,6 +20,7 @@ spec:
   backoffLimit: 10
   # bounded: Argo waits for a hook until Kubernetes fails the Job - three tries of the 300 s wait and the schema
   activeDeadlineSeconds: 1200
+  # no ttlSecondsAfterFinished: a success is deleted by its hook policy, a failure keeps its pod and log to the next sync
   template:
     metadata:
       labels:

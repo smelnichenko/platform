@@ -52,6 +52,7 @@ spec:
   backoffLimit: 1
   # bounded: a pre-delete hook holds the preview's deletion until the Job ends
   activeDeadlineSeconds: 600
+  # no ttlSecondsAfterFinished: a success is deleted by its hook policy, a failure keeps its pod and log for a look
   template:
     metadata:
       labels:

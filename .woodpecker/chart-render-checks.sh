@@ -401,9 +401,11 @@ pcleanup=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --se
   --show-only templates/preview-cleanup-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
 s3jobs=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
   --set 's3gw.buckets={a}' --show-only templates/s3gw-buckets-job.yaml)
-# the hook Job templates judged below, by file: every one the scan of the charts finds must be among them
-judged="k6-postsync-job.yaml scylla-schema-job.yaml gateway.yaml clickhouse-init-job.yaml cnpg-init-users.yaml
-sonarqube-setup-job.yaml preview-cleanup-job.yaml s3gw-buckets-job.yaml"
+# the hook Job templates judged below, by chart and file: every one the scan of the charts finds must be among them
+judged="schnappy/templates/k6-postsync-job.yaml schnappy-data/templates/scylla-schema-job.yaml
+schnappy-mesh/templates/gateway.yaml schnappy-observability/templates/clickhouse-init-job.yaml
+schnappy-data/templates/cnpg-init-users.yaml schnappy-sonarqube/templates/sonarqube-setup-job.yaml
+schnappy/templates/preview-cleanup-job.yaml schnappy-data/templates/s3gw-buckets-job.yaml"
 # every outermost loop that sleeps (nested loops, one-line loops included) reads the clock inside it, the bound set
 # before it on a line of its own (not a comment)
 clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\) \+ [0-9]+ \)\)$/ {e=1}
@@ -411,9 +413,9 @@ clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\
   opens && !d {clk = 0; slp = 0} {d += opens}
   d && /-lt "\$end"/ {clk = 1} d && /(^|[ ;])sleep / {slp = 1}
   closes {d -= closes; if (d <= 0) {d = 0; if (slp && !(e && clk)) bad = 1}} END {exit bad}'; }
-# a hook's deadline holds its longest wait (the end= seconds) and a margin for the rest of its work: 120 s and 10 s
-# per network call (each bounded at 10 s or less - every curl and wget in a hook has its time-out)
-wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | sort -n | tail -1; }
+# a hook's deadline holds its waits (the end= seconds, one after another: summed) and a margin for the rest of its
+# work: 120 s and 10 s per network call (each bounded at 10 s or less - every curl and wget in a hook has its time-out)
+wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | awk '{t += $1} END {if (NR) print t}'; }
 calls_in() { grep -oE '(^|[ ;($|])(curl|wget|sq|psql|aws|cqlsh|kubectl|clickhouse-client) ' | wc -l; }
 for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users" \
   "sonarqube-setup:$sqsetup" "preview-cleanup:$pcleanup" "s3gw-buckets:$s3jobs"; do
@@ -427,6 +429,9 @@ for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit"
   n=$(echo "$code" | calls_in)
   [ -z "$w" ] || [ "$(echo "$body" | job_deadline)" -ge $((w + 120 + 10 * n)) ] \
     || fail "the $name hook Job's deadline $(echo "$body" | job_deadline) s cannot hold its ${w} s wait, 120 s and its $n calls at 10 s"
+  ttl=$(echo "$body" | awk '/^spec:/ {s=1; next} /^[^ ]/ {s=0} s && /^  ttlSecondsAfterFinished:/ {print $2}')
+  [ -z "$ttl" ] || [ "$ttl" -ge 86400 ] \
+    || fail "the $name hook Job deletes itself $ttl s after it ends: a failed one keeps its pod and log until the next sync"
   echo "$code" | grep -E '(^|[ ;($])curl ' | grep -v -- '--max-time' | grep -q . \
     && fail "the $name hook Job has a curl without --max-time: $(echo "$code" | grep -E '(^|[ ;($])curl ' | grep -v -- '--max-time' | head -1)"
   echo "$code" | grep -E '(^|[ ;($])wget ' | grep -v -- '-T [0-9]' | grep -q . \
@@ -436,7 +441,7 @@ hooks=""
 for f in helm/*/templates/*.yaml; do
   awk '/^---/ {if (job && hook) print FILENAME; job=hook=0; next} /^kind: Job *$/ {job=1}
     /^    "?(argocd\.argoproj\.io|helm\.sh)\/hook"?:/ {hook=1} END {if (job && hook) print FILENAME}' "$f" | grep -q . \
-    && hooks="$hooks ${f##*/}"
+    && hooks="$hooks ${f#helm/}"
   awk -v f="$f" '/^---/ {if (job && hook && !dl) {print f; bad=1} job=hook=dl=0; next}
     /^kind: Job *$/ {job=1} /^    "?(argocd\.argoproj\.io|helm\.sh)\/hook"?:/ {hook=1} /^  activeDeadlineSeconds:/ {dl=1}
     END {if (job && hook && !dl) {print f; bad=1}; exit bad}' "$f" || fail "$f: a hook Job without activeDeadlineSeconds on its spec"
@@ -492,15 +497,22 @@ have=$(echo "$buckets_job" | job_deadline)
 # (the weekly backup, every week until 2026-10-11: hyperfoil-load at 03:00 and the hourly etcd-backup); the pods
 # hold nothing to restore, the Job objects stay in the backup. Each Job and CronJob kind in a template carries the
 # label on its pod template, where Velero reads it (read by indentation; the hyperfoil CronJob's render read too)
-for f in helm/*/templates/*.yaml; do
-  got=$(awk '/^ *$/ {next} {ind = match($0, /[^ ]/) - 1}
+# the Job/CronJob kinds in a file and the pod templates of those carrying the label: "<kinds> <labelled>"
+label_counts() { awk '/^---/ {injob = 0; st = 0; next} /^ *$/ {next} {ind = match($0, /[^ ]/) - 1}
     /^ *kind: / {injob = 0} /^ *kind: (Job|CronJob) *$/ {jobs++; injob = 1}
     st && ind <= t {st = 0} st == 2 && ind <= t + 2 {st = 0} st == 3 && ind <= t + 4 {st = 0}
     /^ *template: *$/ {t = ind; st = 1; next}
     st == 1 && ind == t + 2 && /metadata: *$/ {st = 2; next}
     st == 2 && ind == t + 4 && /labels: *$/ {st = 3; next}
     st == 3 && ind == t + 6 && injob && /velero\.io\/exclude-from-backup: "true"/ {marks++; st = 0}
-    END {print jobs + 0, marks + 0}' "$f")
+    END {print jobs + 0, marks + 0}' "$1"; }
+# its guard on the kind: a labelled Deployment beside an unlabelled Job counts nothing for the Job
+printf '%s\n' 'kind: Deployment' 'spec:' '  template:' '    metadata:' '      labels:' \
+  '        velero.io/exclude-from-backup: "true"' '---' 'kind: Job' 'spec:' '  template:' '    metadata:' \
+  '      labels:' '        app: x' > .ci-out/label-fixture.yaml
+[ "$(label_counts .ci-out/label-fixture.yaml)" = "1 0" ] || fail "the label count credits a non-Job's pod template to a Job"
+for f in helm/*/templates/*.yaml; do
+  got=$(label_counts "$f")
   [ "${got% *}" -le "${got#* }" ] || fail "$f: ${got% *} Job/CronJob kind(s), ${got#* } pod template(s) with velero.io/exclude-from-backup"
   seen=$(( ${seen:-0} + ${got% *} ))
 done
