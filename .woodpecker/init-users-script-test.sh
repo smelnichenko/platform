@@ -50,7 +50,11 @@ sh .ci-out/broken.sh >.ci-out/run4.log 2>&1 && fail "a failing SQL statement did
 # deadline (the bound shrunk to 3 s; nothing listens on port 1)
 sed 's/+ 600 ))/+ 3 ))/' "$script" >.ci-out/unreachable.sh
 grep -q '+ 3 ))' .ci-out/unreachable.sh || fail "the wait's bound not found in the script"
-PGPORT=1 PGCONNECT_TIMEOUT=1 sh .ci-out/unreachable.sh >.ci-out/run5.log 2>&1 && fail "an unreachable Postgres exited 0"
+# its own limit: a wait that never ends is a failure here, not a hang (busybox timeout: 143 when it fires)
+PGPORT=1 PGCONNECT_TIMEOUT=1 timeout 60 sh .ci-out/unreachable.sh >.ci-out/run5.log 2>&1
+rc=$?
+[ "$rc" -ne 0 ] || fail "an unreachable Postgres exited 0"
+[ "$rc" -ne 143 ] && [ "$rc" -ne 124 ] || fail "an unreachable Postgres: the wait did not end at its bound (killed at 60 s)"
 grep -q "not ready after" .ci-out/run5.log || fail "an unreachable Postgres not said: $(tail -2 .ci-out/run5.log)"
 
 echo "init-users script test: OK ($(echo "$names" | wc -l) databases)"
