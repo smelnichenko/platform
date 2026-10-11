@@ -63,7 +63,7 @@ spec:
               sed -i "s/__TTL_DAYS__/{{ .Values.clickhouse.retention.days | default 30 }}/g" /tmp/logs-schema.sql
               # --multiquery makes clickhouse-client execute every
               # ;-separated statement in the file. Failures abort.
-              clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --multiquery < /tmp/logs-schema.sql
+              clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --connect_timeout 5 --receive_timeout 300 --multiquery < /tmp/logs-schema.sql
 
               {{- if eq (.Values.clickhouse.events.enabled | toString) "true" }}
               cp /sql/events-schema.sql /tmp/events-schema.sql
@@ -74,7 +74,7 @@ spec:
                 -e "s/__KAFKA_NUM_CONS__/{{ .Values.clickhouse.events.kafka.numConsumers | default 2 }}/g" \
                 -e "s/__EVT_TTL_DAYS__/{{ .Values.clickhouse.events.retentionDays | default 180 }}/g" \
                 /tmp/events-schema.sql
-              clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --multiquery < /tmp/events-schema.sql
+              clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --connect_timeout 5 --receive_timeout 300 --multiquery < /tmp/events-schema.sql
               {{- end }}
 
               # Tell the istio sidecar to exit so the Job pod can

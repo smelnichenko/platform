@@ -48,13 +48,13 @@ spec:
               # bounded by the clock: a Scylla that never answers fails the try (the Job retries, its deadline holds)
               end=$(( $(date +%s) + 300 ))
               for i in $(seq 1 1000); do
-                cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "SELECT now() FROM system.local" 2>/dev/null && break
+                cqlsh --connect-timeout=5 --request-timeout=10 {{ include "schnappy.scylla.serviceName" . }} 9042 -e "SELECT now() FROM system.local" 2>/dev/null && break
                 [ "$(date +%s)" -lt "$end" ] || { echo "ScyllaDB not ready after 300s"; exit 1; }
                 echo "ScyllaDB not ready, retrying in 5s..."
                 sleep 5
               done
               echo "ScyllaDB is ready. Applying schema..."
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 <<'EOF'
+              cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 <<'EOF'
               CREATE KEYSPACE IF NOT EXISTS chat WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
               CREATE TABLE IF NOT EXISTS chat.messages_by_channel (
@@ -127,8 +127,8 @@ spec:
               );
               EOF
               echo "Migrating user_id to user_uuid if needed..."
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD user_uuid uuid;" 2>/dev/null || true
-              cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD user_uuid uuid;" 2>/dev/null || true
+              cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD user_uuid uuid;" 2>/dev/null || true
+              cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD user_uuid uuid;" 2>/dev/null || true
               echo "Schema applied successfully."
               echo "Done."
       restartPolicy: OnFailure

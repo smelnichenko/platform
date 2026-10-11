@@ -277,3 +277,25 @@ tests:
       - eval_time: 30m
         alertname: VeleroDown
         exp_alerts: []
+  # VeleroDown's 15 minutes pinned both ways (explicit 0s: no lookback blur): down 13 minutes - none; 16 - firing
+  - interval: 1m
+    input_series:
+      - series: 'up{namespace="velero", container="velero"}'
+        values: '1x5 0x13 1x20'
+    alert_rule_test:
+      - eval_time: 18m
+        alertname: VeleroDown
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'up{namespace="velero", container="velero"}'
+        values: '1x5 0x20'
+    alert_rule_test:
+      - eval_time: 22m
+        alertname: VeleroDown
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroDown
+              summary: "Velero server down"
+              description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."

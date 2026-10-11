@@ -388,7 +388,10 @@ schema=$(helm template t helm/schnappy-data/ --show-only templates/scylla-schema
 gwjob=$(mesh $lan --show-only templates/gateway.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
 chinit=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true \
   --show-only templates/clickhouse-init-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
+# five databases, production's count: the deadline grows with them
 users=$(helm template t helm/schnappy-data/ --set cnpg.enabled=true --set 'postgres.databases[0].name=a' \
+  --set 'postgres.databases[1].name=b' --set 'postgres.databases[2].name=c' --set 'postgres.databases[3].name=d' \
+  --set 'postgres.databases[4].name=e' \
   --show-only templates/cnpg-init-users.yaml)
 sqsetup=$(helm template t helm/schnappy-sonarqube/ --set sonarqube.enabled=true --set sonarqube.setup.enabled=true \
   --set sonarqube.postgres.password=x --set 'sonarqube.setup.projects[0].key=p1' --set 'sonarqube.setup.projects[0].name=P one' \
@@ -406,17 +409,42 @@ judged="schnappy/templates/k6-postsync-job.yaml schnappy-data/templates/scylla-s
 schnappy-mesh/templates/gateway.yaml schnappy-observability/templates/clickhouse-init-job.yaml
 schnappy-data/templates/cnpg-init-users.yaml schnappy-sonarqube/templates/sonarqube-setup-job.yaml
 schnappy/templates/preview-cleanup-job.yaml schnappy-data/templates/s3gw-buckets-job.yaml"
-# every outermost loop that sleeps (nested loops, one-line loops included) reads the clock inside it, the bound set
-# before it on a line of its own (not a comment)
+# every loop that sleeps - nested, one-line, its "do" on the next line - reads the clock inside it (a read in a loop
+# nested in it counts: it runs each round), the bound set before it on a line of its own (not a comment). A loop is a
+# for/while/until starting a statement
 clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\) \+ [0-9]+ \)\)$/ {e=1}
-  { opens = gsub(/(^|[ ;])(for|while|until) [^;]*; *do($|[ ;])/, "&"); closes = gsub(/(^|[ ;])done($|[ ;])/, "&") }
-  opens && !d {clk = 0; slp = 0} {d += opens}
-  d && /-lt "\$end"/ {clk = 1} d && /(^|[ ;])sleep / {slp = 1}
-  closes {d -= closes; if (d <= 0) {d = 0; if (slp && !(e && clk)) bad = 1}} END {exit bad}'; }
-# a hook's deadline holds its waits (the end= seconds, one after another: summed) and a margin for the rest of its
-# work: 120 s and 10 s per network call (each bounded at 10 s or less - every curl and wget in a hook has its time-out)
+  { opens = gsub(/(^ *|[;&|(] *)(for|while|until) /, "&"); closes = gsub(/(^|[ ;])done($|[ ;)])/, "&") }
+  { for (k = 0; k < opens; k++) {d++; slp[d] = 0; clk[d] = 0} }
+  d && /-lt "\$end"/ {for (k = 1; k <= d; k++) clk[k] = 1}
+  d && /(^|[ ;])sleep / {slp[d] = 1}
+  { for (k = 0; k < closes && d > 0; k++) {if (slp[d] && !(e && clk[d])) bad = 1; d--} }
+  END {exit bad}'; }
+# a hook's deadline holds its waits (the end= seconds, one after another: summed), 120 s, and each call at its own bound
 wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | awk '{t += $1} END {if (NR) print t}'; }
-calls_in() { grep -oE '(^|[ ;($|])(curl|wget|sq|psql|aws|cqlsh|kubectl|clickhouse-client) ' | wc -l; }
+# each client call costed by its own time-out, read from the call (continued lines joined): curl --max-time, wget -T,
+# cqlsh --connect-timeout + --request-timeout, kubectl --request-timeout, clickhouse-client --connect_timeout +
+# --receive_timeout, aws 40 s to start + its connect and read; sq (curl --max-time 10 itself) 10, psql the pod's
+# connect and statement time-outs (the first argument). A call without its time-out: "UNBOUNDED <the line>"
+calls_cost() { sed -e ':a' -e '/\\$/N; s/\\\n//; ta' | awk -v psql="$1" '/^ *#/ {next}
+  { line = $0
+    n = gsub(/(^|[ ;(|&$`'"'"'"])curl /, "&", line)
+    for (k = 0; k < n; k++) { if (match(line, /--max-time [0-9]+/)) { split(substr(line, RSTART, RLENGTH), a, " "); t += a[2] } else { print "UNBOUNDED " $0; u = 1; exit } }
+    n = gsub(/(^|[ ;(|&$`'"'"'"])wget /, "&", line)
+    for (k = 0; k < n; k++) { if (match(line, /-T [0-9]+/)) { split(substr(line, RSTART, RLENGTH), a, " "); t += a[2] } else { print "UNBOUNDED " $0; u = 1; exit } }
+    n = gsub(/(^|[ ;(|&$])cqlsh /, "&", line)
+    for (k = 0; k < n; k++) { if (match(line, /--connect-timeout=[0-9]+/) && (c = substr(line, RSTART + 18, RLENGTH - 18)) && match(line, /--request-timeout=[0-9]+/)) t += c + substr(line, RSTART + 18, RLENGTH - 18); else { print "UNBOUNDED " $0; u = 1; exit } }
+    n = gsub(/(^|[ ;(|&$])kubectl /, "&", line)
+    for (k = 0; k < n; k++) { if (match(line, /--request-timeout=[0-9]+s/)) t += substr(line, RSTART + 18, RLENGTH - 19); else { print "UNBOUNDED " $0; u = 1; exit } }
+    n = gsub(/(^|[ ;(|&$])clickhouse-client /, "&", line)
+    for (k = 0; k < n; k++) { if (match(line, /--connect_timeout [0-9]+/) && (c = substr(line, RSTART + 18, RLENGTH - 18)) && match(line, /--receive_timeout [0-9]+/)) t += c + substr(line, RSTART + 18, RLENGTH - 18); else { print "UNBOUNDED " $0; u = 1; exit } }
+    n = gsub(/(^|[ ;(|&$])aws /, "&", line)
+    for (k = 0; k < n; k++) { if (match(line, /--cli-connect-timeout [0-9]+/) && (c = substr(line, RSTART + 22, RLENGTH - 22)) && match(line, /--cli-read-timeout [0-9]+/)) t += 40 + c + substr(line, RSTART + 19, RLENGTH - 19); else { print "UNBOUNDED " $0; u = 1; exit } }
+    n = gsub(/(^|[ ;(|&$])sq /, "&", line); t += 10 * n
+    n = gsub(/(^|[ ;(|&$])psql /, "&", line); if (n && psql == "") { print "UNBOUNDED " $0; u = 1; exit } t += psql * n }
+  END { if (!u) print t + 0 }'; }
+# the waits summed: two waits of 100 s and 200 s, one after another, are 300 s
+[ "$(printf '%s\n' '  end=$(( $(date +%s) + 100 ))' '  end=$(( $(date +%s) + 200 ))' | wait_bound)" = 300 ] \
+  || fail "the waits are not summed"
 for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users" \
   "sonarqube-setup:$sqsetup" "preview-cleanup:$pcleanup" "s3gw-buckets:$s3jobs"; do
   name=${pair%%:*}; body=${pair#*:}
@@ -425,17 +453,16 @@ for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit"
   echo "$body" | grep -qE '^ *(until|while) ' && fail "the $name hook Job waits in a loop without a clock bound (until/while)"
   echo "$body" | clock_bound || fail "the $name hook Job's wait reads no clock in its loop (end=\$(( \$(date +%s) + N )) before it, -lt \"\$end\" in it)"
   w=$(echo "$body" | wait_bound)
-  code=$(echo "$body" | grep -v '^ *#')
-  n=$(echo "$code" | calls_in)
-  [ -z "$w" ] || [ "$(echo "$body" | job_deadline)" -ge $((w + 120 + 10 * n)) ] \
-    || fail "the $name hook Job's deadline $(echo "$body" | job_deadline) s cannot hold its ${w} s wait, 120 s and its $n calls at 10 s"
+  # psql's bound: the pod's PGCONNECT_TIMEOUT and statement_timeout (PGOPTIONS), when the Job sets them
+  pc=$(echo "$body" | grep -A1 'name: PGCONNECT_TIMEOUT' | sed -n 's/.*value: "\([0-9]*\)".*/\1/p')
+  ps=$(echo "$body" | sed -n 's/.*statement_timeout=\([0-9]*\)s.*/\1/p' | head -1)
+  cost=$(echo "$body" | calls_cost "$([ -n "$pc" ] && [ -n "$ps" ] && echo $((pc + ps)))")
+  case $cost in UNBOUNDED*) fail "the $name hook Job has a call without its time-out: ${cost#UNBOUNDED }" ;; esac
+  [ "$(echo "$body" | job_deadline)" -ge $((${w:-0} + 120 + cost)) ] \
+    || fail "the $name hook Job's deadline $(echo "$body" | job_deadline) s cannot hold its ${w:-0} s of waits, 120 s and its calls' $cost s"
   ttl=$(echo "$body" | awk '/^spec:/ {s=1; next} /^[^ ]/ {s=0} s && /^  ttlSecondsAfterFinished:/ {print $2}')
   [ -z "$ttl" ] || [ "$ttl" -ge 86400 ] \
     || fail "the $name hook Job deletes itself $ttl s after it ends: a failed one keeps its pod and log until the next sync"
-  echo "$code" | grep -E '(^|[ ;($])curl ' | grep -v -- '--max-time' | grep -q . \
-    && fail "the $name hook Job has a curl without --max-time: $(echo "$code" | grep -E '(^|[ ;($])curl ' | grep -v -- '--max-time' | head -1)"
-  echo "$code" | grep -E '(^|[ ;($])wget ' | grep -v -- '-T [0-9]' | grep -q . \
-    && fail "the $name hook Job has a wget without -T: $(echo "$code" | grep -E '(^|[ ;($])wget ' | grep -v -- '-T [0-9]' | head -1)"
 done
 hooks=""
 for f in helm/*/templates/*.yaml; do
@@ -448,6 +475,10 @@ for f in helm/*/templates/*.yaml; do
 done
 echo "$users" | grep -A1 'name: PGCONNECT_TIMEOUT' | grep -q 'value: "5"' \
   || fail "init-users' psql calls are not bounded (PGCONNECT_TIMEOUT)"
+echo "$users" | grep -A1 'name: PGOPTIONS' | grep -q 'statement_timeout=[0-9]*s.*lock_timeout=[0-9]*s' \
+  || fail "init-users' statements are not bounded (PGOPTIONS statement_timeout and lock_timeout)"
+# the options as the pod gets them, for .woodpecker/init-users-script-test.sh
+echo "$users" | grep -A1 'name: PGOPTIONS' | sed -n 's/.*value: "\(.*\)".*/\1/p' > .ci-out/init-users.pgoptions
 [ "$(echo "$chinit" | grep -c -- '--connect_timeout 5 --receive_timeout 10')" -ge 1 ] \
   || fail "clickhouse-init's wait call is not bounded (--connect_timeout, --receive_timeout)"
 # every Job of schnappy-data is a hook: the data apps compare no Job (infra's data-envs ignores none of their fields)

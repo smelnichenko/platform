@@ -13,7 +13,9 @@ upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
 first=$(echo "$names" | head -1); last=$(echo "$names" | tail -1)
 [ -n "$first" ] || fail "no database names"
 
-until pg_isready -q; do sleep 1; done
+# Postgres ready within a minute, else the test fails (never a wait without an end)
+for _ in $(seq 60); do pg_isready -q && break; sleep 1; done
+pg_isready -q || fail "Postgres not ready in 60 s"
 
 # Run 1: fresh cluster; one password carries a quote (the classic SQL breaker).
 for n in $names; do export "DB_PASSWORD_$(upper "$n")=pw-$n"; done
@@ -57,5 +59,25 @@ rc=$?
 [ "$rc" -ne 143 ] && [ "$rc" -ne 124 ] || fail "an unreachable Postgres: the wait did not end at its bound (killed at 60 s)"
 grep -q "not ready after" .ci-out/run5.log || fail "an unreachable Postgres not said: $(tail -2 .ci-out/run5.log)"
 grep -q "is ready" .ci-out/run5.log && fail "an unreachable Postgres taken for ready (the wait broke out, not failed)"
+
+# Negative 4: a lock held elsewhere (an ALTER ROLE uncommitted) ends the script at its lock_timeout - the pod's
+# PGOPTIONS (as chart-render-checks rendered them), the lock time-out shrunk to 2 s - non-zero, not a hook hanging
+[ -s .ci-out/init-users.pgoptions ] || fail "the rendered PGOPTIONS missing (run chart-render-checks.sh)"
+opts=$(sed 's/lock_timeout=[0-9]*s/lock_timeout=2s/' .ci-out/init-users.pgoptions)
+echo "$opts" | grep -q 'lock_timeout=2s' || fail "no lock_timeout in the rendered PGOPTIONS"
+{ printf 'BEGIN;\nALTER ROLE %s CONNECTION LIMIT 7;\nSELECT pg_sleep(30);\n' "$first" | psql -q > /dev/null 2>&1; } &
+holder=$!
+for _ in $(seq 50); do
+  [ "$(sql "SELECT count(*) FROM pg_stat_activity WHERE query LIKE '%pg_sleep(30)%' AND state = 'active'")" -ge 1 ] && break
+  sleep 0.1
+done
+t0=$(date +%s)
+PGOPTIONS="$opts" timeout 25 sh "$script" > .ci-out/run6.log 2>&1
+rc=$?
+kill "$holder" 2> /dev/null
+sql "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query LIKE '%pg_sleep(30)%' AND pid <> pg_backend_pid()" > /dev/null
+[ "$rc" -ne 0 ] || fail "a lock held elsewhere: the script exited 0"
+[ "$rc" -ne 124 ] && [ "$rc" -ne 143 ] || fail "a lock held elsewhere: the script hung (no lock_timeout)"
+grep -q "lock timeout" .ci-out/run6.log || fail "a lock held elsewhere: not ended by its lock_timeout: $(tail -2 .ci-out/run6.log)"
 
 echo "init-users script test: OK ($(echo "$names" | wc -l) databases)"
