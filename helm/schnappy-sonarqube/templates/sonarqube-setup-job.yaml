@@ -10,8 +10,9 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
-  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 600 s wait and the setup calls, each bounded
-  activeDeadlineSeconds: 1200
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 600 s wait, 120 s, and 10 s for each of its
+  # calls: 20, and 3 a project (chart-render-checks counts the rendered ones)
+  activeDeadlineSeconds: {{ add 720 (mul 10 (add 20 (mul 3 (len .Values.sonarqube.setup.projects)))) }}
   template:
     metadata:
       labels:
@@ -45,8 +46,21 @@ spec:
             - -c
             - |
               set -eu
-              # the sidecar told to quit whatever the outcome; the Job's status is the script's
-              trap 'curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit > /dev/null 2>&1 || true' EXIT
+              # a token generated and not confirmed in Vault is revoked whatever ends the run (a time-out, a failed write, a restart
+              # of the container): an existing token is never written again, so the next run must find none and make one; and the
+              # sidecar told to quit whatever the outcome - the Job's status is the script's
+              UNWRITTEN=""
+              on_exit() {
+                rc=$?
+                if [ -n "$UNWRITTEN" ]; then
+                  sq -X POST "${SQ_URL}/api/user_tokens/revoke" -d "name=ci" > /dev/null \
+                    || echo "ERROR: revoking 'ci' failed (none made, or revoke it by hand)"
+                  rc=1
+                fi
+                curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit > /dev/null 2>&1 || true
+                exit "$rc"
+              }
+              trap on_exit EXIT
 
               # every call fails on an HTTP error and on its time-out (-f, --max-time) and every answer is read into a
               # variable before it is searched: a failed read is a failure, never "absent" (a create after it would
@@ -76,57 +90,49 @@ spec:
                 echo "Admin password already set"
               fi
 
-              # 3. Generate analysis token (if not exists). A token Vault never got is revoked: an existing one is
-              # never written again, so the next run must make a new one
+              # 3. Generate analysis token (if not exists); one generated is revoked unless Vault confirms it (on_exit)
               TOKENS=$(sq "${SQ_URL}/api/user_tokens/search")
               if ! echo "$TOKENS" | grep -q '"name":"ci"'; then
                 echo "Generating analysis token..."
+                UNWRITTEN=yes  # armed before the call: one timing out may have made the token all the same
                 GENERATED=$(sq -X POST "${SQ_URL}/api/user_tokens/generate" -d "name=ci&type=USER_TOKEN")
                 TOKEN=$(echo "$GENERATED" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
                 [ -n "$TOKEN" ] || { echo "ERROR: token generation answered no token"; exit 1; }
                 echo "Token generated, writing to Vault..."
-                VAULT_RESP=""
-                if VAULT_RESP=$(curl -fsSk --max-time 10 -X PATCH \
-                    -H "X-Vault-Token: ${VAULT_TOKEN}" \
-                    -H "Content-Type: application/merge-patch+json" \
-                    "${VAULT_ADDR}/v1/{{ .Values.vault.secretPathPrefix }}/woodpecker-ci" \
-                    -d "{\"data\":{\"sonar_token\":\"${TOKEN}\"}}") && echo "$VAULT_RESP" | grep -q '"version"'; then
-                  echo "Token written to Vault successfully"
-                else
-                  sq -X POST "${SQ_URL}/api/user_tokens/revoke" -d "name=ci" > /dev/null \
-                    || echo "ERROR: revoking the unwritten token failed too - revoke 'ci' by hand"
-                  echo "ERROR: writing the token to Vault failed: ${VAULT_RESP:-no answer}"
-                  exit 1
-                fi
+                VAULT_RESP=$(curl -fsSk --max-time 10 -X PATCH \
+                  -H "X-Vault-Token: ${VAULT_TOKEN}" \
+                  -H "Content-Type: application/merge-patch+json" \
+                  "${VAULT_ADDR}/v1/{{ .Values.vault.secretPathPrefix }}/woodpecker-ci" \
+                  -d "{\"data\":{\"sonar_token\":\"${TOKEN}\"}}")
+                echo "$VAULT_RESP" | grep -q '"version"' || { echo "ERROR: Vault did not confirm the token: $VAULT_RESP"; exit 1; }
+                UNWRITTEN=""
+                echo "Token written to Vault successfully"
               else
                 echo "Analysis token already exists"
               fi
 
-              # 4. Create quality gates
+              # 4. Quality gates: made when missing, then set every run - a run that failed between the copy and its settings left a
+              # gate a later run must still finish
               GATES=$(sq "${SQ_URL}/api/qualitygates/list")
               # Service gate (default, 80% coverage)
               if ! echo "$GATES" | grep -q '"name":"Service"'; then
                 echo "Creating Service quality gate..."
                 sq -X POST "${SQ_URL}/api/qualitygates/copy" -d "sourceName=Sonar%20way&name=Service" > /dev/null
-                sq -X POST "${SQ_URL}/api/qualitygates/set_as_default" -d "name=Service" > /dev/null
-                echo "Service gate created and set as default"
-              else
-                echo "Service gate already exists"
               fi
+              sq -X POST "${SQ_URL}/api/qualitygates/set_as_default" -d "name=Service" > /dev/null
+              echo "Service gate in place, the default"
 
               # Frontend gate (70% coverage)
               if ! echo "$GATES" | grep -q '"name":"Frontend"'; then
                 echo "Creating Frontend quality gate..."
                 sq -X POST "${SQ_URL}/api/qualitygates/copy" -d "sourceName=Sonar%20way&name=Frontend" > /dev/null
-                GATE=$(sq "${SQ_URL}/api/qualitygates/show?name=Frontend")
-                COV_ID=$(echo "$GATE" | grep -o '"id":"[^"]*","metric":"new_coverage"' | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-                [ -n "$COV_ID" ] || { echo "ERROR: the Frontend gate has no new_coverage condition to set to 70%"; exit 1; }
-                sq -X POST "${SQ_URL}/api/qualitygates/update_condition" \
-                  -d "id=${COV_ID}&metric=new_coverage&op=LT&error=70" > /dev/null
-                echo "Frontend gate created (70% coverage)"
-              else
-                echo "Frontend gate already exists"
               fi
+              GATE=$(sq "${SQ_URL}/api/qualitygates/show?name=Frontend")
+              COV_ID=$(echo "$GATE" | grep -o '"id":"[^"]*","metric":"new_coverage"' | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+              [ -n "$COV_ID" ] || { echo "ERROR: the Frontend gate has no new_coverage condition to set to 70%"; exit 1; }
+              sq -X POST "${SQ_URL}/api/qualitygates/update_condition" \
+                -d "id=${COV_ID}&metric=new_coverage&op=LT&error=70" > /dev/null
+              echo "Frontend gate in place (70% coverage)"
 
               # 5. Create projects
               {{- range .Values.sonarqube.setup.projects }}
