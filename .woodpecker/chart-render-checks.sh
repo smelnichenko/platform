@@ -399,6 +399,17 @@ k6_max=$(sed -n "s/.*maxDuration: '\([0-9][0-9]*\)m'.*/\1/p" helm/schnappy/files
 need=$(( 2 * (wait_s + k6_max * 60 + 30) + 10 ))
 [ "$(echo "$k6" | job_deadline)" -ge "$need" ] || fail "the k6 hook's deadline $(echo "$k6" | job_deadline) s cannot hold two tries ($need s)"
 
+# --- the s3gw bucket hook Job: its deadline holds every aws call at 30 s each ---------------------------------------
+# aws-cli v2 starts in seconds on a free CPU, in ~37 s on a loaded node (the upgrade copy's build, 2026-10-11: 120 s
+# for three buckets, a policy and a listing ran out, Argo's sync failed): 30 s per call
+buckets_job=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
+  --set 's3gw.buckets={a,b,c}' --set 's3gw.publicReadBuckets={c}' --show-only templates/s3gw-buckets-job.yaml)
+calls=$(echo "$buckets_job" | grep -oE '(^ *|[|&;] *)(s3|aws) ' | wc -l)
+need=$(( calls * 30 ))
+have=$(echo "$buckets_job" | job_deadline)
+[ "$calls" -ge 8 ] || fail "the bucket Job's aws calls not found ($calls of 3 heads, 3 creates, a policy, a listing)"
+[ "${have:-0}" -ge "$need" ] || fail "the s3gw bucket Job's deadline ${have:-none} s cannot hold $calls aws calls at 30 s ($need s)"
+
 # --- every Job's pods are out of Velero's backups -------------------------------------------------------------------
 # a Job's pod that ends while a backup reads its volumes fails that volume and the whole backup is PartiallyFailed
 # (the weekly backup, every week until 2026-10-11: hyperfoil-load at 03:00 and the hourly etcd-backup); the pods
