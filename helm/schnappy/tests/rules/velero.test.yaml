@@ -1,14 +1,15 @@
 # promtool unit tests for the Velero alerts (schnappy-observability; rendered by .woodpecker/render-rules.sh).
 # A failed scheduled backup is VeleroScheduledBackupFailed, never VeleroDailyBackupMissing (the one alert the Vagrant
 # copy allows); a PartiallyFailed backup leaves the last status at success and is VeleroBackupPartiallyFailed alone;
-# the age alerts wait one period after a Velero start (its last success is in memory only) and fire with Velero down.
+# the age alerts read the last success from Prometheus' history (a Velero restart drops the series until its next
+# success) and fire with Velero down.
 rule_files:
   - rendered-infra-rules.yaml
 
 evaluation_interval: 1m
 
 tests:
-  # a failed daily backup, both last successes recent, Velero up for weeks: the failure alert alone
+  # a failed daily backup, both last successes recent: the failure alert alone
   - interval: 1m
     input_series:
       - series: 'velero_backup_last_status{schedule="velero-schnappy-daily"}'
@@ -17,8 +18,6 @@ tests:
         values: '0x30'
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
         values: '0x30'
-      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
-        values: '-2000000x30'
     alert_rule_test:
       - eval_time: 20m
         alertname: VeleroScheduledBackupFailed
@@ -35,16 +34,12 @@ tests:
         alertname: VeleroWeeklyBackupMissing
         exp_alerts: []
 
-  # no daily success while Velero has run for weeks (a node-agent started just now changes nothing): missing alone
+  # no daily success in 30 h: missing alone
   - interval: 1m
     input_series:
       - series: 'velero_backup_last_status{schedule="velero-schnappy-daily"}'
         values: '1x30'
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
-        values: '0x30'
-      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
-        values: '-2000000x30'
-      - series: 'process_start_time_seconds{namespace="velero", container="node-agent"}'
         values: '0x30'
     alert_rule_test:
       - eval_time: 20m
@@ -62,18 +57,21 @@ tests:
         alertname: VeleroWeeklyBackupMissing
         exp_alerts: []
 
-  # Velero started minutes ago (a restart, a copy hours old): no success known yet, neither age alert
+  # Velero restarted 10 minutes in, both last successes recent before it: their series gone since, neither age alert
+  # (the history holds them) - 40 min in: a plain series is stale 5 min after its last sample, firing 10 min later
   - interval: 1m
     input_series:
       - series: 'velero_backup_last_status{schedule="velero-schnappy-daily"}'
-        values: '1x30'
-      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
-        values: '0x30'
+        values: '1x60'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '0x10'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '0x10'
     alert_rule_test:
-      - eval_time: 20m
+      - eval_time: 40m
         alertname: VeleroDailyBackupMissing
         exp_alerts: []
-      - eval_time: 20m
+      - eval_time: 40m
         alertname: VeleroWeeklyBackupMissing
         exp_alerts: []
 
@@ -110,8 +108,6 @@ tests:
         values: '0x30 1x120'
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
         values: '0x150'
-      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
-        values: '-2000000x150'
     alert_rule_test:
       - eval_time: 40m
         alertname: VeleroBackupPartiallyFailed
@@ -139,15 +135,13 @@ tests:
         alertname: VeleroBackupPartiallyFailed
         exp_alerts: []
 
-  # the last weekly success 9 days old (at -777600 s; a week old would be fine), Velero up for weeks: missing
+  # the last weekly success 9 days old (at -777600 s; a week old would be fine): missing
   - interval: 1m
     input_series:
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
         values: '-777600x30'
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
         values: '0x30'
-      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
-        values: '-2000000x30'
     alert_rule_test:
       - eval_time: 20m
         alertname: VeleroWeeklyBackupMissing
@@ -163,8 +157,6 @@ tests:
         values: '-604800x30'
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
         values: '0x30'
-      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
-        values: '-2000000x30'
     alert_rule_test:
       - eval_time: 20m
         alertname: VeleroWeeklyBackupMissing

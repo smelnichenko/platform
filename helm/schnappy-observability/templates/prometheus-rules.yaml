@@ -260,12 +260,12 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/VeleroScheduledBackupFailed"
             summary: "Velero scheduled backup failed"
             description: "The last backup of schedule {{ "{{" }} $labels.schedule {{ "}}" }} failed."
-        # Velero keeps the last success in memory only: a server started within the period has none yet, so the age
-        # alerts wait one period after a start; a Velero down (no start time) still fires them
+        # Velero keeps the last success in memory only (a restart drops the series until its next success): the age
+        # alerts read it from Prometheus' history over the period - a restart hides nothing, a Velero down fires them
         - alert: VeleroDailyBackupMissing
           expr: |-
-            absent(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"} > time() - 30 * 3600)
-              unless on() (time() - max(process_start_time_seconds{namespace="velero", container="velero"}) < 30 * 3600)
+            absent(max_over_time(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}[30h])
+              > time() - 30 * 3600)
           for: 10m
           labels:
             severity: critical
@@ -276,8 +276,8 @@ spec:
         # warning: the weekly backup is the cluster-wide one; production-data-check reads critical alerts only
         - alert: VeleroWeeklyBackupMissing
           expr: |-
-            absent(velero_backup_last_successful_timestamp{schedule="velero-full-weekly"} > time() - 8 * 86400)
-              unless on() (time() - max(process_start_time_seconds{namespace="velero", container="velero"}) < 8 * 86400)
+            absent(max_over_time(velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}[8d])
+              > time() - 8 * 86400)
           for: 10m
           labels:
             severity: warning
