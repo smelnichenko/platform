@@ -52,6 +52,8 @@ spec:
     metadata:
       annotations:
         sidecar.istio.io/inject: "false"
+      labels:
+        velero.io/exclude-from-backup: "true"
     spec:
       serviceAccountName: {{ $fn }}-gateway-patch
       restartPolicy: OnFailure

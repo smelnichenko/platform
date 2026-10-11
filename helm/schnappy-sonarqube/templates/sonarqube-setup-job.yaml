@@ -17,6 +17,7 @@ spec:
         {{- include "schnappy.sonarqube.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
         app.kubernetes.io/component: sonarqube-setup
+        velero.io/exclude-from-backup: "true"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.fullname" . }}-sonarqube-setup

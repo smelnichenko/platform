@@ -21,6 +21,7 @@ spec:
             {{- include "schnappy.selectorLabels" . | nindent 12 }}
             app.kubernetes.io/component: hyperfoil-load
             app.kubernetes.io/part-of: schnappy
+            velero.io/exclude-from-backup: "true"
         spec:
           serviceAccountName: {{ include "schnappy.fullname" . }}-hyperfoil
           imagePullSecrets:

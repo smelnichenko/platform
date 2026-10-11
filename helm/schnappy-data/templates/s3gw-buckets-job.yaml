@@ -24,6 +24,7 @@ spec:
       labels:
         {{- include "schnappy.s3gw.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: s3gw-buckets
+        velero.io/exclude-from-backup: "true"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.fullname" . }}-s3gw

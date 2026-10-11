@@ -25,6 +25,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: postgres-init-users
+        velero.io/exclude-from-backup: "true"
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       restartPolicy: OnFailure

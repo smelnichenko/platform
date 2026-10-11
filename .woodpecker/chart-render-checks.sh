@@ -399,4 +399,21 @@ k6_max=$(sed -n "s/.*maxDuration: '\([0-9][0-9]*\)m'.*/\1/p" helm/schnappy/files
 need=$(( 2 * (wait_s + k6_max * 60 + 30) + 10 ))
 [ "$(echo "$k6" | job_deadline)" -ge "$need" ] || fail "the k6 hook's deadline $(echo "$k6" | job_deadline) s cannot hold two tries ($need s)"
 
+# --- every Job's pods are out of Velero's backups -------------------------------------------------------------------
+# a Job's pod that ends while a backup reads its volumes fails that volume and the whole backup is PartiallyFailed
+# (the weekly backup, every week until 2026-10-11: hyperfoil-load at 03:00 and the hourly etcd-backup); the pods
+# hold nothing to restore, the Job objects stay in the backup. Each Job and CronJob kind in a template carries the
+# label once, and the hyperfoil CronJob's render carries it on the pod template, where Velero reads it
+for f in helm/*/templates/*.yaml; do
+  jobs=$(grep -cE '^ *kind: (Job|CronJob) *$' "$f" || true)
+  [ "$jobs" -gt 0 ] || continue
+  marks=$(grep -c 'velero.io/exclude-from-backup: "true"' "$f" || true)
+  [ "$marks" -ge "$jobs" ] || fail "$f: $jobs Job/CronJob kind(s), $marks velero.io/exclude-from-backup label(s)"
+done
+hf=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set hyperfoil.enabled=true \
+  --show-only templates/hyperfoil-load-cronjob.yaml)
+echo "$hf" | awk '/^      template:/{t=1} t && /^          labels:/{l=1; next} l && !/^            /{exit} l' \
+  | grep -q 'velero.io/exclude-from-backup: "true"' \
+  || fail "the hyperfoil-load CronJob's pod template lacks velero.io/exclude-from-backup (it runs into the weekly backup)"
+
 echo "chart render checks: OK"

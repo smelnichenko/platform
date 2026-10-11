@@ -24,6 +24,7 @@ spec:
       labels:
         {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
         job-component: clickhouse-init
+        velero.io/exclude-from-backup: "true"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.fullname" . }}-clickhouse
