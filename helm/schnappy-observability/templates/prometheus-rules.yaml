@@ -251,17 +251,21 @@ spec:
       rules:
         # a scheduled backup's last run failed, and the daily one missing, are two alerts: an environment hours old
         # (the upgrade's Vagrant copy) has no daily backup by nature and allows the second alone, never the first
-        - alert: VeleroBSLUnavailable
+        - alert: VeleroScheduledBackupFailed
           expr: velero_backup_last_status{schedule!=""} == 0
           for: 10m
           labels:
             severity: critical
           annotations:
-            runbook_url: "https://runbooks.pmon.dev/VeleroBSLUnavailable"
+            runbook_url: "https://runbooks.pmon.dev/VeleroScheduledBackupFailed"
             summary: "Velero scheduled backup failed"
             description: "The last backup of schedule {{ "{{" }} $labels.schedule {{ "}}" }} failed."
+        # Velero keeps the last success in memory only: a server started within the period has none yet, so the age
+        # alerts wait one period after a start; a Velero down (no start time) still fires them
         - alert: VeleroDailyBackupMissing
-          expr: absent(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"} > time() - 30 * 3600)
+          expr: |-
+            absent(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"} > time() - 30 * 3600)
+              unless on() (time() - max(process_start_time_seconds{namespace="velero", container="velero"}) < 30 * 3600)
           for: 10m
           labels:
             severity: critical
@@ -269,6 +273,18 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/VeleroDailyBackupMissing"
             summary: "Velero daily backup missing"
             description: "No successful schnappy-daily backup in the last 30h."
+        # warning: the weekly backup is the cluster-wide one; production-data-check reads critical alerts only
+        - alert: VeleroWeeklyBackupMissing
+          expr: |-
+            absent(velero_backup_last_successful_timestamp{schedule="velero-full-weekly"} > time() - 8 * 86400)
+              unless on() (time() - max(process_start_time_seconds{namespace="velero", container="velero"}) < 8 * 86400)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/VeleroWeeklyBackupMissing"
+            summary: "Velero weekly backup missing"
+            description: "No fully successful full-weekly backup in the last 8 days (a PartiallyFailed one does not count)."
         - alert: VeleroBackupFailing
           expr: increase(velero_backup_failure_total[1h]) > 0
           for: 5m
@@ -277,6 +293,16 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/VeleroBackupFailing"
             summary: "Velero backup failed"
+        # PartiallyFailed leaves velero_backup_last_status at 1 (success): only this counter tells
+        - alert: VeleroBackupPartiallyFailed
+          expr: increase(velero_backup_partial_failure_total[1h]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/VeleroBackupPartiallyFailed"
+            summary: "Velero backup partially failed"
+            description: "A backup of schedule {{ "{{" }} $labels.schedule {{ "}}" }} ended PartiallyFailed: some items or volumes are missing from it."
 
 {{- if .Values.prometheus.lanOnlyProbeUrls }}
     - name: infra-lan-only-urls

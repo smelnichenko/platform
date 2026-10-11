@@ -4,7 +4,9 @@
 
 ## What fired
 
-No successful `velero-schnappy-daily` backup in the last 30h (none ran, or none succeeded).
+No successful `velero-schnappy-daily` backup in the last 30h (none ran, or none succeeded), or Velero is down (no
+metrics at all). Velero keeps the last success in memory only, so for 30h after a Velero start the alert waits:
+a restart alone does not fire it.
 
 ## Impact
 
@@ -29,25 +31,15 @@ kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
 
 ## Fix
 
-After addressing root cause, trigger an ad-hoc backup to verify:
+After the root cause is fixed, run the schedule once:
 
 ```bash
-kubectl -n velero create -f - <<EOF
-apiVersion: velero.io/v1
-kind: Backup
-metadata:
-  name: manual-$(date +%Y%m%d-%H%M)
-  namespace: velero
-spec:
-  includedNamespaces: [schnappy-production]
-  defaultVolumesToFsBackup: true
-  ttl: 72h0m0s
-EOF
+kubectl -n velero exec deploy/velero -c velero -- /velero backup create --from-schedule velero-schnappy-daily --wait
 ```
 
-Wait ~5-10min, expect `status.phase: Completed`.
+The backup ends `Completed`; the alert resolves 10 minutes later.
 
 ## Verification
 
 - `kubectl -n velero get bsl default -o jsonpath='{.status.phase}'` → `Available`
-- Next scheduled (nightly at 02:00) run completes
+- the next scheduled run (daily, 02:00 UTC) completes

@@ -1,0 +1,171 @@
+# promtool unit tests for the Velero alerts (schnappy-observability; rendered by .woodpecker/render-rules.sh).
+# A failed scheduled backup is VeleroScheduledBackupFailed, never VeleroDailyBackupMissing (the one alert the Vagrant
+# copy allows); a PartiallyFailed backup leaves the last status at success and is VeleroBackupPartiallyFailed alone;
+# the age alerts wait one period after a Velero start (its last success is in memory only) and fire with Velero down.
+rule_files:
+  - rendered-infra-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # a failed daily backup, both last successes recent, Velero up for weeks: the failure alert alone
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_status{schedule="velero-schnappy-daily"}'
+        values: '0x30'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '0x30'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '0x30'
+      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
+        values: '-2000000x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroScheduledBackupFailed
+        exp_alerts:
+          - exp_labels: { severity: critical, schedule: velero-schnappy-daily }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroScheduledBackupFailed
+              summary: "Velero scheduled backup failed"
+              description: "The last backup of schedule velero-schnappy-daily failed."
+      - eval_time: 20m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts: []
+
+  # no daily success while Velero has run for weeks (a node-agent started just now changes nothing): missing alone
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_status{schedule="velero-schnappy-daily"}'
+        values: '1x30'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '0x30'
+      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
+        values: '-2000000x30'
+      - series: 'process_start_time_seconds{namespace="velero", container="node-agent"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
+              summary: "Velero daily backup missing"
+              description: "No successful schnappy-daily backup in the last 30h."
+      - eval_time: 20m
+        alertname: VeleroScheduledBackupFailed
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts: []
+
+  # Velero started minutes ago (a restart, a copy hours old): no success known yet, neither age alert
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_status{schedule="velero-schnappy-daily"}'
+        values: '1x30'
+      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts: []
+
+  # Velero down (no metrics at all): both age alerts fire
+  - interval: 1m
+    input_series:
+      - series: 'up{job="unrelated"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
+              summary: "Velero daily backup missing"
+              description: "No successful schnappy-daily backup in the last 30h."
+      - eval_time: 20m
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroWeeklyBackupMissing
+              summary: "Velero weekly backup missing"
+              description: "No fully successful full-weekly backup in the last 8 days (a PartiallyFailed one does not count)."
+
+  # production's weekly backup until 2026-10-11: PartiallyFailed every week, last status still success, the daily
+  # fine; the partial failure alerts for its hour, the weekly one stays missing, no failure alert
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_status{schedule="velero-full-weekly"}'
+        values: '1x150'
+      - series: 'velero_backup_partial_failure_total{schedule="velero-full-weekly"}'
+        values: '0x30 1x120'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '0x150'
+      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
+        values: '-2000000x150'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: VeleroBackupPartiallyFailed
+        exp_alerts:
+          - exp_labels: { severity: warning, schedule: velero-full-weekly }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroBackupPartiallyFailed
+              summary: "Velero backup partially failed"
+              description: "A backup of schedule velero-full-weekly ended PartiallyFailed: some items or volumes are missing from it."
+      - eval_time: 40m
+        alertname: VeleroScheduledBackupFailed
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroWeeklyBackupMissing
+              summary: "Velero weekly backup missing"
+              description: "No fully successful full-weekly backup in the last 8 days (a PartiallyFailed one does not count)."
+      - eval_time: 140m
+        alertname: VeleroBackupPartiallyFailed
+        exp_alerts: []
+
+  # the last weekly success 9 days old (at -777600 s; a week old would be fine), Velero up for weeks: missing
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '-777600x30'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '0x30'
+      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
+        values: '-2000000x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroWeeklyBackupMissing
+              summary: "Velero weekly backup missing"
+              description: "No fully successful full-weekly backup in the last 8 days (a PartiallyFailed one does not count)."
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '-604800x30'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '0x30'
+      - series: 'process_start_time_seconds{namespace="velero", container="velero"}'
+        values: '-2000000x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts: []
