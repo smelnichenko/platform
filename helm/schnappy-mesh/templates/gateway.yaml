@@ -46,7 +46,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   backoffLimit: 5
-  # bounded: from step 31 Argo waits a hook out until Kubernetes fails it
+  # bounded: Argo waits for a hook until Kubernetes fails the Job
   activeDeadlineSeconds: 900
   template:
     metadata:

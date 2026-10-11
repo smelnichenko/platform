@@ -396,19 +396,20 @@ done
 wait_s=$(echo "$k6" | sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | head -1)
 k6_max=$(sed -n "s/.*maxDuration: '\([0-9][0-9]*\)m'.*/\1/p" helm/schnappy/files/smoke-test.js | head -1)
 [ -n "$k6_max" ] || fail "smoke-test.js gives k6 no maxDuration (k6's default 10 m makes a try outlast any deadline)"
-need=$(( 2 * (wait_s + k6_max * 60 + 30) + 10 ))
+# per try: the wait (its last sleep and curl past the clock: 15 s), k6, 30 s, the pod's start (60 s); the backoff 10 s
+need=$(( 2 * (wait_s + 15 + k6_max * 60 + 30 + 60) + 10 ))
 [ "$(echo "$k6" | job_deadline)" -ge "$need" ] || fail "the k6 hook's deadline $(echo "$k6" | job_deadline) s cannot hold two tries ($need s)"
 
-# --- the s3gw bucket hook Job: its deadline holds every aws call at 30 s each ---------------------------------------
+# --- the s3gw bucket hook Job: its deadline holds every aws call at 45 s each ---------------------------------------
 # aws-cli v2 starts in seconds on a free CPU, in ~37 s on a loaded node (the upgrade copy's build, 2026-10-11: 120 s
-# for three buckets, a policy and a listing ran out, Argo's sync failed): 30 s per call
+# for three buckets, a policy and a listing ran out, Argo's sync failed): 45 s per call
 buckets_job=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
   --set 's3gw.buckets={a,b,c}' --set 's3gw.publicReadBuckets={c}' --show-only templates/s3gw-buckets-job.yaml)
 calls=$(echo "$buckets_job" | grep -oE '(^ *|[|&;] *)(s3|aws) ' | wc -l)
-need=$(( calls * 30 ))
+need=$(( calls * 45 ))
 have=$(echo "$buckets_job" | job_deadline)
 [ "$calls" -ge 8 ] || fail "the bucket Job's aws calls not found ($calls of 3 heads, 3 creates, a policy, a listing)"
-[ "${have:-0}" -ge "$need" ] || fail "the s3gw bucket Job's deadline ${have:-none} s cannot hold $calls aws calls at 30 s ($need s)"
+[ "${have:-0}" -ge "$need" ] || fail "the s3gw bucket Job's deadline ${have:-none} s cannot hold $calls aws calls at 45 s ($need s)"
 
 # --- every Job's pods are out of Velero's backups -------------------------------------------------------------------
 # a Job's pod that ends while a backup reads its volumes fails that volume and the whole backup is PartiallyFailed

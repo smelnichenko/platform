@@ -16,8 +16,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
-  # every aws call at 30 s (chart-render-checks): aws-cli v2 took ~37 s a call on a loaded node, 120 s ran out
-  activeDeadlineSeconds: 300
+  # 45 s per aws call - each bucket's head and create, each policy, the listing: aws-cli v2 took ~37 s a call on a
+  # loaded node and 120 s ran out (chart-render-checks counts the rendered calls)
+  activeDeadlineSeconds: {{ mul 45 (add 1 (len .Values.s3gw.publicReadBuckets) (mul 2 (len .Values.s3gw.buckets))) }}
   template:
     metadata:
       annotations:
@@ -35,8 +36,8 @@ spec:
           # gone). aws-cli, unlike rclone, also sets the bucket policy a public-read bucket needs.
           image: amazon/aws-cli:2.37.1@sha256:b0dd5a4d216a1786863541a201baa7b7b4c5032bec9c6e72c38d01cafd7e8db8
           resources:
-            requests: { cpu: 25m, memory: 64Mi }
-            # a whole CPU to start aws-cli (a Python program) fast; 200m made each call take most of a minute
+            requests: { cpu: 500m, memory: 64Mi }
+            # aws-cli is a Python program: its start-up needs CPU - a node shares it by request when loaded
             limits: { cpu: 1000m, memory: 256Mi }
           command:
             - /bin/sh

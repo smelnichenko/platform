@@ -11,7 +11,7 @@ spec:
   # the hook's whole life bounded: Argo waits for it (a sync's operation, a rollback by revert, behind it) and judges it
   # failed only once Kubernetes fails the Job. Two whole tries fit (a cold one retried): each its 600 s readiness wait
   # (clock-bound) and k6's 2 m maxDuration (smoke-test.js); past this the Job is Failed (DeadlineExceeded)
-  activeDeadlineSeconds: 1560
+  activeDeadlineSeconds: 1680
   ttlSecondsAfterFinished: 86400
   template:
     metadata:
