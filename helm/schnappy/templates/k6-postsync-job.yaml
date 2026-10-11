@@ -9,9 +9,9 @@ metadata:
 spec:
   backoffLimit: 3
   # the hook's whole life bounded: Argo waits for it (a sync's operation, a rollback by revert, behind it) and judges it
-  # failed only once Kubernetes fails the Job - its retries' 10-minute readiness waits and k6's own 10 minutes ran
-  # 40-100 minutes before; past this the Job is Failed (DeadlineExceeded), the sync failed with it
-  activeDeadlineSeconds: 1200
+  # failed only once Kubernetes fails the Job. Two whole tries fit (a cold one retried): each its 600 s readiness wait
+  # (clock-bound) and k6's 2 m maxDuration (smoke-test.js); past this the Job is Failed (DeadlineExceeded)
+  activeDeadlineSeconds: 1560
   ttlSecondsAfterFinished: 86400
   template:
     metadata:
@@ -40,11 +40,14 @@ spec:
             - sh
             - -c
             - |
-              for i in $(seq 1 60); do
+              # bounded by the clock, not a count: a curl timing out made 60 tries 900 s
+              start=$(date +%s); end=$(( $(date +%s) + 600 ))
+              for i in $(seq 1 1000); do
                 if curl -fsS --max-time 5 "${BASE_URL}/api/health" >/dev/null; then
-                  echo "ready after $((i*10))s"
+                  echo "ready after $(( $(date +%s) - start ))s"
                   exit 0
                 fi
+                [ "$(date +%s)" -lt "$end" ] || break
                 sleep 10
               done
               echo "services not ready after 600s — bailing"

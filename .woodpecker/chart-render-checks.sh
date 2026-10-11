@@ -379,4 +379,24 @@ sed -i 's/\$\$/$/g' .ci-out/init-users.sh
 sh -n .ci-out/init-users.sh || fail "init-users script is not valid sh"
 echo "$names" | tr ' ' '\n' | grep -v '^$' > .ci-out/init-users.databases
 
+# --- hook Jobs: each bounded on the Job (Argo waits for a hook, a rollback by revert behind it, and fails it only once
+# Kubernetes fails the Job); each in-pod wait bounded by the clock; k6's deadline fits two whole tries (a cold one
+# retried), derived from its wait and k6's own maxDuration
+job_deadline() { awk '/^spec:/ {s=1; next} /^[^ ]/ {s=0} s && /^  activeDeadlineSeconds:/ {print $2}'; }
+k6=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set smokeTest.enabled=true --show-only templates/k6-postsync-job.yaml)
+schema=$(helm template t helm/schnappy-data/ --show-only templates/scylla-schema-job.yaml)
+gwjob=$(mesh $lan --show-only templates/gateway.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
+for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob"; do
+  name=${pair%%:*}; body=${pair#*:}
+  [ -n "$(echo "$body" | job_deadline)" ] || fail "the $name hook Job has no activeDeadlineSeconds on its spec"
+  echo "$body" | grep -q '^      activeDeadlineSeconds:' && fail "the $name hook Job's deadline on its pod spec bounds one try, not the Job"
+  echo "$body" | grep -qE '^ *(until|while) ' && fail "the $name hook Job waits in a loop without a clock bound (until/while)"
+  echo "$body" | grep -q 'end=\$(( \$(date +%s) + [0-9][0-9]* ))' || fail "the $name hook Job's wait has no clock bound (end=\$(( \$(date +%s) + N )))"
+done
+wait_s=$(echo "$k6" | sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | head -1)
+k6_max=$(sed -n "s/.*maxDuration: '\([0-9][0-9]*\)m'.*/\1/p" helm/schnappy/files/smoke-test.js | head -1)
+[ -n "$k6_max" ] || fail "smoke-test.js gives k6 no maxDuration (k6's default 10 m makes a try outlast any deadline)"
+need=$(( 2 * (wait_s + k6_max * 60 + 30) + 10 ))
+[ "$(echo "$k6" | job_deadline)" -ge "$need" ] || fail "the k6 hook's deadline $(echo "$k6" | job_deadline) s cannot hold two tries ($need s)"
+
 echo "chart render checks: OK"

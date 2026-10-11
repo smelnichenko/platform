@@ -46,6 +46,8 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   backoffLimit: 5
+  # bounded: from step 31 Argo waits a hook out until Kubernetes fails it
+  activeDeadlineSeconds: 900
   template:
     metadata:
       annotations:
@@ -63,7 +65,11 @@ spec:
           args:
             - |
               echo "Waiting for gateway service..."
-              until kubectl get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null; do
+              # bounded by the clock: a gateway service that never appears fails the try
+              end=$(( $(date +%s) + 300 ))
+              for i in $(seq 1 1000); do
+                kubectl get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null && break
+                [ "$(date +%s)" -lt "$end" ] || { echo "no gateway service after 300s"; exit 1; }
                 sleep 2
               done
               echo "Patching externalIPs (externalTrafficPolicy=Cluster)..."

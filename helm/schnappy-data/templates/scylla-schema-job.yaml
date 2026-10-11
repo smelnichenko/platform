@@ -14,6 +14,8 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 10
+  # bounded: from step 31 Argo waits a hook out until Kubernetes fails it - ten tries' backoff ran 35 min and more
+  activeDeadlineSeconds: 1200
   template:
     metadata:
       annotations:
@@ -42,7 +44,11 @@ spec:
           args:
             - |
               echo "Waiting for ScyllaDB to be ready..."
-              until cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "SELECT now() FROM system.local" 2>/dev/null; do
+              # bounded by the clock: a Scylla that never answers fails the try (the Job retries, its deadline holds)
+              end=$(( $(date +%s) + 300 ))
+              for i in $(seq 1 1000); do
+                cqlsh {{ include "schnappy.scylla.serviceName" . }} 9042 -e "SELECT now() FROM system.local" 2>/dev/null && break
+                [ "$(date +%s)" -lt "$end" ] || { echo "ScyllaDB not ready after 300s"; exit 1; }
                 echo "ScyllaDB not ready, retrying in 5s..."
                 sleep 5
               done
