@@ -18,6 +18,8 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   backoffLimit: 10
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - three tries of the 300 s wait and the schema
+  activeDeadlineSeconds: 1200
   ttlSecondsAfterFinished: 300
   template:
     metadata:
@@ -49,9 +51,11 @@ spec:
             - |
               set -eo pipefail
               HOST="{{ include "schnappy.clickhouse.serviceName" . }}"
-              # Wait for server to accept queries.
-              for i in $(seq 1 60); do
-                if clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --query "SELECT 1" >/dev/null 2>&1; then break; fi
+              # Wait for server to accept queries - bounded by the clock (a client call itself may hang: its own timeout)
+              end=$(( $(date +%s) + 300 ))
+              for i in $(seq 1 1000); do
+                if clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --connect_timeout 5 --receive_timeout 10 --query "SELECT 1" >/dev/null 2>&1; then break; fi
+                [ "$(date +%s)" -lt "$end" ] || { echo "ClickHouse not answering after 300s"; exit 1; }
                 sleep 2
               done
 

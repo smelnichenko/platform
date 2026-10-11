@@ -20,7 +20,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
-  activeDeadlineSeconds: 120
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 300 s wait and the SQL, twice (a Postgres
+  # restarting - a major upgrade - takes minutes; 120 s failed the sync first)
+  activeDeadlineSeconds: 900
   template:
     metadata:
       labels:
@@ -70,7 +72,10 @@ spec:
             - |
               set -eu
               echo "Waiting for PostgreSQL..."
-              until psql -c "SELECT 1" >/dev/null 2>&1; do
+              end=$(( $(date +%s) + 300 ))
+              for i in $(seq 1 1000); do
+                PGCONNECT_TIMEOUT=5 psql -c "SELECT 1" >/dev/null 2>&1 && break
+                [ "$(date +%s)" -lt "$end" ] || { echo "PostgreSQL not ready after 300s"; exit 1; }
                 echo "Not ready, retrying in 3s..."
                 sleep 3
               done

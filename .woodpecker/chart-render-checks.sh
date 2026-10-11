@@ -386,12 +386,24 @@ job_deadline() { awk '/^spec:/ {s=1; next} /^[^ ]/ {s=0} s && /^  activeDeadline
 k6=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set smokeTest.enabled=true --show-only templates/k6-postsync-job.yaml)
 schema=$(helm template t helm/schnappy-data/ --show-only templates/scylla-schema-job.yaml)
 gwjob=$(mesh $lan --show-only templates/gateway.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
-for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob"; do
+chinit=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true \
+  --show-only templates/clickhouse-init-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
+users=$(helm template t helm/schnappy-data/ --set cnpg.enabled=true --set 'postgres.databases[0].name=a' \
+  --show-only templates/cnpg-init-users.yaml)
+# the clock read inside the wait's loop, the bound set before it on a line of its own (not a comment)
+clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\) \+ [0-9]+ \)\)$/ {e=1} e && /^ *for / {f=1}
+  f && /-lt "\$end"/ {ok=1} f && /^ *done/ {f=0} END {exit !ok}'; }
+for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users"; do
   name=${pair%%:*}; body=${pair#*:}
   [ -n "$(echo "$body" | job_deadline)" ] || fail "the $name hook Job has no activeDeadlineSeconds on its spec"
   echo "$body" | grep -q '^      activeDeadlineSeconds:' && fail "the $name hook Job's deadline on its pod spec bounds one try, not the Job"
   echo "$body" | grep -qE '^ *(until|while) ' && fail "the $name hook Job waits in a loop without a clock bound (until/while)"
-  echo "$body" | grep -q 'end=\$(( \$(date +%s) + [0-9][0-9]* ))' || fail "the $name hook Job's wait has no clock bound (end=\$(( \$(date +%s) + N )))"
+  echo "$body" | clock_bound || fail "the $name hook Job's wait reads no clock in its loop (end=\$(( \$(date +%s) + N )) before it, -lt \"\$end\" in it)"
+done
+for f in helm/*/templates/*.yaml; do
+  awk -v f="$f" '/^---/ {if (job && hook && !dl) {print f; bad=1} job=hook=dl=0; next}
+    /^kind: Job *$/ {job=1} /^    (argocd\.argoproj\.io\/hook|"helm\.sh\/hook"):/ {hook=1} /^  activeDeadlineSeconds:/ {dl=1}
+    END {if (job && hook && !dl) {print f; bad=1}; exit bad}' "$f" || fail "$f: a hook Job without activeDeadlineSeconds on its spec"
 done
 wait_s=$(echo "$k6" | sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | head -1)
 k6_max=$(sed -n "s/.*maxDuration: '\([0-9][0-9]*\)m'.*/\1/p" helm/schnappy/files/smoke-test.js | head -1)
@@ -415,12 +427,17 @@ have=$(echo "$buckets_job" | job_deadline)
 # a Job's pod that ends while a backup reads its volumes fails that volume and the whole backup is PartiallyFailed
 # (the weekly backup, every week until 2026-10-11: hyperfoil-load at 03:00 and the hourly etcd-backup); the pods
 # hold nothing to restore, the Job objects stay in the backup. Each Job and CronJob kind in a template carries the
-# label once, and the hyperfoil CronJob's render carries it on the pod template, where Velero reads it
+# label on its pod template, where Velero reads it (read by indentation; the hyperfoil CronJob's render read too)
 for f in helm/*/templates/*.yaml; do
-  jobs=$(grep -cE '^ *kind: (Job|CronJob) *$' "$f" || true)
-  [ "$jobs" -gt 0 ] || continue
-  marks=$(grep -c 'velero.io/exclude-from-backup: "true"' "$f" || true)
-  [ "$marks" -ge "$jobs" ] || fail "$f: $jobs Job/CronJob kind(s), $marks velero.io/exclude-from-backup label(s)"
+  got=$(awk '/^ *$/ {next} {ind = match($0, /[^ ]/) - 1}
+    /^ *kind: (Job|CronJob) *$/ {jobs++}
+    st && ind <= t {st = 0} st == 2 && ind <= t + 2 {st = 0} st == 3 && ind <= t + 4 {st = 0}
+    /^ *template: *$/ {t = ind; st = 1; next}
+    st == 1 && ind == t + 2 && /metadata: *$/ {st = 2; next}
+    st == 2 && ind == t + 4 && /labels: *$/ {st = 3; next}
+    st == 3 && ind == t + 6 && /velero\.io\/exclude-from-backup: "true"/ {marks++; st = 0}
+    END {print jobs + 0, marks + 0}' "$f")
+  [ "${got% *}" -le "${got#* }" ] || fail "$f: ${got% *} Job/CronJob kind(s), ${got#* } pod template(s) with velero.io/exclude-from-backup"
 done
 hf=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set hyperfoil.enabled=true \
   --show-only templates/hyperfoil-load-cronjob.yaml)
