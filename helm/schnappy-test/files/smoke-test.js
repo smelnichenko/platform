@@ -2,8 +2,10 @@ import http from 'k6/http';
 import { check, group } from 'k6';
 
 export const options = {
-  vus: 1,
-  iterations: 1,
+  // one VU, one iteration - bounded: k6's own default (10 m) outlasted the hook Job's deadline
+  scenarios: {
+    smoke: { executor: 'shared-iterations', vus: 1, iterations: 1, maxDuration: '2m' },
+  },
   thresholds: {
     checks: ['rate==1.0'],
     http_req_duration: ['p(95)<2000'],
