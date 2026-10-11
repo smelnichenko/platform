@@ -5,7 +5,9 @@
 # (whatever ended it - a write refused, a time-out); a failed read fails the hook with nothing created (never read as
 # "absent"); the gates are set every run; the sidecar is told to quit on success only (a failed try is restarted in
 # the same pod, its proxy gone if told to quit); a token generated late, after the first revoke, is revoked too; a TERM
-# (the Job's deadline, an eviction) still revokes. Each run its own limit; sleep stubbed.
+# (the Job's deadline, an eviction) still revokes. A new version's database migration is started once (as admin only
+# when refused unauthenticated), never over one running or one whose start went unanswered but taken, started again when
+# its start was lost, and one failing - however it shows - fails the hook at once. Each run its own limit; sleep stubbed.
 set -u
 script=.ci-out/sonarqube-setup.sh
 [ -s "$script" ] || { echo "sonarqube setup script test: FAIL: $script missing (run chart-render-checks.sh)" >&2; exit 1; }
@@ -16,18 +18,55 @@ mkdir -p "$work/bin"
 cat > "$work/bin/curl" <<'STUB'
 #!/bin/sh
 # the stub: the URL is the argument with :// in it, the body the one after -d; scenario in $SCENARIO; each call logged
-url="" body="" prev=""
+url="" body="" prev="" user=""
 for a; do
   case $a in *://*) url=$a ;; esac
   [ "$prev" = -d ] && body=$a
+  [ "$prev" = -u ] && user=yes
   prev=$a
 done
-echo "$url $body" >> "$CALLS"
+echo "$url $body${user:+ auth}" >> "$CALLS"
 has() { case " $SCENARIO " in *" $1 "*) return 0 ;; esac; return 1; }
 fails() { if has "$1"; then echo "curl: (22) The requested URL returned error: 500" >&2; exit 22; fi; }
+# a migration scenario: the status poll's number n, the poll the migration was started at s (0: not started)
+n=$(cat "$CALLS.polls" 2>/dev/null || echo 0)
+s=$(cat "$CALLS.started" 2>/dev/null || echo 0)
+phase() {  # the migration's phase at poll n: needed, racing (started elsewhere, the status lagging), running, done, failed
+  if has restarted-failed; then echo failed; return; fi
+  if has already-running; then if [ "$n" -le 2 ]; then echo racing; else echo done; fi; return; fi
+  if [ "$s" = 0 ]; then echo needed; return; fi
+  if has lagging; then if [ "$n" -le $((s + 2)) ]; then echo needed; else echo done; fi; return; fi
+  if has fails-later; then if [ "$n" -le $((s + 1)) ]; then echo running; else echo failed; fi; return; fi
+  if [ "$n" -le $((s + 1)) ]; then echo running; else echo done; fi
+}
 case $url in
   *quitquitquit) exit 0 ;;
-  */api/system/status) echo '{"status":"UP"}' ;;
+  */api/system/status)
+    has migration || { echo '{"status":"UP"}'; exit 0; }
+    n=$((n + 1)); echo "$n" > "$CALLS.polls"
+    case $(phase) in
+      needed | racing) echo '{"status":"DB_MIGRATION_NEEDED"}' ;;
+      running) echo '{"status":"DB_MIGRATION_RUNNING"}' ;;
+      done) echo '{"status":"UP"}' ;;
+      failed) echo '{"status":"DOWN"}' ;;
+    esac ;;
+  */api/system/db_migration_status)
+    case $(phase) in
+      needed) echo '{"state":"MIGRATION_NEEDED"}' ;;
+      racing | running) echo '{"state":"MIGRATION_RUNNING"}' ;;
+      done) echo '{"state":"MIGRATION_SUCCEEDED"}' ;;
+      failed) echo '{"state":"MIGRATION_FAILED"}' ;;
+    esac ;;
+  */api/system/migrate_db)
+    # its answer as curl -w '\n%{http_code}' prints it
+    if has needs-admin && [ -z "$user" ]; then printf '{"errors":[{"msg":"Insufficient privileges"}]}\n401'; exit 0; fi
+    if has start-refused; then printf '{"errors":[]}\n500'; exit 0; fi
+    if has start-fails; then printf '{"state":"MIGRATION_FAILED"}\n200'; exit 0; fi
+    # start-lost: the first start times out and never reached SonarQube - nothing started
+    if has start-lost && [ ! -e "$CALLS.lost" ]; then : > "$CALLS.lost"; echo "curl: (28) Operation timed out" >&2; exit 28; fi
+    echo "$n" > "$CALLS.started"
+    if has start-unanswered; then echo "curl: (28) Operation timed out" >&2; exit 28; fi
+    printf '{"state":"MIGRATION_RUNNING"}\n200' ;;
   */api/authentication/validate) echo '{"valid":false}' ;;
   */api/user_tokens/search)
     fails tokens-read
@@ -133,5 +172,43 @@ run fresh-sq; rc=$?
 run token-exists; rc=$?
 [ "$rc" = 0 ] || fail "a run with the token in place exited $rc: $(out token-exists)"
 [ "$(calls token-exists user_tokens/generate)" = 0 ] || fail "an existing token was generated again"
+
+# a new version: its database migration started once, unauthenticated as /setup does, then waited for until UP
+run migration; rc=$?
+[ "$rc" = 0 ] || fail "a migration needed: exited $rc: $(out migration)"
+[ "$(calls migration migrate_db)" = 1 ] && [ "$(calls migration 'migrate_db  auth')" = 0 ] \
+  || fail "a migration needed: not started once, unauthenticated"
+grep -q 'SonarQube is UP (its database migrated)' "$work/migration.out" || fail "a migration needed: its end not said"
+# SonarQube still saying NEEDED two passes after it answered RUNNING: not started again
+run migration lagging; rc=$?
+[ "$rc" = 0 ] && [ "$(calls 'migration lagging' migrate_db)" = 1 ] \
+  || fail "a lagging status: exited $rc, $(calls 'migration lagging' migrate_db) starts"
+# refused unauthenticated: started as admin, once
+run migration needs-admin; rc=$?
+[ "$rc" = 0 ] && [ "$(calls 'migration needs-admin' migrate_db)" = 2 ] \
+  && [ "$(calls 'migration needs-admin' 'migrate_db  auth')" = 1 ] \
+  || fail "a start refused unauthenticated: exited $rc, not retried once as admin"
+# a start nobody answered (it started all the same): its state read again, never started blind a second time
+run migration start-unanswered; rc=$?
+[ "$rc" = 0 ] && [ "$(calls 'migration start-unanswered' migrate_db)" = 1 ] \
+  || fail "an unanswered start: exited $rc, $(calls 'migration start-unanswered' migrate_db) starts"
+# a start that never reached SonarQube (lost, timed out): started again at the next pass - once more, not given up
+run migration start-lost; rc=$?
+[ "$rc" = 0 ] && [ "$(calls 'migration start-lost' migrate_db)" = 2 ] \
+  || fail "a lost start: exited $rc, $(calls 'migration start-lost' migrate_db) starts"
+# one running already - an earlier container of this Job started it - while the status still says NEEDED: not started
+run migration already-running; rc=$?
+[ "$rc" = 0 ] && [ "$(calls 'migration already-running' migrate_db)" = 0 ] \
+  || fail "a migration already running: exited $rc, $(calls 'migration already-running' migrate_db) starts"
+# failing, however it shows (the start's answer, a refusal, later while running, a restarted container finding it
+# failed): 1, saying the migration failed or was not started - a wait that went on ends "not ready" (sleep stubbed)
+for sc in "migration start-fails" "migration start-refused" "migration fails-later" "migration restarted-failed"; do
+  run $sc; rc=$?
+  [ "$rc" = 1 ] || fail "$sc: exited $rc, not 1 at once"
+  grep -q 'ERROR: the database migration failed\|ERROR: database migration not started' \
+    "$work/$(echo "$sc" | tr ' ' '_').out" || fail "$sc: the failure not said: $(out "$sc")"
+done
+[ "$(calls 'migration restarted-failed' migrate_db)" = 0 ] || fail "a failed migration started again"
+[ "$(calls 'migration fails-later' api/system/status)" = 3 ] || fail "a migration failing while running not seen at once"
 
 echo "sonarqube setup script test: OK"
