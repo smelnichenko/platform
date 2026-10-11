@@ -16,10 +16,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
-  # two passes (a failed call restarts the pass) at 45 s per aws call - each bucket's head and create, each policy,
-  # the listing - and 120 s for the pod to start: aws-cli v2 took ~37 s a call on a loaded node and 120 s ran out
-  # (chart-render-checks counts the rendered calls); each call bounded by its timeouts and two attempts
-  activeDeadlineSeconds: {{ add 120 (mul 90 (add 1 (len .Values.s3gw.publicReadBuckets) (mul 2 (len .Values.s3gw.buckets)))) }}
+  # two passes (a failed call restarts the pass) of every aws call - each bucket's head and create, each policy, the
+  # listing - each at its worst: 40 s to start aws-cli (~37 s a call on a loaded node, where 120 s ran out) and its
+  # two attempts of a 5 s connect and a 15 s read; and 120 s for the pod to start (chart-render-checks derives the same)
+  activeDeadlineSeconds: {{ add 120 (mul 160 (add 1 (len .Values.s3gw.publicReadBuckets) (mul 2 (len .Values.s3gw.buckets)))) }}
   template:
     metadata:
       annotations:

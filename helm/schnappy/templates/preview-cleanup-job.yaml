@@ -122,11 +122,11 @@ spec:
               # Keycloak client
               if [ -n "${KEYCLOAK_REALM_URL:-}" ] && [ -n "${KEYCLOAK_ADMIN_TOKEN:-}" ]; then
                 CLIENT_ID="preview-pr-${PR_NUMBER}"
-                cid=$(wget -qO- --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
+                cid=$(wget -T 10 -qO- --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
                   "$KEYCLOAK_REALM_URL/clients?clientId=$CLIENT_ID" \
                   | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
                 if [ -n "$cid" ]; then
-                  wget -qO- --method=DELETE --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
+                  wget -T 10 -qO- --method=DELETE --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
                     "$KEYCLOAK_REALM_URL/clients/$cid" || true
                 fi
               fi

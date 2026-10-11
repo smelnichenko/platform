@@ -404,12 +404,17 @@ s3jobs=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.
 # the hook Job templates judged below, by file: every one the scan of the charts finds must be among them
 judged="k6-postsync-job.yaml scylla-schema-job.yaml gateway.yaml clickhouse-init-job.yaml cnpg-init-users.yaml
 sonarqube-setup-job.yaml preview-cleanup-job.yaml s3gw-buckets-job.yaml"
-# every loop that sleeps reads the clock inside it, the bound set before it on a line of its own (not a comment)
+# every outermost loop that sleeps (nested loops, one-line loops included) reads the clock inside it, the bound set
+# before it on a line of its own (not a comment)
 clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\) \+ [0-9]+ \)\)$/ {e=1}
-  /^ *(for|while|until) / {f=1; clk=0; slp=0} f && /-lt "\$end"/ {clk=1} f && /(^|[ ;])sleep / {slp=1}
-  f && /^ *done/ {f=0; if (slp && !(e && clk)) bad=1} END {exit bad}'; }
-# a hook's deadline holds its wait (the end= seconds) and a margin for the rest of its work
-wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | head -1; }
+  { opens = gsub(/(^|[ ;])(for|while|until) [^;]*; *do($|[ ;])/, "&"); closes = gsub(/(^|[ ;])done($|[ ;])/, "&") }
+  opens && !d {clk = 0; slp = 0} {d += opens}
+  d && /-lt "\$end"/ {clk = 1} d && /(^|[ ;])sleep / {slp = 1}
+  closes {d -= closes; if (d <= 0) {d = 0; if (slp && !(e && clk)) bad = 1}} END {exit bad}'; }
+# a hook's deadline holds its longest wait (the end= seconds) and a margin for the rest of its work: 120 s and 10 s
+# per network call (each bounded at 10 s or less - every curl and wget in a hook has its time-out)
+wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | sort -n | tail -1; }
+calls_in() { grep -oE '(^|[ ;($|])(curl|wget|sq|psql|aws|cqlsh|kubectl|clickhouse-client) ' | wc -l; }
 for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users" \
   "sonarqube-setup:$sqsetup" "preview-cleanup:$pcleanup" "s3gw-buckets:$s3jobs"; do
   name=${pair%%:*}; body=${pair#*:}
@@ -418,8 +423,14 @@ for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit"
   echo "$body" | grep -qE '^ *(until|while) ' && fail "the $name hook Job waits in a loop without a clock bound (until/while)"
   echo "$body" | clock_bound || fail "the $name hook Job's wait reads no clock in its loop (end=\$(( \$(date +%s) + N )) before it, -lt \"\$end\" in it)"
   w=$(echo "$body" | wait_bound)
-  [ -z "$w" ] || [ "$(echo "$body" | job_deadline)" -ge $((w + 120)) ] \
-    || fail "the $name hook Job's deadline $(echo "$body" | job_deadline) s cannot hold its ${w} s wait and 120 s more"
+  code=$(echo "$body" | grep -v '^ *#')
+  n=$(echo "$code" | calls_in)
+  [ -z "$w" ] || [ "$(echo "$body" | job_deadline)" -ge $((w + 120 + 10 * n)) ] \
+    || fail "the $name hook Job's deadline $(echo "$body" | job_deadline) s cannot hold its ${w} s wait, 120 s and its $n calls at 10 s"
+  echo "$code" | grep -E '(^|[ ;($])curl ' | grep -v -- '--max-time' | grep -q . \
+    && fail "the $name hook Job has a curl without --max-time: $(echo "$code" | grep -E '(^|[ ;($])curl ' | grep -v -- '--max-time' | head -1)"
+  echo "$code" | grep -E '(^|[ ;($])wget ' | grep -v -- '-T [0-9]' | grep -q . \
+    && fail "the $name hook Job has a wget without -T: $(echo "$code" | grep -E '(^|[ ;($])wget ' | grep -v -- '-T [0-9]' | head -1)"
 done
 hooks=""
 for f in helm/*/templates/*.yaml; do
@@ -453,22 +464,28 @@ curl_s=$(echo "$k6" | sed -n 's/.*curl .*--max-time \([0-9][0-9]*\).*/\1/p' | he
 need=$(( 2 * (wait_s + sleep_s + curl_s + k6_max * 60 + 30 + 60) + 10 ))
 [ "$(echo "$k6" | job_deadline)" -ge "$need" ] || fail "the k6 hook's deadline $(echo "$k6" | job_deadline) s cannot hold two tries ($need s)"
 
-# --- the s3gw bucket hook Job: its deadline holds two passes of every aws call at 45 s each and the pod's start -----
+# --- the s3gw bucket hook Job: its deadline holds two passes of every aws call at its worst and the pod's start ----
 # aws-cli v2 starts in seconds on a free CPU, in ~37 s on a loaded node (the upgrade copy's build, 2026-10-11: 120 s
-# for three buckets, a policy and a listing ran out, Argo's sync failed): 45 s per call
+# for three buckets, a policy and a listing ran out, Argo's sync failed)
 buckets_job=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
   --set 's3gw.buckets={a,b,c}' --set 's3gw.publicReadBuckets={c}' --show-only templates/s3gw-buckets-job.yaml)
 [ "$(echo "$buckets_job" | sed -n 's/.*requests: { cpu: \([0-9]*\)m.*/\1/p')" -ge 500 ] \
   || fail "the bucket Job requests under 500m CPU (a loaded node shares CPU by request: aws-cli starved at 25m)"
-# each call bounded, so 45 s is a bound: aws-cli's own defaults are 60 s connect and read, three attempts
+# each call bounded: aws-cli's own defaults are 60 s connect and read, three attempts
 [ "$(echo "$buckets_job" | grep -c -- '--cli-connect-timeout 5 --cli-read-timeout 15 ')" -eq 2 ] \
   && echo "$buckets_job" | grep -A1 'name: AWS_MAX_ATTEMPTS' | grep -q 'value: "2"' \
   || fail "the bucket Job's aws calls are not each bounded (timeouts on s3() and the listing, AWS_MAX_ATTEMPTS 2)"
 calls=$(echo "$buckets_job" | grep -oE '(^ *|[|&;] *)(s3|aws) ' | wc -l)
-need=$(( 120 + calls * 90 ))
+connect=$(echo "$buckets_job" | sed -n 's/.*--cli-connect-timeout \([0-9]*\) .*/\1/p' | head -1)
+read_s=$(echo "$buckets_job" | sed -n 's/.*--cli-read-timeout \([0-9]*\) .*/\1/p' | head -1)
+attempts=$(echo "$buckets_job" | grep -A1 'name: AWS_MAX_ATTEMPTS' | sed -n 's/.*value: "\([0-9]*\)".*/\1/p')
+[ -n "$connect" ] && [ -n "$read_s" ] && [ -n "$attempts" ] || fail "the bucket Job's call bounds not found"
+# two passes of every call at its worst (40 s to start aws-cli on a loaded node, its attempts of connect and read) and
+# 120 s for the pod's start
+need=$(( 120 + 2 * calls * (40 + attempts * (connect + read_s)) ))
 have=$(echo "$buckets_job" | job_deadline)
 [ "$calls" -ge 8 ] || fail "the bucket Job's aws calls not found ($calls of 3 heads, 3 creates, a policy, a listing)"
-[ "${have:-0}" -ge "$need" ] || fail "the s3gw bucket Job's deadline ${have:-none} s cannot hold two passes of $calls aws calls at 45 s and the pod's start ($need s)"
+[ "${have:-0}" -ge "$need" ] || fail "the s3gw bucket Job's deadline ${have:-none} s cannot hold two passes of $calls aws calls at their worst and the pod's start ($need s)"
 
 # --- every Job's pods are out of Velero's backups -------------------------------------------------------------------
 # a Job's pod that ends while a backup reads its volumes fails that volume and the whole backup is PartiallyFailed
@@ -485,7 +502,9 @@ for f in helm/*/templates/*.yaml; do
     st == 3 && ind == t + 6 && injob && /velero\.io\/exclude-from-backup: "true"/ {marks++; st = 0}
     END {print jobs + 0, marks + 0}' "$f")
   [ "${got% *}" -le "${got#* }" ] || fail "$f: ${got% *} Job/CronJob kind(s), ${got#* } pod template(s) with velero.io/exclude-from-backup"
+  seen=$(( ${seen:-0} + ${got% *} ))
 done
+[ "${seen:-0}" -ge 10 ] || fail "the label check saw ${seen:-0} Job/CronJob kinds in the charts (11 there): the scan reads nothing"
 hf=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set hyperfoil.enabled=true \
   --show-only templates/hyperfoil-load-cronjob.yaml)
 echo "$hf" | awk '/^      template:/{t=1} t && /^          labels:/{l=1; next} l && !/^            /{exit} l' \

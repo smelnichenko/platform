@@ -80,7 +80,7 @@ spec:
               # reach Completed (sidecar would otherwise stay running
               # forever, holding the pod at 2/2 Running and the Job at
               # PodInitializing). Best-effort: not fatal if it fails.
-              wget -q -O- --post-data='' http://localhost:15020/quitquitquit || true
+              wget -T 5 -q -O- --post-data='' http://localhost:15020/quitquitquit || true
           volumeMounts:
             - { name: sql, mountPath: /sql, readOnly: true }
             - { name: tmp, mountPath: /tmp }

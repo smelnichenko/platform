@@ -20,9 +20,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
-  # bounded: Argo waits for a hook until Kubernetes fails the Job - one 600 s wait and the SQL (a Postgres restarting
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - a 600 s wait and the SQL (a Postgres restarting
   # - a major upgrade: a smart shutdown of up to 180 s, the upgrade, the start - takes minutes; 120 s failed the sync
-  # first; one wait, not tries: a retry adds only its backoff)
+  # first). A container restart starts a new wait: the deadline, not the tries, bounds the whole
   activeDeadlineSeconds: 900
   template:
     metadata:
@@ -52,9 +52,12 @@ spec:
               value: {{ include "schnappy.postgres.serviceName" . }}-rw
             - name: PGUSER
               value: postgres
-            # every psql call bounded (a connection hanging holds the hook to its deadline)
+            # every psql call bounded - its connect and its statement (a connection or a lock hanging holds the hook to
+            # its deadline)
             - name: PGCONNECT_TIMEOUT
               value: "5"
+            - name: PGOPTIONS
+              value: "-c statement_timeout=60s -c lock_timeout=30s"
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
@@ -79,7 +82,7 @@ spec:
               start=$(date +%s); end=$(( $(date +%s) + 600 ))
               for i in $(seq 1 1000); do
                 psql -c "SELECT 1" >/dev/null 2>&1 && { echo "ready after $(( $(date +%s) - start ))s"; break; }
-                [ "$(date +%s)" -lt "$end" ] || { echo "PostgreSQL not ready after 600s"; exit 1; }
+                [ "$(date +%s)" -lt "$end" ] || { echo "PostgreSQL not ready after $(( $(date +%s) - start ))s"; exit 1; }
                 echo "Not ready, retrying in 3s..."
                 sleep 3
               done
@@ -103,7 +106,7 @@ spec:
               {{- end }}
 
               echo "Per-service users and databases configured."
-              wget -qO- --post-data= http://localhost:15020/quitquitquit || true
+              wget -T 5 -qO- --post-data= http://localhost:15020/quitquitquit || true
       volumes:
         - name: tmp
           emptyDir: {}

@@ -47,11 +47,11 @@ sed "s/ALTER ROLE $first PASSWORD/ALTER ROLE no_such_role_$first PASSWORD/" "$sc
 sh .ci-out/broken.sh >.ci-out/run4.log 2>&1 && fail "a failing SQL statement did not fail the script"
 
 # Negative 3: a Postgres that never answers ends the wait at its bound, non-zero, said - not a hook waiting out its
-# deadline (the bound shrunk to 3 s; nothing listens on port 1)
+# deadline (the bound shrunk to 3 s; 192.0.2.1 answers nothing: each try ends at its connect timeout, not TCP's)
 sed 's/+ 600 ))/+ 3 ))/' "$script" >.ci-out/unreachable.sh
 grep -q '+ 3 ))' .ci-out/unreachable.sh || fail "the wait's bound not found in the script"
 # its own limit: a wait that never ends is a failure here, not a hang (busybox timeout: 143 when it fires)
-PGPORT=1 PGCONNECT_TIMEOUT=1 timeout 60 sh .ci-out/unreachable.sh >.ci-out/run5.log 2>&1
+PGHOST=192.0.2.1 PGCONNECT_TIMEOUT=1 timeout 60 sh .ci-out/unreachable.sh >.ci-out/run5.log 2>&1
 rc=$?
 [ "$rc" -ne 0 ] || fail "an unreachable Postgres exited 0"
 [ "$rc" -ne 143 ] && [ "$rc" -ne 124 ] || fail "an unreachable Postgres: the wait did not end at its bound (killed at 60 s)"
