@@ -261,7 +261,8 @@ spec:
             summary: "Velero scheduled backup failed"
             description: "The last backup of schedule {{ "{{" }} $labels.schedule {{ "}}" }} failed."
         # Velero keeps the last success in memory only (a restart drops the series until its next success): the age
-        # alerts read it from Prometheus' history over the period - a restart hides nothing, a Velero down fires them
+        # alerts read it from Prometheus' history over the period - a restart hides nothing; a Velero gone after it
+        # reported is VeleroDown's (the history keeps its last success until the period runs out)
         - alert: VeleroDailyBackupMissing
           expr: |-
             absent(max_over_time(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}[30h])
@@ -285,6 +286,16 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/VeleroWeeklyBackupMissing"
             summary: "Velero weekly backup missing"
             description: "No fully successful full-weekly backup in the last 8 days (a PartiallyFailed one does not count)."
+        # no Velero server answering its scrape: no target at all (scaled to 0, deleted) as much as a failing one
+        - alert: VeleroDown
+          expr: absent(up{namespace="velero", container="velero"} == 1)
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/VeleroDown"
+            summary: "Velero server down"
+            description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."
         - alert: VeleroBackupFailing
           expr: increase(velero_backup_failure_total[1h]) > 0
           for: 5m

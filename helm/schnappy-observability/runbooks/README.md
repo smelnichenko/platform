@@ -15,6 +15,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [VeleroWeeklyBackupMissing](VeleroWeeklyBackupMissing.md)
 - [VeleroBackupFailing](VeleroBackupFailing.md)
 - [VeleroBackupPartiallyFailed](VeleroBackupPartiallyFailed.md)
+- [VeleroDown](VeleroDown.md)
 - [PublicEndpointDown](PublicEndpointDown.md)
 - [LanOnlyHostReachable](LanOnlyHostReachable.md)
 - [PrometheusNotificationsFailing](PrometheusNotificationsFailing.md)

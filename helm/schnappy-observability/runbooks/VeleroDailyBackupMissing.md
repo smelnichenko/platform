@@ -4,9 +4,10 @@
 
 ## What fired
 
-No successful `velero-schnappy-daily` backup in the last 30h (none ran, or none succeeded), or Velero is down (no
-metrics at all). Velero keeps the last success in memory only, so for 30h after a Velero start the alert waits:
-a restart alone does not fire it.
+The last successful `velero-schnappy-daily` backup in Prometheus' history is older than 30h (none ran, or none
+succeeded), or there is no history at all (a fresh Prometheus or copy). Velero keeps the last success in memory only;
+the history keeps it across a Velero restart, so a restart alone does not fire this. A Velero gone is
+[VeleroDown](VeleroDown.md), at once - this alert follows only once the last success is 30h old.
 
 ## Impact
 

@@ -2,7 +2,7 @@
 # A failed scheduled backup is VeleroScheduledBackupFailed, never VeleroDailyBackupMissing (the one alert the Vagrant
 # copy allows); a PartiallyFailed backup leaves the last status at success and is VeleroBackupPartiallyFailed alone;
 # the age alerts read the last success from Prometheus' history (a Velero restart drops the series until its next
-# success) and fire with Velero down.
+# success) and fire with no history (a fresh Prometheus or copy); a Velero gone is VeleroDown at once.
 rule_files:
   - rendered-infra-rules.yaml
 
@@ -75,7 +75,7 @@ tests:
         alertname: VeleroWeeklyBackupMissing
         exp_alerts: []
 
-  # Velero down (no metrics at all): both age alerts fire
+  # no history at all (a fresh copy or Prometheus): both age alerts fire
   - interval: 1m
     input_series:
       - series: 'up{job="unrelated"}'
@@ -161,3 +161,61 @@ tests:
       - eval_time: 20m
         alertname: VeleroWeeklyBackupMissing
         exp_alerts: []
+
+  # Velero gone after it reported (scaled to 0, deleted - no target; its node-agent still up): VeleroDown after 15 min;
+  # the daily age alert silent while the history's last success is younger than 30 h, firing once it is older
+  - interval: 10m
+    input_series:
+      - series: 'up{namespace="velero", container="velero"}'
+        values: '1x1'
+      - series: 'up{namespace="velero", container="node-agent"}'
+        values: '1x200'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '0x1'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '0x1'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: VeleroDown
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroDown
+              summary: "Velero server down"
+              description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."
+      - eval_time: 29h
+        alertname: VeleroDailyBackupMissing
+        exp_alerts: []
+      - eval_time: 30h30m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
+              summary: "Velero daily backup missing"
+              description: "No successful schnappy-daily backup in the last 30h."
+  # a Velero answering its scrape: no VeleroDown
+  - interval: 1m
+    input_series:
+      - series: 'up{namespace="velero", container="velero"}'
+        values: '1x30'
+      - series: 'up{namespace="velero", container="node-agent"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroDown
+        exp_alerts: []
+  # a Velero target failing its scrape (up 0): VeleroDown
+  - interval: 1m
+    input_series:
+      - series: 'up{namespace="velero", container="velero"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroDown
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroDown
+              summary: "Velero server down"
+              description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."

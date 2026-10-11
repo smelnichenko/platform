@@ -4,10 +4,9 @@
 
 ## What fired
 
-No fully successful `velero-full-weekly` backup in the last 8 days (the schedule runs Sundays at 03:00 UTC). A
-`PartiallyFailed` backup does not count. The alert also fires when Velero is down (no metrics at all). Velero
-keeps the last success in memory only, so for 8 days after a Velero start the alert waits: a restart alone does
-not fire it.
+The last fully successful `velero-full-weekly` backup in Prometheus' history is older than 8 days (the schedule runs
+Sundays at 03:00 UTC), or there is no history at all. A `PartiallyFailed` backup does not count. The history keeps the
+last success across a Velero restart; a Velero gone is [VeleroDown](VeleroDown.md).
 
 ## Impact
 
