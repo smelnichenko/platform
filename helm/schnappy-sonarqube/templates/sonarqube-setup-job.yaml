@@ -10,7 +10,8 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
-  activeDeadlineSeconds: 600
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 600 s wait and the setup calls, each bounded
+  activeDeadlineSeconds: 1200
   template:
     metadata:
       labels:
@@ -46,25 +47,25 @@ spec:
               set -e
               FAIL=0
 
-              sq() { curl -s -u "admin:${SQ_ADMIN_PASSWORD}" "$@"; }
+              sq() { curl -s --max-time 10 -u "admin:${SQ_ADMIN_PASSWORD}" "$@"; }
 
               # 1. Wait for SonarQube to be ready
               echo "Waiting for SonarQube..."
-              RETRIES=0
-              until [ "$RETRIES" -ge 120 ]; do
-                STATUS=$(curl -sf "${SQ_URL}/api/system/status" 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+              end=$(( $(date +%s) + 600 ))
+              for i in $(seq 1 1000); do
+                STATUS=$(curl -sf --max-time 5 "${SQ_URL}/api/system/status" 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
                 [ "$STATUS" = "UP" ] && break
-                RETRIES=$((RETRIES + 1))
+                [ "$(date +%s)" -lt "$end" ] || break
                 sleep 5
               done
               [ "$STATUS" != "UP" ] && echo "ERROR: SonarQube not ready after 10 minutes" && exit 1
               echo "SonarQube is UP"
 
               # 2. Change admin password (if still default)
-              DEFAULT_CHECK=$(curl -s -u "admin:admin" "${SQ_URL}/api/authentication/validate")
+              DEFAULT_CHECK=$(curl -s --max-time 10 -u "admin:admin" "${SQ_URL}/api/authentication/validate")
               if echo "$DEFAULT_CHECK" | grep -q '"valid":true'; then
                 echo "Changing default admin password..."
-                curl -sf -X POST -u "admin:admin" "${SQ_URL}/api/users/change_password" \
+                curl -sf --max-time 10 -X POST -u "admin:admin" "${SQ_URL}/api/users/change_password" \
                   -d "login=admin&previousPassword=admin&password=${SQ_ADMIN_PASSWORD}"
                 echo "Admin password changed"
               else
@@ -143,7 +144,7 @@ spec:
               {{- end }}
 
               echo "SonarQube setup complete"
-              curl -sf -X POST http://localhost:15020/quitquitquit || true
+              curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit || true
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

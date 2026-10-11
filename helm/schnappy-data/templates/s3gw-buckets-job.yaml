@@ -16,9 +16,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
-  # 45 s per aws call - each bucket's head and create, each policy, the listing: aws-cli v2 took ~37 s a call on a
-  # loaded node and 120 s ran out (chart-render-checks counts the rendered calls)
-  activeDeadlineSeconds: {{ mul 45 (add 1 (len .Values.s3gw.publicReadBuckets) (mul 2 (len .Values.s3gw.buckets))) }}
+  # two passes (a failed call restarts the pass) at 45 s per aws call - each bucket's head and create, each policy,
+  # the listing - and 120 s for the pod to start: aws-cli v2 took ~37 s a call on a loaded node and 120 s ran out
+  # (chart-render-checks counts the rendered calls); each call bounded by its timeouts and two attempts
+  activeDeadlineSeconds: {{ add 120 (mul 90 (add 1 (len .Values.s3gw.publicReadBuckets) (mul 2 (len .Values.s3gw.buckets)))) }}
   template:
     metadata:
       annotations:
@@ -44,7 +45,7 @@ spec:
             - -c
             - |
               set -e
-              s3() { aws --endpoint-url "http://{{ include "schnappy.fullname" . }}-s3gw:9000" s3api "$@"; }
+              s3() { aws --cli-connect-timeout 5 --cli-read-timeout 15 --endpoint-url "http://{{ include "schnappy.fullname" . }}-s3gw:9000" s3api "$@"; }
               {{- range .Values.s3gw.buckets }}
               s3 head-bucket --bucket {{ . }} >/dev/null 2>&1 || s3 create-bucket --bucket {{ . }} >/dev/null
               {{- end }}
@@ -57,12 +58,14 @@ spec:
               POLICY
               s3 put-bucket-policy --bucket {{ . }} --policy file:///tmp/policy.json
               {{- end }}
-              aws --endpoint-url "http://{{ include "schnappy.fullname" . }}-s3gw:9000" s3 ls
+              aws --cli-connect-timeout 5 --cli-read-timeout 15 --endpoint-url "http://{{ include "schnappy.fullname" . }}-s3gw:9000" s3 ls
           env:
             - name: HOME
               value: /tmp
             - name: AWS_DEFAULT_REGION
               value: us-east-1
+            - name: AWS_MAX_ATTEMPTS
+              value: "2"
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:

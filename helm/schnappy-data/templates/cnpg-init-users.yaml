@@ -20,8 +20,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
-  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 300 s wait and the SQL, twice (a Postgres
-  # restarting - a major upgrade - takes minutes; 120 s failed the sync first)
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - one 600 s wait and the SQL (a Postgres restarting
+  # - a major upgrade: a smart shutdown of up to 180 s, the upgrade, the start - takes minutes; 120 s failed the sync
+  # first; one wait, not tries: a retry adds only its backoff)
   activeDeadlineSeconds: 900
   template:
     metadata:
@@ -51,6 +52,9 @@ spec:
               value: {{ include "schnappy.postgres.serviceName" . }}-rw
             - name: PGUSER
               value: postgres
+            # every psql call bounded (a connection hanging holds the hook to its deadline)
+            - name: PGCONNECT_TIMEOUT
+              value: "5"
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
@@ -72,10 +76,10 @@ spec:
             - |
               set -eu
               echo "Waiting for PostgreSQL..."
-              end=$(( $(date +%s) + 300 ))
+              start=$(date +%s); end=$(( $(date +%s) + 600 ))
               for i in $(seq 1 1000); do
-                PGCONNECT_TIMEOUT=5 psql -c "SELECT 1" >/dev/null 2>&1 && break
-                [ "$(date +%s)" -lt "$end" ] || { echo "PostgreSQL not ready after 300s"; exit 1; }
+                psql -c "SELECT 1" >/dev/null 2>&1 && { echo "ready after $(( $(date +%s) - start ))s"; break; }
+                [ "$(date +%s)" -lt "$end" ] || { echo "PostgreSQL not ready after 600s"; exit 1; }
                 echo "Not ready, retrying in 3s..."
                 sleep 3
               done

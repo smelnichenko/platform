@@ -219,3 +219,49 @@ tests:
               runbook_url: https://runbooks.pmon.dev/VeleroDown
               summary: "Velero server down"
               description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."
+  # the daily threshold: its last success 31 h old fires, 29 h old does not (at -111600 s and -104400 s)
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '-111600x30'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
+              summary: "Velero daily backup missing"
+              description: "No successful schnappy-daily backup in the last 30h."
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '-104400x30'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroDailyBackupMissing
+        exp_alerts: []
+  # the weekly window: its last success's series gone after a day (a restart), the history holds it - silent at 7 d,
+  # firing past 8 d
+  - interval: 1h
+    input_series:
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
+        values: '0x24'
+      - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
+        values: '0x200'
+    alert_rule_test:
+      - eval_time: 7d
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts: []
+      - eval_time: 8d2h
+        alertname: VeleroWeeklyBackupMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroWeeklyBackupMissing
+              summary: "Velero weekly backup missing"
+              description: "No fully successful full-weekly backup in the last 8 days (a PartiallyFailed one does not count)."

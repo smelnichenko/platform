@@ -390,38 +390,80 @@ chinit=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=t
   --show-only templates/clickhouse-init-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
 users=$(helm template t helm/schnappy-data/ --set cnpg.enabled=true --set 'postgres.databases[0].name=a' \
   --show-only templates/cnpg-init-users.yaml)
-# the clock read inside the wait's loop, the bound set before it on a line of its own (not a comment)
-clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\) \+ [0-9]+ \)\)$/ {e=1} e && /^ *for / {f=1}
-  f && /-lt "\$end"/ {ok=1} f && /^ *done/ {f=0} END {exit !ok}'; }
-for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users"; do
+sqsetup=$(helm template t helm/schnappy-sonarqube/ --set sonarqube.enabled=true --set sonarqube.setup.enabled=true \
+  --set sonarqube.postgres.password=x --show-only templates/sonarqube-setup-job.yaml)
+pcleanup=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set previewMode=true --set previewNumber=7 \
+  --show-only templates/preview-cleanup-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
+s3jobs=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
+  --set 's3gw.buckets={a}' --show-only templates/s3gw-buckets-job.yaml)
+# the hook Job templates judged below, by file: every one the scan of the charts finds must be among them
+judged="k6-postsync-job.yaml scylla-schema-job.yaml gateway.yaml clickhouse-init-job.yaml cnpg-init-users.yaml
+sonarqube-setup-job.yaml preview-cleanup-job.yaml s3gw-buckets-job.yaml"
+# every loop that sleeps reads the clock inside it, the bound set before it on a line of its own (not a comment)
+clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\) \+ [0-9]+ \)\)$/ {e=1}
+  /^ *(for|while|until) / {f=1; clk=0; slp=0} f && /-lt "\$end"/ {clk=1} f && /(^|[ ;])sleep / {slp=1}
+  f && /^ *done/ {f=0; if (slp && !(e && clk)) bad=1} END {exit bad}'; }
+# a hook's deadline holds its wait (the end= seconds) and a margin for the rest of its work
+wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | head -1; }
+for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users" \
+  "sonarqube-setup:$sqsetup" "preview-cleanup:$pcleanup" "s3gw-buckets:$s3jobs"; do
   name=${pair%%:*}; body=${pair#*:}
   [ -n "$(echo "$body" | job_deadline)" ] || fail "the $name hook Job has no activeDeadlineSeconds on its spec"
   echo "$body" | grep -q '^      activeDeadlineSeconds:' && fail "the $name hook Job's deadline on its pod spec bounds one try, not the Job"
   echo "$body" | grep -qE '^ *(until|while) ' && fail "the $name hook Job waits in a loop without a clock bound (until/while)"
   echo "$body" | clock_bound || fail "the $name hook Job's wait reads no clock in its loop (end=\$(( \$(date +%s) + N )) before it, -lt \"\$end\" in it)"
+  w=$(echo "$body" | wait_bound)
+  [ -z "$w" ] || [ "$(echo "$body" | job_deadline)" -ge $((w + 120)) ] \
+    || fail "the $name hook Job's deadline $(echo "$body" | job_deadline) s cannot hold its ${w} s wait and 120 s more"
 done
+hooks=""
 for f in helm/*/templates/*.yaml; do
+  awk '/^---/ {if (job && hook) print FILENAME; job=hook=0; next} /^kind: Job *$/ {job=1}
+    /^    "?(argocd\.argoproj\.io|helm\.sh)\/hook"?:/ {hook=1} END {if (job && hook) print FILENAME}' "$f" | grep -q . \
+    && hooks="$hooks ${f##*/}"
   awk -v f="$f" '/^---/ {if (job && hook && !dl) {print f; bad=1} job=hook=dl=0; next}
-    /^kind: Job *$/ {job=1} /^    (argocd\.argoproj\.io\/hook|"helm\.sh\/hook"):/ {hook=1} /^  activeDeadlineSeconds:/ {dl=1}
+    /^kind: Job *$/ {job=1} /^    "?(argocd\.argoproj\.io|helm\.sh)\/hook"?:/ {hook=1} /^  activeDeadlineSeconds:/ {dl=1}
     END {if (job && hook && !dl) {print f; bad=1}; exit bad}' "$f" || fail "$f: a hook Job without activeDeadlineSeconds on its spec"
+done
+echo "$users" | grep -A1 'name: PGCONNECT_TIMEOUT' | grep -q 'value: "5"' \
+  || fail "init-users' psql calls are not bounded (PGCONNECT_TIMEOUT)"
+[ "$(echo "$chinit" | grep -c -- '--connect_timeout 5 --receive_timeout 10')" -ge 1 ] \
+  || fail "clickhouse-init's wait call is not bounded (--connect_timeout, --receive_timeout)"
+# every Job of schnappy-data is a hook: the data apps compare no Job (infra's data-envs ignores none of their fields)
+for f in helm/schnappy-data/templates/*.yaml; do
+  awk '/^---/ {if (job && !hook) bad=1; job=hook=0; next} /^kind: Job *$/ {job=1}
+    /^    "?(argocd\.argoproj\.io|helm\.sh)\/hook"?:/ {hook=1} END {if (job && !hook) bad=1; exit bad}' "$f" \
+    || fail "$f: a schnappy-data Job that is no hook (the data apps would compare it, its labels and selector set by Kubernetes)"
+done
+for h in $hooks; do
+  case " $(echo $judged) " in *" $h "*) ;; *) fail "hook Job template $h is not among the judged ones (add its render)";; esac
 done
 wait_s=$(echo "$k6" | sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | head -1)
 k6_max=$(sed -n "s/.*maxDuration: '\([0-9][0-9]*\)m'.*/\1/p" helm/schnappy/files/smoke-test.js | head -1)
 [ -n "$k6_max" ] || fail "smoke-test.js gives k6 no maxDuration (k6's default 10 m makes a try outlast any deadline)"
-# per try: the wait (its last sleep and curl past the clock: 15 s), k6, 30 s, the pod's start (60 s); the backoff 10 s
-need=$(( 2 * (wait_s + 15 + k6_max * 60 + 30 + 60) + 10 ))
+# per try: the wait (its last sleep and curl past the clock), k6, 30 s, the pod's start (60 s); the backoff 10 s
+sleep_s=$(echo "$k6" | sed -n 's/^ *sleep \([0-9][0-9]*\)$/\1/p' | head -1)
+curl_s=$(echo "$k6" | sed -n 's/.*curl .*--max-time \([0-9][0-9]*\).*/\1/p' | head -1)
+[ -n "$sleep_s" ] && [ -n "$curl_s" ] || fail "the k6 hook's wait: its sleep or its curl --max-time not found"
+need=$(( 2 * (wait_s + sleep_s + curl_s + k6_max * 60 + 30 + 60) + 10 ))
 [ "$(echo "$k6" | job_deadline)" -ge "$need" ] || fail "the k6 hook's deadline $(echo "$k6" | job_deadline) s cannot hold two tries ($need s)"
 
-# --- the s3gw bucket hook Job: its deadline holds every aws call at 45 s each ---------------------------------------
+# --- the s3gw bucket hook Job: its deadline holds two passes of every aws call at 45 s each and the pod's start -----
 # aws-cli v2 starts in seconds on a free CPU, in ~37 s on a loaded node (the upgrade copy's build, 2026-10-11: 120 s
 # for three buckets, a policy and a listing ran out, Argo's sync failed): 45 s per call
 buckets_job=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
   --set 's3gw.buckets={a,b,c}' --set 's3gw.publicReadBuckets={c}' --show-only templates/s3gw-buckets-job.yaml)
+[ "$(echo "$buckets_job" | sed -n 's/.*requests: { cpu: \([0-9]*\)m.*/\1/p')" -ge 500 ] \
+  || fail "the bucket Job requests under 500m CPU (a loaded node shares CPU by request: aws-cli starved at 25m)"
+# each call bounded, so 45 s is a bound: aws-cli's own defaults are 60 s connect and read, three attempts
+[ "$(echo "$buckets_job" | grep -c -- '--cli-connect-timeout 5 --cli-read-timeout 15 ')" -eq 2 ] \
+  && echo "$buckets_job" | grep -A1 'name: AWS_MAX_ATTEMPTS' | grep -q 'value: "2"' \
+  || fail "the bucket Job's aws calls are not each bounded (timeouts on s3() and the listing, AWS_MAX_ATTEMPTS 2)"
 calls=$(echo "$buckets_job" | grep -oE '(^ *|[|&;] *)(s3|aws) ' | wc -l)
-need=$(( calls * 45 ))
+need=$(( 120 + calls * 90 ))
 have=$(echo "$buckets_job" | job_deadline)
 [ "$calls" -ge 8 ] || fail "the bucket Job's aws calls not found ($calls of 3 heads, 3 creates, a policy, a listing)"
-[ "${have:-0}" -ge "$need" ] || fail "the s3gw bucket Job's deadline ${have:-none} s cannot hold $calls aws calls at 45 s ($need s)"
+[ "${have:-0}" -ge "$need" ] || fail "the s3gw bucket Job's deadline ${have:-none} s cannot hold two passes of $calls aws calls at 45 s and the pod's start ($need s)"
 
 # --- every Job's pods are out of Velero's backups -------------------------------------------------------------------
 # a Job's pod that ends while a backup reads its volumes fails that volume and the whole backup is PartiallyFailed
@@ -430,12 +472,12 @@ have=$(echo "$buckets_job" | job_deadline)
 # label on its pod template, where Velero reads it (read by indentation; the hyperfoil CronJob's render read too)
 for f in helm/*/templates/*.yaml; do
   got=$(awk '/^ *$/ {next} {ind = match($0, /[^ ]/) - 1}
-    /^ *kind: (Job|CronJob) *$/ {jobs++}
+    /^ *kind: / {injob = 0} /^ *kind: (Job|CronJob) *$/ {jobs++; injob = 1}
     st && ind <= t {st = 0} st == 2 && ind <= t + 2 {st = 0} st == 3 && ind <= t + 4 {st = 0}
     /^ *template: *$/ {t = ind; st = 1; next}
     st == 1 && ind == t + 2 && /metadata: *$/ {st = 2; next}
     st == 2 && ind == t + 4 && /labels: *$/ {st = 3; next}
-    st == 3 && ind == t + 6 && /velero\.io\/exclude-from-backup: "true"/ {marks++; st = 0}
+    st == 3 && ind == t + 6 && injob && /velero\.io\/exclude-from-backup: "true"/ {marks++; st = 0}
     END {print jobs + 0, marks + 0}' "$f")
   [ "${got% *}" -le "${got#* }" ] || fail "$f: ${got% *} Job/CronJob kind(s), ${got#* } pod template(s) with velero.io/exclude-from-backup"
 done

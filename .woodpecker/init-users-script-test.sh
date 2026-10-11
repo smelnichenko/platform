@@ -46,4 +46,11 @@ export "DB_PASSWORD_$(upper "$last")=rot-$last"
 sed "s/ALTER ROLE $first PASSWORD/ALTER ROLE no_such_role_$first PASSWORD/" "$script" >.ci-out/broken.sh
 sh .ci-out/broken.sh >.ci-out/run4.log 2>&1 && fail "a failing SQL statement did not fail the script"
 
+# Negative 3: a Postgres that never answers ends the wait at its bound, non-zero, said - not a hook waiting out its
+# deadline (the bound shrunk to 3 s; nothing listens on port 1)
+sed 's/+ 600 ))/+ 3 ))/' "$script" >.ci-out/unreachable.sh
+grep -q '+ 3 ))' .ci-out/unreachable.sh || fail "the wait's bound not found in the script"
+PGPORT=1 PGCONNECT_TIMEOUT=1 sh .ci-out/unreachable.sh >.ci-out/run5.log 2>&1 && fail "an unreachable Postgres exited 0"
+grep -q "not ready after" .ci-out/run5.log || fail "an unreachable Postgres not said: $(tail -2 .ci-out/run5.log)"
+
 echo "init-users script test: OK ($(echo "$names" | wc -l) databases)"
