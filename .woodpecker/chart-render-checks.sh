@@ -391,7 +391,12 @@ chinit=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=t
 users=$(helm template t helm/schnappy-data/ --set cnpg.enabled=true --set 'postgres.databases[0].name=a' \
   --show-only templates/cnpg-init-users.yaml)
 sqsetup=$(helm template t helm/schnappy-sonarqube/ --set sonarqube.enabled=true --set sonarqube.setup.enabled=true \
-  --set sonarqube.postgres.password=x --show-only templates/sonarqube-setup-job.yaml)
+  --set sonarqube.postgres.password=x --set 'sonarqube.setup.projects[0].key=p1' --set 'sonarqube.setup.projects[0].name=P one' \
+  --set 'sonarqube.setup.projects[0].gate=Service' --show-only templates/sonarqube-setup-job.yaml)
+# the setup script as the pod runs it, for .woodpecker/sonarqube-setup-script-test.sh
+echo "$sqsetup" | awk '/^            - \|$/ {s=1; next} s && /^          [a-z]/ {exit} s {sub(/^              /, ""); print}' \
+  > .ci-out/sonarqube-setup.sh
+grep -q '^set -eu$' .ci-out/sonarqube-setup.sh || fail "the sonarqube setup script not extracted"
 pcleanup=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set previewMode=true --set previewNumber=7 \
   --show-only templates/preview-cleanup-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
 s3jobs=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \

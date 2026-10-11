@@ -44,10 +44,14 @@ spec:
             - /bin/sh
             - -c
             - |
-              set -e
-              FAIL=0
+              set -eu
+              # the sidecar told to quit whatever the outcome; the Job's status is the script's
+              trap 'curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit > /dev/null 2>&1 || true' EXIT
 
-              sq() { curl -s --max-time 10 -u "admin:${SQ_ADMIN_PASSWORD}" "$@"; }
+              # every call fails on an HTTP error and on its time-out (-f, --max-time) and every answer is read into a
+              # variable before it is searched: a failed read is a failure, never "absent" (a create after it would
+              # say "created" with nothing done)
+              sq() { curl -fsS --max-time 10 -u "admin:${SQ_ADMIN_PASSWORD}" "$@"; }
 
               # 1. Wait for SonarQube to be ready
               echo "Waiting for SonarQube..."
@@ -62,66 +66,63 @@ spec:
               echo "SonarQube is UP"
 
               # 2. Change admin password (if still default)
-              DEFAULT_CHECK=$(curl -s --max-time 10 -u "admin:admin" "${SQ_URL}/api/authentication/validate")
+              DEFAULT_CHECK=$(curl -fsS --max-time 10 -u "admin:admin" "${SQ_URL}/api/authentication/validate")
               if echo "$DEFAULT_CHECK" | grep -q '"valid":true'; then
                 echo "Changing default admin password..."
-                curl -sf --max-time 10 -X POST -u "admin:admin" "${SQ_URL}/api/users/change_password" \
+                curl -fsS --max-time 10 -X POST -u "admin:admin" "${SQ_URL}/api/users/change_password" \
                   -d "login=admin&previousPassword=admin&password=${SQ_ADMIN_PASSWORD}"
                 echo "Admin password changed"
               else
                 echo "Admin password already set"
               fi
 
-              # 3. Generate analysis token (if not exists)
-              EXISTING=$(sq "${SQ_URL}/api/user_tokens/search" | grep -c '"name":"ci"' || true)
-              if [ "$EXISTING" = "0" ]; then
+              # 3. Generate analysis token (if not exists). A token Vault never got is revoked: an existing one is
+              # never written again, so the next run must make a new one
+              TOKENS=$(sq "${SQ_URL}/api/user_tokens/search")
+              if ! echo "$TOKENS" | grep -q '"name":"ci"'; then
                 echo "Generating analysis token..."
-                TOKEN=$(sq -X POST "${SQ_URL}/api/user_tokens/generate" \
-                  -d "name=ci&type=USER_TOKEN" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
-                if [ -n "$TOKEN" ]; then
-                  echo "Token generated, writing to Vault..."
-                  VAULT_RESP=$(curl -sk -X PATCH \
+                GENERATED=$(sq -X POST "${SQ_URL}/api/user_tokens/generate" -d "name=ci&type=USER_TOKEN")
+                TOKEN=$(echo "$GENERATED" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+                [ -n "$TOKEN" ] || { echo "ERROR: token generation answered no token"; exit 1; }
+                echo "Token generated, writing to Vault..."
+                VAULT_RESP=""
+                if VAULT_RESP=$(curl -fsSk --max-time 10 -X PATCH \
                     -H "X-Vault-Token: ${VAULT_TOKEN}" \
                     -H "Content-Type: application/merge-patch+json" \
                     "${VAULT_ADDR}/v1/{{ .Values.vault.secretPathPrefix }}/woodpecker-ci" \
-                    -d "{\"data\":{\"sonar_token\":\"${TOKEN}\"}}")
-                  if echo "$VAULT_RESP" | grep -q '"version"'; then
-                    echo "Token written to Vault successfully"
-                  else
-                    echo "WARNING: Failed to write token to Vault: ${VAULT_RESP}"
-                    FAIL=1
-                  fi
+                    -d "{\"data\":{\"sonar_token\":\"${TOKEN}\"}}") && echo "$VAULT_RESP" | grep -q '"version"'; then
+                  echo "Token written to Vault successfully"
                 else
-                  echo "WARNING: Token generation failed"
+                  sq -X POST "${SQ_URL}/api/user_tokens/revoke" -d "name=ci" > /dev/null \
+                    || echo "ERROR: revoking the unwritten token failed too - revoke 'ci' by hand"
+                  echo "ERROR: writing the token to Vault failed: ${VAULT_RESP:-no answer}"
+                  exit 1
                 fi
               else
                 echo "Analysis token already exists"
               fi
 
               # 4. Create quality gates
+              GATES=$(sq "${SQ_URL}/api/qualitygates/list")
               # Service gate (default, 80% coverage)
-              GATE_EXISTS=$(sq "${SQ_URL}/api/qualitygates/list" | grep -c '"name":"Service"' || true)
-              if [ "$GATE_EXISTS" = "0" ]; then
+              if ! echo "$GATES" | grep -q '"name":"Service"'; then
                 echo "Creating Service quality gate..."
                 sq -X POST "${SQ_URL}/api/qualitygates/copy" -d "sourceName=Sonar%20way&name=Service" > /dev/null
-                sq -X POST "${SQ_URL}/api/qualitygates/set_as_default" -d "name=Service"
+                sq -X POST "${SQ_URL}/api/qualitygates/set_as_default" -d "name=Service" > /dev/null
                 echo "Service gate created and set as default"
               else
                 echo "Service gate already exists"
               fi
 
               # Frontend gate (70% coverage)
-              FE_GATE_EXISTS=$(sq "${SQ_URL}/api/qualitygates/list" | grep -c '"name":"Frontend"' || true)
-              if [ "$FE_GATE_EXISTS" = "0" ]; then
+              if ! echo "$GATES" | grep -q '"name":"Frontend"'; then
                 echo "Creating Frontend quality gate..."
                 sq -X POST "${SQ_URL}/api/qualitygates/copy" -d "sourceName=Sonar%20way&name=Frontend" > /dev/null
-                # Update coverage threshold to 70%
-                COV_ID=$(sq "${SQ_URL}/api/qualitygates/show?name=Frontend" | \
-                  grep -o '"id":"[^"]*","metric":"new_coverage"' | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-                if [ -n "$COV_ID" ]; then
-                  sq -X POST "${SQ_URL}/api/qualitygates/update_condition" \
-                    -d "id=${COV_ID}&metric=new_coverage&op=LT&error=70" > /dev/null
-                fi
+                GATE=$(sq "${SQ_URL}/api/qualitygates/show?name=Frontend")
+                COV_ID=$(echo "$GATE" | grep -o '"id":"[^"]*","metric":"new_coverage"' | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+                [ -n "$COV_ID" ] || { echo "ERROR: the Frontend gate has no new_coverage condition to set to 70%"; exit 1; }
+                sq -X POST "${SQ_URL}/api/qualitygates/update_condition" \
+                  -d "id=${COV_ID}&metric=new_coverage&op=LT&error=70" > /dev/null
                 echo "Frontend gate created (70% coverage)"
               else
                 echo "Frontend gate already exists"
@@ -129,8 +130,8 @@ spec:
 
               # 5. Create projects
               {{- range .Values.sonarqube.setup.projects }}
-              PROJ_EXISTS=$(sq "${SQ_URL}/api/projects/search?q={{ .key }}" | grep -c '"key":"{{ .key }}"' || true)
-              if [ "$PROJ_EXISTS" = "0" ]; then
+              FOUND=$(sq "${SQ_URL}/api/projects/search?q={{ .key }}")
+              if ! echo "$FOUND" | grep -q '"key":"{{ .key }}"'; then
                 sq -X POST "${SQ_URL}/api/projects/create" \
                   -d "project={{ .key }}&name={{ .name | replace " " "%20" }}&visibility=private" > /dev/null
                 echo "Created project: {{ .key }}"
@@ -138,13 +139,11 @@ spec:
                 echo "Project exists: {{ .key }}"
               fi
               {{- if .gate }}
-              sq -X POST "${SQ_URL}/api/qualitygates/select" \
-                -d "gateName={{ .gate }}&projectKey={{ .key }}" > /dev/null 2>&1 || true
+              sq -X POST "${SQ_URL}/api/qualitygates/select" -d "gateName={{ .gate }}&projectKey={{ .key }}" > /dev/null
               {{- end }}
               {{- end }}
 
               echo "SonarQube setup complete"
-              curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit || true
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
