@@ -75,7 +75,7 @@ helm template t helm/schnappy-observability/ $probe --show-only templates/promet
 # --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
-  | grep -A14 'alert: WoodpeckerBuildFailed$' | grep -v '^ *#' > .ci-out/build-failed.rule || true
+  | awk '/alert: WoodpeckerBuildFailed$/ {s=1; print; next} s && /- alert:/ {exit} s' | grep -v '^ *#' > .ci-out/build-failed.rule || true
 grep -q 'woodpecker_step_failures_total{workflow="cd", type!="service"}' .ci-out/build-failed.rule || fail "WoodpeckerBuildFailed no longer watches the cd workflow"
 grep -q 'woodpecker_pipeline_count' .ci-out/build-failed.rule && fail "WoodpeckerBuildFailed is back on woodpecker_pipeline_count, which counts every pull request as main"
 grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the repos that push to main directly are no longer watched"
@@ -395,7 +395,11 @@ users=$(helm template t helm/schnappy-data/ --set cnpg.enabled=true --set 'postg
   --show-only templates/cnpg-init-users.yaml)
 sqsetup=$(helm template t helm/schnappy-sonarqube/ --set sonarqube.enabled=true --set sonarqube.setup.enabled=true \
   --set sonarqube.postgres.password=x --set 'sonarqube.setup.projects[0].key=p1' --set 'sonarqube.setup.projects[0].name=P one' \
-  --set 'sonarqube.setup.projects[0].gate=Service' --show-only templates/sonarqube-setup-job.yaml)
+  --set 'sonarqube.setup.projects[0].gate=Service' \
+  $(for i in 1 2 3 4 5 6 7 8; do printf -- "--set sonarqube.setup.projects[%s].key=p%s --set sonarqube.setup.projects[%s].name=p%s " $i $((i + 1)) $i $((i + 1)); done) \
+  --show-only templates/sonarqube-setup-job.yaml)
+# production's count (infra's schnappy-sonarqube values: 9): its deadline grows with them
+[ "$(echo "$sqsetup" | grep -c 'api/projects/search?q=')" = 9 ] || fail "the sonarqube setup not rendered with production's 9 projects"
 # the setup script as the pod runs it, for .woodpecker/sonarqube-setup-script-test.sh
 echo "$sqsetup" | awk '/^            - \|$/ {s=1; next} s && /^          [a-z]/ {exit} s {sub(/^              /, ""); print}' \
   > .ci-out/sonarqube-setup.sh
@@ -458,6 +462,36 @@ calls_cost() { sed -e ':a' -e '/\\$/N; s/\\\n//; ta' | awk -v psql="$1" '/^ *#/ 
 # the waits summed: two waits of 100 s and 200 s, one after another, are 300 s
 [ "$(printf '%s\n' '  end=$(( $(date +%s) + 100 ))' '  end=$(( $(date +%s) + 200 ))' | wait_bound)" = 300 ] \
   || fail "the waits are not summed"
+# clock_bound against hand-built loops: a sleeping loop needs end= before it and a -lt "$end" read in it or a loop inside
+cb() { if printf '%s\n' "$@" | clock_bound; then echo pass; else echo fail; fi; }
+E='end=$(( $(date +%s) + 30 ))'; R='[ "$(date +%s)" -lt "$end" ] || exit 1'
+[ "$(cb "$E" 'for i in $(seq 1 9); do' "  $R" '  sleep 1' 'done')" = pass ] || fail "clock_bound: a bounded loop refused"
+[ "$(cb "$E" 'for i in $(seq 1 9); do' '  sleep 1' 'done')" = fail ] || fail "clock_bound: a sleeping loop with no clock read passed"
+[ "$(cb "$E" 'for i in $(seq 1 9)' 'do' '  sleep 1' 'done')" = fail ] || fail "clock_bound: do on the next line, no clock, passed"
+[ "$(cb 'for i in $(seq 1 9); do' "  $R" '  sleep 1' 'done')" = fail ] || fail "clock_bound: no end= before the loop passed"
+[ "$(cb "$E" 'for i in $(seq 1 9); do' "  $R" '  for j in 1 2; do sleep 1; done' 'done')" = fail ] \
+  || fail "clock_bound: an inner loop sleeping with the clock only in the outer passed"
+[ "$(cb "$E" 'for i in $(seq 1 9); do' "  for j in 1 2; do $R; done" '  sleep 1' 'done')" = pass ] \
+  || fail "clock_bound: the clock read in an inner loop refused"
+[ "$(cb "$E" "for i in \$(seq 1 9); do $R; sleep 1; done")" = pass ] || fail "clock_bound: a one-line bounded loop refused"
+[ "$(cb "$E" 'for i in $(seq 1 9); do sleep 1; done')" = fail ] || fail "clock_bound: a one-line unbounded loop passed"
+[ "$(cb "$E" 'for i in $(seq 1 9); do' "  $R" 'done' 'for k in $(seq 1 9); do' '  sleep 1' 'done')" = fail ] \
+  || fail "clock_bound: a second loop sleeping without a clock passed"
+[ "$(cb "$E" 'x=$(for i in 1 2; do sleep 1; done)')" = fail ] || fail "clock_bound: a loop in a substitution passed"
+# each client's call: costed by its own time-out, refused without it
+cc() { printf '%s\n' "$1" | calls_cost "${2:-}"; }
+[ "$(cc 'curl -fsS --max-time 7 http://x')" = 7 ] && [ "$(cc 'curl -fsS http://x')" = "UNBOUNDED curl -fsS http://x" ] \
+  || fail "calls_cost: curl's --max-time not read"
+[ "$(cc 'wget -T 9 -qO- http://x')" = 9 ] && [ "$(cc 'wget -qO- http://x')" = "UNBOUNDED wget -qO- http://x" ] \
+  || fail "calls_cost: wget's -T not read"
+[ "$(cc 'cqlsh --connect-timeout=5 --request-timeout=60 h 9042')" = 65 ] \
+  && [ "$(cc 'cqlsh --connect-timeout=5 h 9042')" = "UNBOUNDED cqlsh --connect-timeout=5 h 9042" ] || fail "calls_cost: cqlsh's time-outs not read"
+[ "$(cc 'clickhouse-client --connect_timeout 5 --receive_timeout 300 -q x')" = 305 ] \
+  && [ "$(cc 'clickhouse-client --connect_timeout 5 -q x')" = "UNBOUNDED clickhouse-client --connect_timeout 5 -q x" ] \
+  || fail "calls_cost: clickhouse-client's time-outs not read"
+[ "$(cc 'aws --cli-connect-timeout 5 --cli-read-timeout 15 s3 ls')" = 60 ] \
+  && [ "$(cc 'aws s3 ls')" = "UNBOUNDED aws s3 ls" ] || fail "calls_cost: aws's time-outs not read"
+[ "$(cc 'psql -c x' 65)" = 65 ] && [ "$(cc 'psql -c x')" = "UNBOUNDED psql -c x" ] || fail "calls_cost: psql's bound not taken"
 # kubectl: costed by the timeout before each call (10 + 60); its own --request-timeout refused, never costed
 [ "$(printf '%s\n' '  timeout 10 kubectl get svc a && break' '  kubectl get x | xargs -r timeout 60 kubectl delete' \
   | calls_cost '')" = "UNBOUNDED   kubectl get x | xargs -r timeout 60 kubectl delete" ] \
