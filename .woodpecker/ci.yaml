@@ -33,6 +33,8 @@ steps:
       - sh .woodpecker/chart-render-checks.sh
       # the sonarqube setup hook's script, as rendered, against a stub SonarQube and Vault
       - sh .woodpecker/sonarqube-setup-script-test.sh
+      # the Scylla schema, gateway patch and preview cleanup hooks' scripts, as rendered, against stub tools
+      - sh .woodpecker/hook-scripts-test.sh
       - helm lint helm/schnappy-realtime/
       # smokeTest is off by default; without the flag nothing renders.
       - helm lint helm/schnappy-test/ --set smokeTest.enabled=true

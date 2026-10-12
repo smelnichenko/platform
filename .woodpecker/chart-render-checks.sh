@@ -402,6 +402,14 @@ echo "$sqsetup" | awk '/^            - \|$/ {s=1; next} s && /^          [a-z]/ 
 grep -q '^set -eu$' .ci-out/sonarqube-setup.sh || fail "the sonarqube setup script not extracted"
 pcleanup=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set previewMode=true --set previewNumber=7 \
   --show-only templates/preview-cleanup-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
+# the scripts as their pods run them, for .woodpecker/hook-scripts-test.sh: the first "- |" block of each Job
+first_script() { awk '/^ *- \|$/ {s=1; match($0, /^ */); ind=RLENGTH + 2; next} s && /^ *[a-zA-Z][a-zA-Z_]*:/ && match($0, /^ */) && RLENGTH < ind {exit} s {print substr($0, ind + 1)}'; }
+echo "$schema" | first_script > .ci-out/scylla-schema.sh
+echo "$gwjob" | first_script > .ci-out/gateway-patch.sh
+echo "$pcleanup" | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j' | first_script > .ci-out/preview-cleanup.sh
+for s in scylla-schema gateway-patch preview-cleanup; do
+  grep -q '^set -eu$' ".ci-out/$s.sh" || fail "the $s hook script not extracted"
+done
 s3jobs=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
   --set 's3gw.buckets={a}' --show-only templates/s3gw-buckets-job.yaml)
 # the hook Job templates judged below, by chart and file: every one the scan of the charts finds must be among them
@@ -419,6 +427,8 @@ clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\
   d && /(^|[ ;])sleep / {slp[d] = 1}
   { for (k = 0; k < closes && d > 0; k++) {if (slp[d] && !(e && clk[d])) bad = 1; d--} }
   END {exit bad}'; }
+# each "- |" script block's first command (blank and comment lines aside) is set -e
+set_e_first() { awk '/^ *- \|$/ {s=1; next} s && /^ *(#|$)/ {next} s {if ($0 !~ /^ *set -e/) bad=1; s=0} END {exit bad}'; }
 # a hook's deadline holds its waits (the end= seconds, one after another: summed), 120 s, and each call at its own bound
 wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | awk '{t += $1} END {if (NR) print t}'; }
 # each client call costed by its own time-out, read from the call (continued lines joined): curl --max-time, wget -T,
@@ -463,6 +473,9 @@ for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit"
   echo "$body" | grep -q '^      activeDeadlineSeconds:' && fail "the $name hook Job's deadline on its pod spec bounds one try, not the Job"
   echo "$body" | grep -qE '^ *(until|while) ' && fail "the $name hook Job waits in a loop without a clock bound (until/while)"
   echo "$body" | clock_bound || fail "the $name hook Job's wait reads no clock in its loop (end=\$(( \$(date +%s) + N )) before it, -lt \"\$end\" in it)"
+  # every script of it stops at its first failing command: without set -e a failed or timed-out call ran on to "done" and
+  # the hook reported success (the gateway's patch, the Scylla schema)
+  echo "$body" | set_e_first || fail "the $name hook Job has a script not starting with set -e"
   w=$(echo "$body" | wait_bound)
   # psql's bound: the pod's PGCONNECT_TIMEOUT and statement_timeout (PGOPTIONS), when the Job sets them
   pc=$(echo "$body" | grep -A1 'name: PGCONNECT_TIMEOUT' | sed -n 's/.*value: "\([0-9]*\)".*/\1/p')

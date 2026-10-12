@@ -66,6 +66,7 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
+              set -eu
               echo "Waiting for gateway service..."
               # bounded by the clock: a gateway service that never appears fails the try
               end=$(( $(date +%s) + 300 ))

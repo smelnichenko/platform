@@ -107,12 +107,17 @@ spec:
             - -c
             - |
               set -eu
-              # Kafka topics — KafkaTopic CRs prefixed pr-${PR_NUMBER}-
-              if timeout 10 kubectl auth can-i list kafkatopics -n "$SHARED_KAFKA_NS" >/dev/null 2>&1; then
-                timeout 10 kubectl -n "$SHARED_KAFKA_NS" get kafkatopics -o name 2>/dev/null \
-                  | grep "kafkatopic.*pr-${PR_NUMBER}-" \
-                  | xargs -r timeout 60 kubectl -n "$SHARED_KAFKA_NS" delete \
-                  || true
+              # Kafka topics — KafkaTopic CRs prefixed pr-${PR_NUMBER}-. A "no" from can-i skips them, said; any failure of the
+              # check, the list or a delete (a time-out included) fails the hook - swallowed, they read as "nothing to do"
+              if CAN=$(timeout 10 kubectl auth can-i list kafkatopics -n "$SHARED_KAFKA_NS" 2>&1); then
+                TOPICS=$(timeout 10 kubectl -n "$SHARED_KAFKA_NS" get kafkatopics -o name)
+                for topic in $(echo "$TOPICS" | grep "kafkatopic.*pr-${PR_NUMBER}-" || true); do
+                  timeout 60 kubectl -n "$SHARED_KAFKA_NS" delete "$topic"
+                done
+              elif [ "$CAN" = no ]; then
+                echo "[note] no right to list KafkaTopics in $SHARED_KAFKA_NS: pr-${PR_NUMBER}- topics left"
+              else
+                echo "ERROR: checking the right to list KafkaTopics failed: $CAN"; exit 1
               fi
               # Scylla keyspace
               if [ -n "${SCYLLA_CONTACT_POINTS:-}" ]; then
@@ -123,12 +128,13 @@ spec:
               # Keycloak client
               if [ -n "${KEYCLOAK_REALM_URL:-}" ] && [ -n "${KEYCLOAK_ADMIN_TOKEN:-}" ]; then
                 CLIENT_ID="preview-pr-${PR_NUMBER}"
-                cid=$(wget -T 10 -qO- --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
-                  "$KEYCLOAK_REALM_URL/clients?clientId=$CLIENT_ID" \
-                  | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+                # the answer read before it is searched: a failed lookup fails the hook, never "no client"
+                CLIENTS=$(wget -T 10 -qO- --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
+                  "$KEYCLOAK_REALM_URL/clients?clientId=$CLIENT_ID")
+                cid=$(echo "$CLIENTS" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
                 if [ -n "$cid" ]; then
                   wget -T 10 -qO- --method=DELETE --header="Authorization: Bearer $KEYCLOAK_ADMIN_TOKEN" \
-                    "$KEYCLOAK_REALM_URL/clients/$cid" || true
+                    "$KEYCLOAK_REALM_URL/clients/$cid" > /dev/null
                 fi
               fi
               echo "preview cleanup done for pr-${PR_NUMBER}"

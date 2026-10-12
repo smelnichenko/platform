@@ -44,6 +44,7 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
+              set -eu
               echo "Waiting for ScyllaDB to be ready..."
               # bounded by the clock: a Scylla that never answers fails the try (the Job retries, its deadline holds)
               end=$(( $(date +%s) + 300 ))
@@ -55,80 +56,17 @@ spec:
               done
               echo "ScyllaDB is ready. Applying schema..."
               cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 <<'EOF'
-              CREATE KEYSPACE IF NOT EXISTS chat WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
-
-              CREATE TABLE IF NOT EXISTS chat.messages_by_channel (
-                  channel_id bigint,
-                  bucket text,
-                  message_id timeuuid,
-                  user_uuid uuid,
-                  username text,
-                  content text,
-                  parent_message_id text,
-                  edited boolean,
-                  deleted boolean,
-                  hash text,
-                  prev_hash text,
-                  key_version int,
-                  message_type text,
-                  metadata text,
-                  PRIMARY KEY ((channel_id, bucket), message_id)
-              ) WITH CLUSTERING ORDER BY (message_id DESC)
-                AND gc_grace_seconds = 864000;
-
-              CREATE TABLE IF NOT EXISTS chat.messages_by_user_v2 (
-                  user_uuid uuid,
-                  message_id timeuuid,
-                  channel_id bigint,
-                  bucket text,
-                  content text,
-                  PRIMARY KEY (user_uuid, message_id)
-              ) WITH CLUSTERING ORDER BY (message_id DESC);
-
-              CREATE TABLE IF NOT EXISTS chat.message_edits (
-                  channel_id bigint,
-                  bucket text,
-                  message_id timeuuid,
-                  edit_id timeuuid,
-                  user_uuid uuid,
-                  content text,
-                  hash text,
-                  key_version int,
-                  PRIMARY KEY ((channel_id, bucket, message_id), edit_id)
-              ) WITH CLUSTERING ORDER BY (edit_id DESC);
-
-              CREATE TABLE IF NOT EXISTS chat.chain_heads (
-                  channel_id bigint,
-                  hash text,
-                  message_id timeuuid,
-                  PRIMARY KEY (channel_id)
-              );
-
-              CREATE TABLE IF NOT EXISTS chat.reactions_by_message (
-                  channel_id bigint,
-                  bucket text,
-                  message_id timeuuid,
-                  emoji text,
-                  user_uuid uuid,
-                  username text,
-                  PRIMARY KEY ((channel_id, bucket, message_id), emoji, user_uuid)
-              );
-
-              CREATE TABLE IF NOT EXISTS chat.attachments_by_message (
-                  channel_id bigint,
-                  bucket text,
-                  message_id timeuuid,
-                  attachment_id timeuuid,
-                  url text,
-                  filename text,
-                  content_type text,
-                  size_bytes bigint,
-                  PRIMARY KEY ((channel_id, bucket, message_id), attachment_id)
-              );
+{{ regexReplaceAll "(?m)^ +$" (.Files.Get "files/scylla-schema.cql" | trimSuffix "\n" | indent 14) "" }}
               EOF
               echo "Migrating user_id to user_uuid if needed..."
-              cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD user_uuid uuid;" 2>/dev/null || true
-              cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD user_uuid uuid;" 2>/dev/null || true
+              # a column that exists already is the only failure taken: a time-out or any other error fails the hook
+              if ! out=$(cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.messages_by_channel ADD user_uuid uuid;" 2>&1); then
+                case $out in *"conflicts with an existing column"* | *"already exists"*) ;; *) echo "$out"; exit 1 ;; esac
+              fi
+              # a column that exists already is the only failure taken: a time-out or any other error fails the hook
+              if ! out=$(cqlsh --connect-timeout=5 --request-timeout=60 {{ include "schnappy.scylla.serviceName" . }} 9042 -e "ALTER TABLE chat.message_edits ADD user_uuid uuid;" 2>&1); then
+                case $out in *"conflicts with an existing column"* | *"already exists"*) ;; *) echo "$out"; exit 1 ;; esac
+              fi
               echo "Schema applied successfully."
               echo "Done."
       restartPolicy: OnFailure

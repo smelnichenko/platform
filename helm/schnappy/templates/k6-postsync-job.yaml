@@ -43,6 +43,7 @@ spec:
             - sh
             - -c
             - |
+              set -eu
               # bounded by the clock, not a count: a curl timing out made 60 tries 900 s
               start=$(date +%s); end=$(( $(date +%s) + 600 ))
               for i in $(seq 1 1000); do
