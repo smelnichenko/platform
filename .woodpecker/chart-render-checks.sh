@@ -422,9 +422,11 @@ clock_bound() { awk '/^ *#/ {next} /^ *(start=[^;]*; )?end=\$\(\( \$\(date \+%s\
 # a hook's deadline holds its waits (the end= seconds, one after another: summed), 120 s, and each call at its own bound
 wait_bound() { sed -n 's/.*end=\$(( \$(date +%s) + \([0-9][0-9]*\) )).*/\1/p' | awk '{t += $1} END {if (NR) print t}'; }
 # each client call costed by its own time-out, read from the call (continued lines joined): curl --max-time, wget -T,
-# cqlsh --connect-timeout + --request-timeout, kubectl --request-timeout, clickhouse-client --connect_timeout +
+# cqlsh --connect-timeout + --request-timeout, kubectl the `timeout N` before it, clickhouse-client --connect_timeout +
 # --receive_timeout, aws 40 s to start + its connect and read; sq (curl --max-time 10 itself) 10, psql the pod's
-# connect and statement time-outs (the first argument). A call without its time-out: "UNBOUNDED <the line>"
+# connect and statement time-outs (the first argument). A call without its time-out: "UNBOUNDED <the line>". kubectl in
+# a pod is never bounded by its own --request-timeout: any client flag of that kind (--request-timeout, --server,
+# --token, ...) makes it drop the in-cluster config and dial localhost:8080 - "OVERRIDE <the line>"
 calls_cost() { sed -e ':a' -e '/\\$/N; s/\\\n//; ta' | awk -v psql="$1" '/^ *#/ {next}
   { line = $0
     n = gsub(/(^|[ ;(|&$`'"'"'"])curl /, "&", line)
@@ -433,8 +435,9 @@ calls_cost() { sed -e ':a' -e '/\\$/N; s/\\\n//; ta' | awk -v psql="$1" '/^ *#/ 
     for (k = 0; k < n; k++) { if (match(line, /-T [0-9]+/)) { split(substr(line, RSTART, RLENGTH), a, " "); t += a[2] } else { print "UNBOUNDED " $0; u = 1; exit } }
     n = gsub(/(^|[ ;(|&$])cqlsh /, "&", line)
     for (k = 0; k < n; k++) { if (match(line, /--connect-timeout=[0-9]+/) && (c = substr(line, RSTART + 18, RLENGTH - 18)) && match(line, /--request-timeout=[0-9]+/)) t += c + substr(line, RSTART + 18, RLENGTH - 18); else { print "UNBOUNDED " $0; u = 1; exit } }
-    n = gsub(/(^|[ ;(|&$])kubectl /, "&", line)
-    for (k = 0; k < n; k++) { if (match(line, /--request-timeout=[0-9]+s/)) t += substr(line, RSTART + 18, RLENGTH - 19); else { print "UNBOUNDED " $0; u = 1; exit } }
+    if (match(line, /(^|[ ;(|&$])kubectl [^;|&]*--(request-timeout|server|token|certificate-authority|insecure-skip-tls-verify|user|cluster|context)[= ]/)) { print "OVERRIDE " $0; u = 1; exit }
+    n = gsub(/(^|[ ;(|&$])kubectl /, "&", line); rest = line
+    for (k = 0; k < n; k++) { if (match(rest, /(^|[ ;(|&$])timeout [0-9]+ kubectl /)) { split(substr(rest, RSTART, RLENGTH), a, "timeout "); t += a[2] + 0; rest = substr(rest, RSTART + RLENGTH) } else { print "UNBOUNDED " $0; u = 1; exit } }
     n = gsub(/(^|[ ;(|&$])clickhouse-client /, "&", line)
     for (k = 0; k < n; k++) { if (match(line, /--connect_timeout [0-9]+/) && (c = substr(line, RSTART + 18, RLENGTH - 18)) && match(line, /--receive_timeout [0-9]+/)) t += c + substr(line, RSTART + 18, RLENGTH - 18); else { print "UNBOUNDED " $0; u = 1; exit } }
     n = gsub(/(^|[ ;(|&$])aws /, "&", line)
@@ -445,6 +448,14 @@ calls_cost() { sed -e ':a' -e '/\\$/N; s/\\\n//; ta' | awk -v psql="$1" '/^ *#/ 
 # the waits summed: two waits of 100 s and 200 s, one after another, are 300 s
 [ "$(printf '%s\n' '  end=$(( $(date +%s) + 100 ))' '  end=$(( $(date +%s) + 200 ))' | wait_bound)" = 300 ] \
   || fail "the waits are not summed"
+# kubectl: costed by the timeout before each call (10 + 60); its own --request-timeout refused, never costed
+[ "$(printf '%s\n' '  timeout 10 kubectl get svc a && break' '  kubectl get x | xargs -r timeout 60 kubectl delete' \
+  | calls_cost '')" = "UNBOUNDED   kubectl get x | xargs -r timeout 60 kubectl delete" ] \
+  || fail "a kubectl call without its timeout is not refused"
+[ "$(printf '%s\n' '  timeout 10 kubectl get svc a && break' '  timeout 10 kubectl get x | xargs -r timeout 60 kubectl delete' \
+  | calls_cost '')" = 80 ] || fail "kubectl calls are not costed by their timeouts"
+case $(echo '  timeout 10 kubectl --request-timeout=10s get svc a' | calls_cost '') in OVERRIDE*) ;;
+  *) fail "a kubectl --request-timeout in a pod is not refused" ;; esac
 for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users" \
   "sonarqube-setup:$sqsetup" "preview-cleanup:$pcleanup" "s3gw-buckets:$s3jobs"; do
   name=${pair%%:*}; body=${pair#*:}
@@ -457,7 +468,10 @@ for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit"
   pc=$(echo "$body" | grep -A1 'name: PGCONNECT_TIMEOUT' | sed -n 's/.*value: "\([0-9]*\)".*/\1/p')
   ps=$(echo "$body" | sed -n 's/.*statement_timeout=\([0-9]*\)s.*/\1/p' | head -1)
   cost=$(echo "$body" | calls_cost "$([ -n "$pc" ] && [ -n "$ps" ] && echo $((pc + ps)))")
-  case $cost in UNBOUNDED*) fail "the $name hook Job has a call without its time-out: ${cost#UNBOUNDED }" ;; esac
+  case $cost in
+    UNBOUNDED*) fail "the $name hook Job has a call without its time-out: ${cost#UNBOUNDED }" ;;
+    OVERRIDE*) fail "the $name hook Job's kubectl drops its in-cluster config (bound it with timeout N): ${cost#OVERRIDE }" ;;
+  esac
   [ "$(echo "$body" | job_deadline)" -ge $((${w:-0} + 120 + cost)) ] \
     || fail "the $name hook Job's deadline $(echo "$body" | job_deadline) s cannot hold its ${w:-0} s of waits, 120 s and its calls' $cost s"
   ttl=$(echo "$body" | awk '/^spec:/ {s=1; next} /^[^ ]/ {s=0} s && /^  ttlSecondsAfterFinished:/ {print $2}')

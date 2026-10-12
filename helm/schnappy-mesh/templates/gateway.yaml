@@ -70,7 +70,7 @@ spec:
               # bounded by the clock: a gateway service that never appears fails the try
               end=$(( $(date +%s) + 300 ))
               for i in $(seq 1 1000); do
-                kubectl --request-timeout=10s get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null && break
+                timeout 10 kubectl get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null && break
                 [ "$(date +%s)" -lt "$end" ] || { echo "no gateway service after 300s"; exit 1; }
                 sleep 2
               done
@@ -80,7 +80,7 @@ spec:
               # so a previous Local cannot survive. gatewayLanOnly relies on the gateway pods running
               # on the node that owns this IP (single node today); LanOnlyHostReachable cannot see a
               # SNAT regression, so revisit this before adding nodes.
-              kubectl --request-timeout=10s patch svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} \
+              timeout 10 kubectl patch svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} \
                 --type merge -p '{"spec":{"externalIPs":["{{ .Values.gateway.loadBalancerIP }}"],"externalTrafficPolicy":"Cluster"}}'
               echo "Done."
 ---

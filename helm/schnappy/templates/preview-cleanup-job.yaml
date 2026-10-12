@@ -108,10 +108,10 @@ spec:
             - |
               set -eu
               # Kafka topics — KafkaTopic CRs prefixed pr-${PR_NUMBER}-
-              if kubectl --request-timeout=10s auth can-i list kafkatopics -n "$SHARED_KAFKA_NS" >/dev/null 2>&1; then
-                kubectl --request-timeout=10s -n "$SHARED_KAFKA_NS" get kafkatopics -o name 2>/dev/null \
+              if timeout 10 kubectl auth can-i list kafkatopics -n "$SHARED_KAFKA_NS" >/dev/null 2>&1; then
+                timeout 10 kubectl -n "$SHARED_KAFKA_NS" get kafkatopics -o name 2>/dev/null \
                   | grep "kafkatopic.*pr-${PR_NUMBER}-" \
-                  | xargs -r kubectl --request-timeout=60s -n "$SHARED_KAFKA_NS" delete \
+                  | xargs -r timeout 60 kubectl -n "$SHARED_KAFKA_NS" delete \
                   || true
               fi
               # Scylla keyspace
