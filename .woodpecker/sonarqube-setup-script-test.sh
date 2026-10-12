@@ -3,7 +3,9 @@
 # a stub curl that answers as SonarQube and Vault do, per scenario, and logs every call with its body. What the hook
 # must guarantee: the generated token reaches Vault; a token Vault never confirmed is revoked and the hook fails
 # (whatever ended it - a write refused, a time-out); a failed read fails the hook with nothing created (never read as
-# "absent"); the gates are set every run; the sidecar is told to quit whatever the outcome. Each run its own limit.
+# "absent"); the gates are set every run; the sidecar is told to quit on success only (a failed try is restarted in
+# the same pod, its proxy gone if told to quit); a token generated late, after the first revoke, is revoked too; a TERM
+# (the Job's deadline, an eviction) still revokes. Each run its own limit; sleep stubbed.
 set -u
 script=.ci-out/sonarqube-setup.sh
 [ -s "$script" ] || { echo "sonarqube setup script test: FAIL: $script missing (run chart-render-checks.sh)" >&2; exit 1; }
@@ -21,21 +23,25 @@ for a; do
   prev=$a
 done
 echo "$url $body" >> "$CALLS"
-fails() { case " $SCENARIO " in *" $1 "*) echo "curl: (22) The requested URL returned error: 500" >&2; exit 22 ;; esac; }
+has() { case " $SCENARIO " in *" $1 "*) return 0 ;; esac; return 1; }
+fails() { if has "$1"; then echo "curl: (22) The requested URL returned error: 500" >&2; exit 22; fi; }
 case $url in
   *quitquitquit) exit 0 ;;
   */api/system/status) echo '{"status":"UP"}' ;;
   */api/authentication/validate) echo '{"valid":false}' ;;
   */api/user_tokens/search)
     fails tokens-read
-    case " $SCENARIO " in *" token-exists "*) echo '{"userTokens":[{"name":"ci"}]}' ;; *) echo '{"userTokens":[]}' ;; esac ;;
+    # generate-late: the timed-out generate commits after the first revoke - the next search finds it
+    if has generate-late && [ -e "$CALLS.revoked" ] && [ ! -e "$CALLS.late" ]; then : > "$CALLS.late"; : > "$CALLS.token"; fi
+    if has token-exists || [ -e "$CALLS.token" ]; then echo '{"userTokens":[{"name":"ci"}]}'; else echo '{"userTokens":[]}'; fi ;;
   */api/user_tokens/generate)
     case " $SCENARIO " in
-      *" generate-times-out "*) echo "curl: (28) Operation timed out" >&2; exit 28 ;;
+      *" generate-times-out "* | *" generate-late "*) echo "curl: (28) Operation timed out" >&2; exit 28 ;;
       *" no-token "*) echo '{}' ;;
-      *) echo '{"token":"squ_secret"}' ;;
+      *" killed-in-generate "*) : > "$CALLS.token"; : > "$CALLS.generating"; /bin/sleep 2; echo '{"token":"squ_secret"}' ;;
+      *) : > "$CALLS.token"; echo '{"token":"squ_secret"}' ;;
     esac ;;
-  */api/user_tokens/revoke) fails revoke-fails; exit 0 ;;
+  */api/user_tokens/revoke) fails revoke-fails; : > "$CALLS.revoked"; rm -f "$CALLS.token"; exit 0 ;;
   */v1/*/woodpecker-ci)
     case " $SCENARIO " in
       *" vault-fails "*) echo "curl: (28) Operation timed out" >&2; exit 28 ;;
@@ -55,6 +61,8 @@ case $url in
 esac
 STUB
 chmod +x "$work/bin/curl"
+printf '#!/bin/sh\nexit 0\n' > "$work/bin/sleep"
+chmod +x "$work/bin/sleep"
 run() {  # run <scenario words>: the script's exit status (its own limit: a hang is a failure); its calls logged
   name=$(echo "$*" | tr ' ' '_')
   : > "$work/$name.calls"
@@ -74,12 +82,28 @@ run fresh; rc=$?
   || fail "the gates' settings not set on a run that found them"
 [ "$(calls fresh quitquitquit)" = 1 ] || fail "a first run did not tell the sidecar to quit"
 
+# failing: revoked, the sidecar left running (the Job restarts this container in the same pod, through its proxy)
 for sc in vault-fails vault-no-version generate-times-out; do
   run $sc; rc=$?
   [ "$rc" != 0 ] || fail "$sc: exited 0 (the token lost for good)"
-  [ "$(calls "$sc" 'user_tokens/revoke name=ci')" = 1 ] || fail "$sc: the token Vault never confirmed not revoked"
-  [ "$(calls "$sc" quitquitquit)" = 1 ] || fail "$sc: the sidecar not told to quit"
+  [ "$(calls "$sc" 'user_tokens/revoke name=ci')" -ge 1 ] && [ ! -e "$work/$sc.calls.token" ] \
+    || fail "$sc: the token Vault never confirmed not revoked"
+  [ "$(calls "$sc" quitquitquit)" = 0 ] || fail "$sc: the sidecar told to quit on a failure - the restarted try has no proxy"
 done
+# a generate that timed out here and committed after the first revoke: revoked again, none left, nothing said
+run generate-late; rc=$?
+[ "$rc" != 0 ] && [ ! -e "$work/generate-late.calls.token" ] && [ "$(calls generate-late 'user_tokens/revoke name=ci')" -ge 2 ] \
+  || fail "a token generated after the first revoke left in place (rc $rc, $(calls generate-late user_tokens/revoke) revokes)"
+! grep -q "revoke it by hand" "$work/generate-late.out" || fail "a late token revoked, yet said to be left"
+# TERM in the middle of the generate (the Job's deadline, an eviction): the token revoked all the same, 143
+name=killed-in-generate; : > "$work/$name.calls"
+PATH="$work/bin:$PATH" CALLS="$work/$name.calls" SCENARIO="$name" SQ_URL=http://sq SQ_ADMIN_PASSWORD=pw VAULT_TOKEN=t \
+  VAULT_ADDR=https://vault timeout 60 sh "$script" > "$work/$name.out" 2>&1 &
+pid=$!
+for i in $(seq 1 100); do [ -e "$work/$name.calls.generating" ] && break; /bin/sleep 0.1; done
+kill -TERM "$pid"; wait "$pid"; rc=$?
+[ "$rc" = 143 ] && [ ! -e "$work/$name.calls.token" ] && [ "$(calls $name quitquitquit)" = 0 ] \
+  || fail "a TERM during the generate: rc $rc, token left: $([ -e "$work/$name.calls.token" ] && echo yes || echo no)"
 run vault-fails revoke-fails; rc=$?
 [ "$rc" != 0 ] || fail "a revoke failing after a Vault write failing exited 0"
 grep -q "revoke it by hand" "$work/vault-fails_revoke-fails.out" || fail "a failed revoke not said"

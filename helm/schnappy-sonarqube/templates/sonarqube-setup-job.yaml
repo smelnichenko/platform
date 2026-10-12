@@ -10,9 +10,9 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
-  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 600 s wait, 120 s, and 10 s for each of its
-  # calls: 20, and 3 a project (chart-render-checks counts the rendered ones)
-  activeDeadlineSeconds: {{ add 720 (mul 10 (add 20 (mul 3 (len .Values.sonarqube.setup.projects)))) }}
+  # bounded: Argo waits for a hook until Kubernetes fails the Job - its 600 s wait, its revoke's 30 s, 120 s, and 10 s for
+  # each of its calls: 22, and 3 a project (chart-render-checks counts the rendered ones)
+  activeDeadlineSeconds: {{ add 750 (mul 10 (add 22 (mul 3 (len .Values.sonarqube.setup.projects)))) }}
   template:
     metadata:
       labels:
@@ -46,21 +46,32 @@ spec:
             - -c
             - |
               set -eu
-              # a token generated and not confirmed in Vault is revoked whatever ends the run (a time-out, a failed write, a restart
-              # of the container): an existing token is never written again, so the next run must find none and make one; and the
-              # sidecar told to quit whatever the outcome - the Job's status is the script's
+              # a token generated and not confirmed in Vault is revoked whatever ends the run (a time-out, a failed write, a TERM
+              # from the Job's deadline or an eviction): an existing token is never written again, so the next run must find none
+              # and make one. A generate that timed out here may still commit after the first revoke: revoked and searched again
+              # until none is left, 30 s at most. The sidecar is told to quit on success only: a failed try is restarted in this
+              # pod (OnFailure) and reaches nothing once its proxy is gone
               UNWRITTEN=""
               on_exit() {
                 rc=$?
                 if [ -n "$UNWRITTEN" ]; then
-                  sq -X POST "${SQ_URL}/api/user_tokens/revoke" -d "name=ci" > /dev/null \
-                    || echo "ERROR: revoking 'ci' failed (none made, or revoke it by hand)"
-                  rc=1
+                  [ "$rc" != 0 ] || rc=1
+                  GONE=""
+                  end=$(( $(date +%s) + 30 ))
+                  for i in $(seq 1 100); do
+                    sq -X POST "${SQ_URL}/api/user_tokens/revoke" -d "name=ci" > /dev/null || true
+                    if LEFT=$(sq "${SQ_URL}/api/user_tokens/search") && ! echo "$LEFT" | grep -q '"name":"ci"'; then GONE=yes; break; fi
+                    [ "$(date +%s)" -lt "$end" ] || break
+                    sleep 3
+                  done
+                  [ -n "$GONE" ] || echo "ERROR: revoking 'ci' failed (none made, or revoke it by hand)"
                 fi
-                curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit > /dev/null 2>&1 || true
+                [ "$rc" != 0 ] || curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit > /dev/null 2>&1 || true
                 exit "$rc"
               }
               trap on_exit EXIT
+              # PID 1 ignores a TERM it has no handler for: the deadline's or an eviction's TERM then never runs on_exit
+              trap 'exit 143' TERM
 
               # every call fails on an HTTP error and on its time-out (-f, --max-time) and every answer is read into a
               # variable before it is searched: a failed read is a failure, never "absent" (a create after it would
