@@ -1,0 +1,67 @@
+# promtool unit tests for WoodpeckerBuildFailed and ArgoCDAppSyncFailed (schnappy-observability; rendered by
+# .woodpecker/render-rules.sh). Both read failure counters that a restart empties: a failure after it creates its
+# series at 1, and increase() reads a series' first sample as no increase - the first red build or failed sync after a
+# Woodpecker or Argo CD restart went unalerted (Woodpecker's v3.19.0 restart, 2026-10-12). A series new within the
+# window counts as a failure; an old one that does not move stays quiet.
+rule_files:
+  - rendered-infra-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      # the first red cd step since the restart: no series until minute 20, then 1
+      - series: 'woodpecker_step_failures_total{repo="schnappy/masi", workflow="cd", type="commands", step="test"}'
+        values: '_x20 1x40'
+      # an old failure, counted long before and never again: quiet
+      - series: 'woodpecker_step_failures_total{repo="schnappy/chat", workflow="cd", type="commands", step="test"}'
+        values: '3x60'
+      # a red pull request (workflow ci in an app repo): never pages
+      - series: 'woodpecker_step_failures_total{repo="schnappy/masi", workflow="ci", type="commands", step="test"}'
+        values: '_x20 1x40'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: WoodpeckerBuildFailed
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: WoodpeckerBuildFailed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              repo: schnappy/masi
+              workflow: cd
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
+              summary: "Woodpecker build of main failed (repo schnappy/masi)"
+              description: "A pipeline on main of schnappy/masi ended in failure: nothing deploys from it until it is green. Check ci.pmon.dev."
+      # the window passed: the new series is old now, and nothing moved
+      - eval_time: 45m
+        alertname: WoodpeckerBuildFailed
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      # the first failed sync since Argo CD's controller started: the series is born at 1 (minute 80)
+      - series: 'argocd_app_sync_total{name="schnappy-sonarqube", phase="Failed", namespace="argocd"}'
+        values: '_x80 1x120'
+      # an old failure, counted since the test's start and never again: quiet once it is older than the hour
+      - series: 'argocd_app_sync_total{name="schnappy-test", phase="Error", namespace="argocd"}'
+        values: '2x200'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: ArgoCDAppSyncFailed
+        exp_alerts: []
+      - eval_time: 95m
+        alertname: ArgoCDAppSyncFailed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              name: schnappy-sonarqube
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/ArgoCDAppOutOfSync"
+              summary: "ArgoCD app schnappy-sonarqube sync operation failing"
+              description: "A sync (or one of its hooks, e.g. the k6 smoke test) failed in the last hour while the app still shows Synced/Healthy."
+      - eval_time: 175m
+        alertname: ArgoCDAppSyncFailed
+        exp_alerts: []
