@@ -1,0 +1,44 @@
+{{- if eq (.Values.nodeExporter.enabled | toString) "true" }}
+# node_exporter runs on the host (systemd unit, installed by ops setup-host-hardening.yml) bound to
+# {{ .Values.nodeExporter.host }}:{{ .Values.nodeExporter.port }} - the node's filesystems, memory, CPU and network.
+# Scraped as smartctl's exporter is (smartctl-exporter.yaml says why a ScrapeConfig, and why Cilium's host entity).
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: {{ include "schnappy.fullname" . }}-node-exporter
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-exporter
+    # the Prometheus CR's scrapeConfigSelector matches release=schnappy
+    release: schnappy
+spec:
+  staticConfigs:
+    - targets:
+        - {{ printf "%s:%d" .Values.nodeExporter.host (int .Values.nodeExporter.port) | quote }}
+      labels:
+        job: node-exporter
+        instance: ten
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+{{- if eq (.Values.networkPolicies.enabled | toString) "true" }}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "schnappy.fullname" . }}-prometheus-egress-node-exporter
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-exporter
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  egress:
+    - toEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: {{ .Values.nodeExporter.port | quote }}
+              protocol: TCP
+{{- end }}
+{{- end }}

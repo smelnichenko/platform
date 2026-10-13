@@ -231,6 +231,13 @@ smartctl:
   host: "192.168.11.2"
   port: 9633
 
+# node_exporter - the host's filesystems, memory, CPU and network. Runs on the host like smartctl's (systemd unit,
+# ops setup-host-hardening.yml); the chart emits the scrape and the disk alerts (group infra-node).
+nodeExporter:
+  enabled: false
+  host: "192.168.11.2"
+  port: 9100
+
 # Cross-chart references
 app:
   service:

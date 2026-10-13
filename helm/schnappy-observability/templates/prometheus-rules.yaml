@@ -627,6 +627,71 @@ spec:
             summary: "smartctl_exporter scrape failing"
             description: "Drive-health alerts are silent until this resolves. SSH ten and check 'systemctl status smartctl_exporter'."
     {{- end }}
+    {{- if eq (.Values.nodeExporter.enabled | toString) "true" }}
+
+    # The node's disks. The kubelet frees space at 85 % used (unused images) and evicts pods at 15 % free (containerd's
+    # images share / with everything else, so its imagefs threshold is the one that bites first); the alerts come before
+    # both, warning at 25 % free and critical at 20 %
+    - name: infra-node
+      rules:
+        - alert: NodeFilesystemAlmostFull
+          expr: |
+            node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} / node_filesystem_size_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} < 0.25
+            and node_filesystem_readonly{job="node-exporter", fstype!~"tmpfs|ramfs"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/NodeFilesystemAlmostFull"
+            summary: "{{ "{{" }} $labels.mountpoint {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value | humanizePercentage {{ "}}" }} free"
+            description: "Under 25 % free. The kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
+        - alert: NodeFilesystemCriticallyFull
+          expr: |
+            node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} / node_filesystem_size_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} < 0.20
+            and node_filesystem_readonly{job="node-exporter", fstype!~"tmpfs|ramfs"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/NodeFilesystemCriticallyFull"
+            summary: "{{ "{{" }} $labels.mountpoint {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value | humanizePercentage {{ "}}" }} free"
+            description: "Under 20 % free: at 15 % the kubelet evicts pods. Free space now - the runbook lists what is safe to remove."
+        - alert: NodeFilesystemFillingUp
+          # the last 6 h's trend reaches zero within a day - while there is still room to act. The prediction first:
+          # an alert's value is its first operand's
+          expr: |
+            predict_linear(node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"}[6h], 24 * 3600) < 0
+            and node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} / node_filesystem_size_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} < 0.40
+            and node_filesystem_readonly{job="node-exporter", fstype!~"tmpfs|ramfs"} == 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/NodeFilesystemFillingUp"
+            summary: "{{ "{{" }} $labels.mountpoint {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} fills within 24 h at its 6 h rate"
+            description: "At the last 6 h's rate it runs out within 24 h ({{ "{{" }} $value | humanize1024 {{ "}}" }}B free then - below zero). Find what grows."
+        - alert: NodeFilesystemInodesAlmostFull
+          expr: |
+            node_filesystem_files_free{job="node-exporter", fstype!~"tmpfs|ramfs"} / node_filesystem_files{job="node-exporter", fstype!~"tmpfs|ramfs"} < 0.10
+            and node_filesystem_readonly{job="node-exporter", fstype!~"tmpfs|ramfs"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/NodeFilesystemInodesAlmostFull"
+            summary: "{{ "{{" }} $labels.mountpoint {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value | humanizePercentage {{ "}}" }} of its inodes free"
+            description: "Out of inodes, no file can be created whatever the free space."
+        - alert: NodeExporterDown
+          # absent too: a scrape config gone (or never applied) leaves no up series to be 0
+          expr: up{job="node-exporter"} == 0 or absent(up{job="node-exporter"})
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/NodeExporterDown"
+            summary: "node_exporter not scraped"
+            description: "The node's disk alerts are silent until this resolves. SSH ten and check 'systemctl status node_exporter'."
+    {{- end }}
     {{- if eq (.Values.pushgateway.enabled | toString) "true" }}
 
     - name: dr-restore

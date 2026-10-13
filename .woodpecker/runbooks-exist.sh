@@ -1,14 +1,14 @@
 #!/bin/sh
-# Every masi and Velero alert links a runbook page; the page must exist, or the link lands on the index.
+# Every masi, Velero and node (disk) alert links a runbook page; the page must exist, or the link lands on the index.
 # (Other app alerts are stubs by the policy in helm/schnappy-observability/runbooks/README.md;
 # add an alert family here when its pages are written.)
 set -eu
 missing=0
-for name in $(grep -hoE 'runbooks\.pmon\.dev/(Masi|Velero)[A-Za-z0-9]+' helm/*/templates/*.yaml | sed 's#.*/##' | sort -u); do
+for name in $(grep -hoE 'runbooks\.pmon\.dev/(Masi|Velero|Node)[A-Za-z0-9]+' helm/*/templates/*.yaml | sed 's#.*/##' | sort -u); do
   if [ ! -f "helm/schnappy-observability/runbooks/$name.md" ]; then
     echo "alert $name links a runbook that does not exist: helm/schnappy-observability/runbooks/$name.md" >&2
     missing=$((missing + 1))
   fi
 done
 [ "$missing" -eq 0 ] || exit 1
-echo "every masi and Velero alert has its runbook"
+echo "every masi, Velero and node alert has its runbook"
