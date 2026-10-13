@@ -154,7 +154,8 @@ kubeStateMetrics:
     limits: { memory: "256Mi", cpu: "200m" }
 
 # Pushgateway — persistent metric sink for the manually-triggered DR drill
-# (`task dr:drill` pushes restore_verify_success). Off by default; enabled in prod.
+# (`task dr:drill` pushes restore_verify_success; no alert reads it - the Pis'
+# daily restore check does). Off by default; enabled in prod.
 pushgateway:
   enabled: false
   image: quay.io/prometheus/pushgateway:v1.11.3

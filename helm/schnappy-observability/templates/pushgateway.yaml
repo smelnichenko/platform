@@ -1,9 +1,10 @@
 {{- if and (eq (.Values.prometheus.enabled | toString) "true") (eq (.Values.pushgateway.enabled | toString) "true") -}}
 # Prometheus Pushgateway — a persistent sink for metrics from batch jobs that
-# run OUTSIDE the cluster, specifically the manually-triggered disaster-recovery
-# drill (`task dr:drill`), which pushes `restore_verify_success` on a passing
-# run. Persisted to a small PVC so a pod restart doesn't drop the last-success
-# timestamp the RestoreVerificationFailing alert keys on.
+# run OUTSIDE the cluster: the manually-triggered disaster-recovery drill
+# (`task dr:drill`) pushes `restore_verify_success` on a passing run. No alert
+# reads it any more: the Pis restore the backups every day (ops
+# setup-pi-restore-check.yml) and infra's restore-check-age alerts on that.
+# Persisted to a small PVC so a pod restart doesn't drop the pushed metrics.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
