@@ -27,7 +27,7 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/NodeFilesystemAlmostFull
               summary: "/ on ten has 22% free"
-              description: "Under 25 % free. The kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
+              description: "Under 25 % free. On / (containerd's images share it) the kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
       - eval_time: 20m
         alertname: NodeFilesystemCriticallyFull
         exp_alerts: []
@@ -52,7 +52,7 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/NodeFilesystemCriticallyFull
               summary: "/ on ten has 18% free"
-              description: "Under 20 % free: at 15 % the kubelet evicts pods. Free space now - the runbook lists what is safe to remove."
+              description: "Under 20 % free: on / the kubelet evicts pods at 15 %. Free space now - the runbook lists what is safe to remove."
       - eval_time: 20m
         alertname: NodeFilesystemAlmostFull
         exp_alerts:
@@ -60,7 +60,7 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/NodeFilesystemAlmostFull
               summary: "/ on ten has 18% free"
-              description: "Under 25 % free. The kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
+              description: "Under 25 % free. On / (containerd's images share it) the kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
 
   # 30 % free, a nearly full tmpfs, a nearly full read-only filesystem, an exporter of another job: nothing
   - interval: 1m

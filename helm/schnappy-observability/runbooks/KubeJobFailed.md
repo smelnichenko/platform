@@ -10,7 +10,7 @@ A failed run of a **CronJob** stops firing once a later run of the same CronJob 
 
 ## Impact
 
-Depends on the Job. The k6-smoke PostSync hook failing means a deploy's smoke test did not pass — treat as a possibly-broken release. The etcd-backup CronJob (kube-system) failing means no fresh etcd snapshot to the Pi backup store (DR gap). velero kopia-maintain, sonarqube-setup, gateway-patch, hyperfoil are advisory or one-shot. After a node reboot, old Jobs left in Failed phase are cosmetic cruft, not an incident.
+Depends on the Job. The k6-smoke PostSync hook failing means a deploy's smoke test did not pass — treat as a possibly-broken release. The etcd-backup CronJob (kube-system) failing means no fresh etcd snapshot to the Pi backup store (DR gap). **restore-check-age** (kube-system) failing means a Pi has not restored the backups for two of its turns - production's Postgres, ten's etcd snapshot or the Pis' own backup may no longer restore (see below). velero kopia-maintain, sonarqube-setup, gateway-patch, hyperfoil are advisory or one-shot. After a node reboot, old Jobs left in Failed phase are cosmetic cruft, not an incident.
 
 ## First steps
 
@@ -40,6 +40,17 @@ The k6 PostSync hook uses `hook-delete-policy: BeforeHookCreation`, so a failed 
 | `ErrImagePull` / `ImagePullBackOff` (in pods) | bad tag or registry/NetworkPolicy egress blocked |
 | `OOMKilled` (in `describe pod`) | Job memory limit too low |
 | etcd-backup: backup-store connection refused | Pi backup-store VIP down — see node-reboot/DR docs |
+| restore-check-age: `<pi> STALE` or `last-success missing` | that Pi's restore check failed or did not run - the log above it shows its last-report (which part: POSTGRES, ETCD, TIER0, and why) |
+| restore-check-age: an rclone error after `missing or unreadable` | the store itself: credentials (`etcd-backup-store`), or the VIP down |
+
+**restore-check-age, on the Pi whose turn it was** (pi1 the even UTC days, pi2 the odd ones):
+
+```bash
+ssh pi1 'systemctl status pi-restore-check.service --no-pager; journalctl -u pi-restore-check --since -2d | tail -40'
+# a run now, whatever the day (as the unit runs it):
+ssh pi1 'sudo systemd-run --wait --pipe --collect -p EnvironmentFile=/etc/pi-restore-check/env \
+  /usr/bin/env PI_RESTORE_ANY_DAY=1 /usr/local/sbin/pi-restore-check.sh'
+```
 
 ## Verify resolved
 

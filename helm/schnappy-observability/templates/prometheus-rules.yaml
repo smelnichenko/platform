@@ -644,7 +644,7 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/NodeFilesystemAlmostFull"
             summary: "{{ "{{" }} $labels.mountpoint {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value | humanizePercentage {{ "}}" }} free"
-            description: "Under 25 % free. The kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
+            description: "Under 25 % free. On / (containerd's images share it) the kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
         - alert: NodeFilesystemCriticallyFull
           expr: |
             node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} / node_filesystem_size_bytes{job="node-exporter", fstype!~"tmpfs|ramfs"} < 0.20
@@ -655,7 +655,7 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/NodeFilesystemCriticallyFull"
             summary: "{{ "{{" }} $labels.mountpoint {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value | humanizePercentage {{ "}}" }} free"
-            description: "Under 20 % free: at 15 % the kubelet evicts pods. Free space now - the runbook lists what is safe to remove."
+            description: "Under 20 % free: on / the kubelet evicts pods at 15 %. Free space now - the runbook lists what is safe to remove."
         - alert: NodeFilesystemFillingUp
           # the last 6 h's trend reaches zero within a day - while there is still room to act. The prediction first:
           # an alert's value is its first operand's
