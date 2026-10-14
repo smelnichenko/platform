@@ -35,11 +35,11 @@ tests:
         alertname: NodeExporterDown
         exp_alerts: []
 
-  # 18 % free: critical (and the warning)
+  # 19.5 % free, just under the critical 20 %: critical (and the warning)
   - interval: 1m
     input_series:
       - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
-        values: '180x30'
+        values: '195x30'
       - series: 'node_filesystem_size_bytes{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
         values: '1000x30'
       - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
@@ -51,7 +51,7 @@ tests:
           - exp_labels: { severity: critical, job: node-exporter, instance: ten, device: /dev/nvme1n1p2, fstype: ext4, mountpoint: / }
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/NodeFilesystemCriticallyFull
-              summary: "/ on ten has 18% free"
+              summary: "/ on ten has 19.5% free"
               description: "Under 20 % free: on / the kubelet evicts pods at 15 %. Free space now - the runbook lists what is safe to remove."
       - eval_time: 20m
         alertname: NodeFilesystemAlmostFull
@@ -59,7 +59,7 @@ tests:
           - exp_labels: { severity: warning, job: node-exporter, instance: ten, device: /dev/nvme1n1p2, fstype: ext4, mountpoint: / }
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/NodeFilesystemAlmostFull
-              summary: "/ on ten has 18% free"
+              summary: "/ on ten has 19.5% free"
               description: "Under 25 % free. On / (containerd's images share it) the kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
 
   # 30 % free, a nearly full tmpfs, a nearly full read-only filesystem, an exporter of another job: nothing
@@ -191,3 +191,99 @@ tests:
               runbook_url: https://runbooks.pmon.dev/NodeExporterDown
               summary: "node_exporter not scraped"
               description: "The node's disk alerts are silent until this resolves. SSH ten and check 'systemctl status node_exporter'."
+
+  # the thresholds' other side: 26 % free no warning, 20.5 % free no critical; and each waits out its for
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '260x30'
+      - series: 'node_filesystem_size_bytes{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '1000x30'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '0x30'
+      - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="ten",device="/dev/nvme0n1p1",fstype="ext4",mountpoint="/data"}'
+        values: '205x30'
+      - series: 'node_filesystem_size_bytes{job="node-exporter",instance="ten",device="/dev/nvme0n1p1",fstype="ext4",mountpoint="/data"}'
+        values: '1000x30'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/nvme0n1p1",fstype="ext4",mountpoint="/data"}'
+        values: '0x30'
+      - series: 'node_filesystem_files_free{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '50x30'
+      - series: 'node_filesystem_files{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '1000x30'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: NodeFilesystemAlmostFull
+        exp_alerts: []
+      - eval_time: 14m
+        alertname: NodeFilesystemInodesAlmostFull
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: NodeFilesystemCriticallyFull
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: NodeFilesystemAlmostFull
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node-exporter, instance: ten, device: /dev/nvme0n1p1, fstype: ext4, mountpoint: /data }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeFilesystemAlmostFull
+              summary: "/data on ten has 20.5% free"
+              description: "Under 25 % free. On / (containerd's images share it) the kubelet starts deleting unused images at 15 % free and evicts pods at the same point."
+
+  # inodes: 15 % free, or nearly none on a tmpfs, a read-only filesystem, another job's: no inode alert
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_files_free{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '150x30'
+      - series: 'node_filesystem_files{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '1000x30'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '0x30'
+      - series: 'node_filesystem_files_free{job="node-exporter",instance="ten",device="tmpfs",fstype="tmpfs",mountpoint="/run"}'
+        values: '10x30'
+      - series: 'node_filesystem_files{job="node-exporter",instance="ten",device="tmpfs",fstype="tmpfs",mountpoint="/run"}'
+        values: '1000x30'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="tmpfs",fstype="tmpfs",mountpoint="/run"}'
+        values: '0x30'
+      - series: 'node_filesystem_files_free{job="node-exporter",instance="ten",device="/dev/loop0",fstype="ext4",mountpoint="/media/ro"}'
+        values: '10x30'
+      - series: 'node_filesystem_files{job="node-exporter",instance="ten",device="/dev/loop0",fstype="ext4",mountpoint="/media/ro"}'
+        values: '1000x30'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/loop0",fstype="ext4",mountpoint="/media/ro"}'
+        values: '1x30'
+      - series: 'node_filesystem_files_free{job="other",instance="x",device="/dev/sda1",fstype="ext4",mountpoint="/"}'
+        values: '10x30'
+      - series: 'node_filesystem_files{job="other",instance="x",device="/dev/sda1",fstype="ext4",mountpoint="/"}'
+        values: '1000x30'
+      - series: 'node_filesystem_readonly{job="other",instance="x",device="/dev/sda1",fstype="ext4",mountpoint="/"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: NodeFilesystemInodesAlmostFull
+        exp_alerts: []
+
+  # filling fast under 40 % free - but a tmpfs, a read-only filesystem, another job's: no trend alert
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="ten",device="tmpfs",fstype="tmpfs",mountpoint="/run"}'
+        values: '399-0.5x300'
+      - series: 'node_filesystem_size_bytes{job="node-exporter",instance="ten",device="tmpfs",fstype="tmpfs",mountpoint="/run"}'
+        values: '1000x300'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="tmpfs",fstype="tmpfs",mountpoint="/run"}'
+        values: '0x300'
+      - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="ten",device="/dev/loop0",fstype="ext4",mountpoint="/media/ro"}'
+        values: '399-0.5x300'
+      - series: 'node_filesystem_size_bytes{job="node-exporter",instance="ten",device="/dev/loop0",fstype="ext4",mountpoint="/media/ro"}'
+        values: '1000x300'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/loop0",fstype="ext4",mountpoint="/media/ro"}'
+        values: '1x300'
+      - series: 'node_filesystem_avail_bytes{job="other",instance="x",device="/dev/sda1",fstype="ext4",mountpoint="/"}'
+        values: '399-0.5x300'
+      - series: 'node_filesystem_size_bytes{job="other",instance="x",device="/dev/sda1",fstype="ext4",mountpoint="/"}'
+        values: '1000x300'
+      - series: 'node_filesystem_readonly{job="other",instance="x",device="/dev/sda1",fstype="ext4",mountpoint="/"}'
+        values: '0x300'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NodeFilesystemFillingUp
+        exp_alerts: []
