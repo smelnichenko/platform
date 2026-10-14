@@ -196,6 +196,8 @@ cnpg:
   instances: 1
   import: false
   backup: false
+  # how long the store keeps base backups and their WAL (spec.backup.retentionPolicy: <n>d|w|m)
+  backupRetention: "30d"
   backupEndpoint: ""
   backupSecret: ""
   # When true, the chart emits a small single-instance Cluster (no

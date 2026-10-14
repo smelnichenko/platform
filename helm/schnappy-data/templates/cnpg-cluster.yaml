@@ -126,6 +126,9 @@ spec:
 
   {{- if and .Values.cnpg.backup (not $ephemeral) }}
   backup:
+    # base backups and their WAL older than this are removed from the store after each backup (none was set until
+    # 2026-10: every backup kept)
+    retentionPolicy: {{ .Values.cnpg.backupRetention | default "30d" | quote }}
     barmanObjectStore:
       destinationPath: {{ .Values.cnpg.backupDestination | default "s3://postgres-backups/" }}
       endpointURL: {{ .Values.cnpg.backupEndpoint }}

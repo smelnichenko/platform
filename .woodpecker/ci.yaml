@@ -43,6 +43,12 @@ steps:
       # An alert's runbook_url must land on a page, not on the index.
       - sh .woodpecker/runbooks-exist.sh
 
+  # CNPG's backups as production renders them: a daily schedule in CNPG's six-field cron, a bounded store
+  - name: cnpg-backup-render
+    image: alpine/helm:latest
+    commands:
+      - sh .woodpecker/cnpg-backup-render.sh
+
   # Alert rules are code: promtool checks the syntax and runs the unit tests under
   # helm/schnappy/tests/rules/ against the rules rendered as production sees them, in the
   # Prometheus image the cluster runs (see helm/schnappy-observability for the version).
