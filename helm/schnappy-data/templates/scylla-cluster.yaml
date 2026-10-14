@@ -10,6 +10,10 @@ spec:
   version: {{ required "scyllaOperator.version: each environment sets its ScyllaDB version" .Values.scyllaOperator.version | quote }}
   agentVersion: {{ required "scyllaOperator.agentVersion: each environment sets its agent version" .Values.scyllaOperator.agentVersion | quote }}
   developerMode: {{ .Values.scyllaOperator.developerMode | default true }}
+  {{- with .Values.scyllaOperator.scyllaArgs }}
+  # appended to ScyllaDB's command line by the operator (its memory reserve, sized per environment)
+  scyllaArgs: {{ . | quote }}
+  {{- end }}
 
   datacenter:
     name: {{ .Values.scylla.datacenter | default "datacenter1" }}
