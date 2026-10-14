@@ -4,7 +4,7 @@
 
 ## What fired
 
-A backup task has had no successful run since Scylla Manager last started (its metrics are counted from its start: after an upgrade restarted it, the daily backup has not succeeded once in 26 h).
+A live backup task - one the operator keeps as a ScyllaDBManagerTask (`namespace`/`name` in the alert, `task` its Manager ID) - has had no successful run since Scylla Manager last started, or none at all (its metrics are counted from its start: after an upgrade restarted it, the daily backup has not succeeded once in 26 h). A deleted task or cluster is not counted: Manager keeps exporting its counters at 0.
 
 ## How bad
 
@@ -15,7 +15,8 @@ As [ScyllaBackupMissed](ScyllaBackupMissed.md): no fresh snapshot.
 ```bash
 M="kubectl -n scylla-manager exec deploy/scylla-manager -c scylla-manager --"
 $M sctool cluster list
-$M sctool tasks -c <cluster from the alert>
+kubectl -n <namespace> get scylladbmanagertasks <name> -o jsonpath='{.status}{"\n"}'   # its Manager ID, its conditions
+$M sctool tasks -c <namespace>/<ScyllaCluster>
 $M sctool progress -c <cluster> <type>/<task name>      # the last run: its error per host
 kubectl -n scylla-manager logs deploy/scylla-manager --since=6h | grep -iE 'error|fail' | tail -20
 ```

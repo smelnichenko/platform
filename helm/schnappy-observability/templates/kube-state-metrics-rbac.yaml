@@ -84,6 +84,11 @@ rules:
     resources:
       - clusters
     verbs: ["list", "watch"]
+  # the operator's Scylla Manager tasks (kube-state-metrics-custom-resources.yaml)
+  - apiGroups: ["scylla.scylladb.com"]
+    resources:
+      - scylladbmanagertasks
+    verbs: ["list", "watch"]
   - apiGroups: ["apiextensions.k8s.io"]
     resources:
       - customresourcedefinitions

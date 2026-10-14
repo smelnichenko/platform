@@ -324,7 +324,9 @@ spec:
 
     # Postgres' backups are CloudNativePG's: its Cluster status through kube-state-metrics
     # (kube-state-metrics-custom-resources.yaml). Scylla's are Scylla Manager's: its scheduler's own metrics (its
-    # ServiceMonitor, infra's scylla-manager values) - per task, counted from Manager's start.
+    # ServiceMonitor, infra's scylla-manager values) - per task, counted from Manager's start - for the live tasks only:
+    # the operator's ScyllaDBManagerTasks (kube-state-metrics again) name them; Manager keeps exporting a deleted task's
+    # (and a deleted cluster's) counters at 0 and its last success.
     - name: infra-backups
       rules:
         - alert: PostgresArchivingFailed
@@ -351,37 +353,41 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PostgresBackupMissed"
             summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: no successful backup for 26 h"
-        # a cluster that archives (its store set) with no successful backup at all - one with no store (the test
-        # environment's) has no ContinuousArchiving condition
+        # a cluster with a backup store and no successful backup at all - by its store, not its ContinuousArchiving
+        # condition: CNPG 1.30 sets that True with no store too (the test environment's, 2026-10-14)
         - alert: PostgresBackupNeverSucceeded
           expr: >-
-            cnpg_cluster_condition{type="ContinuousArchiving"}
+            cnpg_cluster_backup_store_info
             unless on (namespace, cluster) cnpg_cluster_last_successful_backup_timestamp_seconds
           for: 26h
           labels:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PostgresBackupNeverSucceeded"
-            summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }} archives but has no successful backup"
+            summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }} has a backup store but no successful backup"
         - alert: ScyllaBackupMissed
-          expr: time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600
+          expr: >-
+            (time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600)
+            and on (task) label_replace(scylladb_manager_task_info{task_type="Backup"}, "task", "$1", "task_id", "(.+)")
           for: 1h
           labels:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ScyllaBackupMissed"
             summary: "Scylla Manager: backup task {{ "{{" }} $labels.task {{ "}}" }} of cluster {{ "{{" }} $labels.cluster {{ "}}" }} has not succeeded for 26 h"
-        # Manager restarted (an upgrade): the task's runs are counted again, and no last success until one succeeds
+        # a live backup task with no last success: never succeeded since Manager started (an upgrade restarts it), or
+        # never run at all
         - alert: ScyllaBackupNeverSucceeded
           expr: >-
-            max by (cluster, task) (scylla_manager_scheduler_run_total{type="backup"})
-            unless on (cluster, task) scylla_manager_scheduler_last_success{type="backup"}
+            max by (namespace, name, task) (
+              label_replace(scylladb_manager_task_info{task_type="Backup"}, "task", "$1", "task_id", "(.+)"))
+            unless on (task) scylla_manager_scheduler_last_success{type="backup"}
           for: 26h
           labels:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ScyllaBackupNeverSucceeded"
-            summary: "Scylla Manager: backup task {{ "{{" }} $labels.task {{ "}}" }} of cluster {{ "{{" }} $labels.cluster {{ "}}" }} has not succeeded since Manager started"
+            summary: "Scylla Manager: backup task {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.name {{ "}}" }} ({{ "{{" }} $labels.task {{ "}}" }}) has not succeeded since Manager started"
         - alert: ScyllaManagerTaskFailed
           expr: increase(scylla_manager_scheduler_run_total{type=~"backup|repair", status=~"ERROR|ABORTED"}[1h]) > 0
           labels:

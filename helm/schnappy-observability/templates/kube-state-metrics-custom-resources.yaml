@@ -1,8 +1,10 @@
 {{- if and .Values.prometheus.enabled (eq (.Values.kubeStateMetrics.enabled | toString) "true") -}}
 # Custom resources kube-state-metrics reports: CloudNativePG's Cluster status - its conditions (ContinuousArchiving,
 # LastBackupSucceeded, ...: 1 True, 0 False) and its last successful and failed backups' end (Unix time; none failed:
-# 0). Postgres' backups are CNPG's (no Job), and its pods' own metrics port is not scraped (meshed): the Postgres
-# backup alerts read these. Read on the Vagrant copy with kube-state-metrics 2.18.0 and 2.20.0 (2026-10-09).
+# 0), and whether it has a backup store (an info series only then). Postgres' backups are CNPG's (no Job), and its
+# pods' own metrics port is not scraped (meshed): the Postgres backup alerts read these. Read on the Vagrant copy with
+# kube-state-metrics 2.18.0 and 2.20.0 (2026-10-09). And the operator's ScyllaDBManagerTasks - a live Scylla Manager
+# task, its type and Manager ID: the Scylla backup alerts count those tasks only (Manager exports deleted ones too).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -42,4 +44,28 @@ data:
                 gauge:
                   path: [status, lastFailedBackup]
                   nilIsZero: true
+            - name: backup_store_info
+              help: "The Cluster has a backup store (barmanObjectStore) - no series without one"
+              each:
+                type: Info
+                info:
+                  path: [spec, backup, barmanObjectStore]
+                  # an info series with no label from its path is not emitted (kube-state-metrics 2.18.0, read
+                  # against production 2026-10-14)
+                  labelsFromPath:
+                    destination_path: [destinationPath]
+        - groupVersionKind: {group: scylla.scylladb.com, version: v1alpha1, kind: ScyllaDBManagerTask}
+          metricNamePrefix: scylladb_manager_task
+          labelsFromPath:
+            namespace: [metadata, namespace]
+            name: [metadata, name]
+          metrics:
+            - name: info
+              help: "A live Scylla Manager task the operator keeps: its type and its Manager ID"
+              each:
+                type: Info
+                info:
+                  labelsFromPath:
+                    task_type: [spec, type]
+                    task_id: [status, taskID]
 {{- end }}

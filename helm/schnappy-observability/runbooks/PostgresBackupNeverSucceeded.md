@@ -4,7 +4,7 @@
 
 ## What fired
 
-A Cluster that archives WAL (its backup store set: the `ContinuousArchiving` condition exists) has had no successful base backup for 26 h - none at all in its status (a new or rebuilt cluster).
+A Cluster with a backup store (`spec.backup.barmanObjectStore` set - kube-state-metrics' `cnpg_cluster_backup_store_info`) has had no successful base backup for 26 h - none at all in its status (a new or rebuilt cluster). Its `ContinuousArchiving` condition is no sign of a store: CNPG 1.30 sets it True on a cluster with none (the test environment's).
 
 ## How bad
 

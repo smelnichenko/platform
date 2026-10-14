@@ -4,7 +4,7 @@
 
 ## What fired
 
-Scylla Manager's backup task has not succeeded for 26 h (`time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600`).
+A live backup task (the operator's ScyllaDBManagerTask, by its Manager ID) has not succeeded for 26 h (`time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600`, the live tasks only - Manager keeps a deleted task's last success).
 
 ## How bad
 
