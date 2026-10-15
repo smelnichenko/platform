@@ -130,6 +130,15 @@ chper=$(echo "$chsp" | sed -n 's/.*periodSeconds: \([0-9]*\).*/\1/p'); chfail=$(
 [ -n "$chper" ] && [ -n "$chfail" ] && [ $((chper * chfail)) -ge 600 ] \
   || fail "ClickHouse's startup probe allows less than 10 minutes (${chper:-?} s x ${chfail:-?})"
 
+# --- schnappy-observability: ClickHouse's own logs are kept 14 days, not for ever -----------------------------------
+# without a TTL the system.*_log tables grew without end: 52 GB on ten (2026-10-16) beside 2.5 GB of pod logs - every
+# backup copied it and a new release's first start loaded it. Each table ClickHouse writes on ten, by name
+chcfg=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true --show-only templates/clickhouse-configmap.yaml)
+for log in query_log part_log trace_log metric_log asynchronous_metric_log processors_profile_log text_log error_log; do
+  ttl=$(echo "$chcfg" | awk -v t="$log" '$0 ~ "<"t">" {s=1} s && /<ttl>/ {print; exit} $0 ~ "</"t">" {s=0}')
+  echo "$ttl" | grep -Eq '<ttl>event_date \+ INTERVAL 14 DAY DELETE</ttl>' || fail "system.$log has no 14-day TTL: ${ttl:-none}"
+done
+
 # --- schnappy-observability: a failed build mails somebody only when it is main's ---------------------------------
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
