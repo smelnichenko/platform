@@ -56,3 +56,69 @@ tests:
               runbook_url: https://runbooks.pmon.dev/KubeJobFailed
               summary: "Job schnappy-test/k6-smoke failed"
               description: "A Job exhausted its retries without completing. Check the job's pod logs."
+
+  # kube-state-metrics rolled out (old and new pod scraped at once, 2026-10-15): every series twice, by instance.
+  # The matches need their one side unique - the rule evaluated with an error ("found duplicate series") and
+  # said nothing; the history still silent, the live failure still alerting, once per instance
+  - interval: 1m
+    input_series:
+      - series: 'kube_job_status_failed{namespace="kube-system", job_name="etcd-backup-100", reason="DeadlineExceeded", instance="10.42.0.30:8080"}'
+        values: '1x30'
+      - series: 'kube_job_status_failed{namespace="kube-system", job_name="etcd-backup-100", reason="DeadlineExceeded", instance="10.42.0.31:8080"}'
+        values: '1x30'
+      - series: 'kube_job_status_succeeded{namespace="kube-system", job_name="etcd-backup-100", instance="10.42.0.30:8080"}'
+        values: '0x30'
+      - series: 'kube_job_status_succeeded{namespace="kube-system", job_name="etcd-backup-100", instance="10.42.0.31:8080"}'
+        values: '0x30'
+      - series: 'kube_job_status_active{namespace="kube-system", job_name="etcd-backup-100", instance="10.42.0.30:8080"}'
+        values: '0x30'
+      - series: 'kube_job_status_active{namespace="kube-system", job_name="etcd-backup-100", instance="10.42.0.31:8080"}'
+        values: '0x30'
+      - series: 'kube_job_created{namespace="kube-system", job_name="etcd-backup-100", instance="10.42.0.30:8080"}'
+        values: '100x30'
+      - series: 'kube_job_created{namespace="kube-system", job_name="etcd-backup-100", instance="10.42.0.31:8080"}'
+        values: '100x30'
+      - series: 'kube_job_owner{namespace="kube-system", job_name="etcd-backup-100", owner_kind="CronJob", owner_name="etcd-backup", owner_is_controller="true", instance="10.42.0.30:8080"}'
+        values: '1x30'
+      - series: 'kube_job_owner{namespace="kube-system", job_name="etcd-backup-100", owner_kind="CronJob", owner_name="etcd-backup", owner_is_controller="true", instance="10.42.0.31:8080"}'
+        values: '1x30'
+      - series: 'kube_job_status_failed{namespace="kube-system", job_name="etcd-backup-300", reason="DeadlineExceeded", instance="10.42.0.30:8080"}'
+        values: '1x30'
+      - series: 'kube_job_status_failed{namespace="kube-system", job_name="etcd-backup-300", reason="DeadlineExceeded", instance="10.42.0.31:8080"}'
+        values: '1x30'
+      - series: 'kube_job_status_succeeded{namespace="kube-system", job_name="etcd-backup-300", instance="10.42.0.30:8080"}'
+        values: '0x30'
+      - series: 'kube_job_status_succeeded{namespace="kube-system", job_name="etcd-backup-300", instance="10.42.0.31:8080"}'
+        values: '0x30'
+      - series: 'kube_job_status_active{namespace="kube-system", job_name="etcd-backup-300", instance="10.42.0.30:8080"}'
+        values: '0x30'
+      - series: 'kube_job_status_active{namespace="kube-system", job_name="etcd-backup-300", instance="10.42.0.31:8080"}'
+        values: '0x30'
+      - series: 'kube_job_created{namespace="kube-system", job_name="etcd-backup-300", instance="10.42.0.30:8080"}'
+        values: '300x30'
+      - series: 'kube_job_created{namespace="kube-system", job_name="etcd-backup-300", instance="10.42.0.31:8080"}'
+        values: '300x30'
+      - series: 'kube_job_owner{namespace="kube-system", job_name="etcd-backup-300", owner_kind="CronJob", owner_name="etcd-backup", owner_is_controller="true", instance="10.42.0.30:8080"}'
+        values: '1x30'
+      - series: 'kube_job_owner{namespace="kube-system", job_name="etcd-backup-300", owner_kind="CronJob", owner_name="etcd-backup", owner_is_controller="true", instance="10.42.0.31:8080"}'
+        values: '1x30'
+      - series: 'kube_cronjob_status_last_successful_time{namespace="kube-system", cronjob="etcd-backup", instance="10.42.0.30:8080"}'
+        values: '200x30'
+      - series: 'kube_cronjob_status_last_successful_time{namespace="kube-system", cronjob="etcd-backup", instance="10.42.0.31:8080"}'
+        values: '200x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KubeJobFailed
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: kube-system, job_name: etcd-backup-300, reason: DeadlineExceeded,
+                          instance: "10.42.0.30:8080" }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KubeJobFailed
+              summary: "Job kube-system/etcd-backup-300 failed"
+              description: "A Job exhausted its retries without completing. Check the job's pod logs."
+          - exp_labels: { severity: warning, namespace: kube-system, job_name: etcd-backup-300, reason: DeadlineExceeded,
+                          instance: "10.42.0.31:8080" }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KubeJobFailed
+              summary: "Job kube-system/etcd-backup-300 failed"
+              description: "A Job exhausted its retries without completing. Check the job's pod logs."

@@ -208,6 +208,55 @@ tests:
               runbook_url: https://runbooks.pmon.dev/MasiSourceNotClosing
               summary: "source ats:wise has counted no misses for three intervals: none of its listings can close"
 
+  # two masi pods scraped at once (a rollout; N equal pods): every source's series twice, by pod. The matches need
+  # their sides unique - with duplicates the rules failed to evaluate and said nothing. A source is stale when no
+  # pod has succeeded with it (ashby: one pod's success is enough), and each alert comes once, not once a pod
+  - interval: 1m
+    input_series:
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="cvee", instance="schnappy-masi-a:8080", pod="schnappy-masi-a"}'
+        values: '0x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="cvee", instance="schnappy-masi-a:8080", pod="schnappy-masi-a"}'
+        values: '600x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="ashby", instance="schnappy-masi-a:8080", pod="schnappy-masi-a"}'
+        values: '600x120'
+      - series: 'masi_source_last_misses_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise", instance="schnappy-masi-a:8080", pod="schnappy-masi-a"}'
+        values: '0x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise", instance="schnappy-masi-a:8080", pod="schnappy-masi-a"}'
+        values: '600x120'
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise", instance="schnappy-masi-a:8080", pod="schnappy-masi-a"}'
+        values: '0+60x120'
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="cvee", instance="schnappy-masi-b:8080", pod="schnappy-masi-b"}'
+        values: '0x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="cvee", instance="schnappy-masi-b:8080", pod="schnappy-masi-b"}'
+        values: '600x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="ashby", instance="schnappy-masi-b:8080", pod="schnappy-masi-b"}'
+        values: '600x120'
+      - series: 'masi_source_last_misses_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise", instance="schnappy-masi-b:8080", pod="schnappy-masi-b"}'
+        values: '0x120'
+      - series: 'masi_source_interval_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise", instance="schnappy-masi-b:8080", pod="schnappy-masi-b"}'
+        values: '600x120'
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ats:wise", instance="schnappy-masi-b:8080", pod="schnappy-masi-b"}'
+        values: '0+60x120'
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ashby", instance="schnappy-masi-a:8080", pod="schnappy-masi-a"}'
+        values: '0x120'
+      - series: 'masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", source="ashby", instance="schnappy-masi-b:8080", pod="schnappy-masi-b"}'
+        values: '0+60x120'
+    alert_rule_test:
+      - eval_time: 100m
+        alertname: MasiSourceStale
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, source: "cvee" }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSourceStale
+              summary: "source cvee has had no successful run for three intervals"
+      - eval_time: 100m
+        alertname: MasiSourceNotClosing
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, source: "ats:wise" }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSourceNotClosing
+              summary: "source ats:wise has counted no misses for three intervals: none of its listings can close"
+
   # the expiry sweep runs every ten minutes and stands aside while an ingest writes: skipped once is nothing,
   # skipped ten times in two hours is a sweep that never runs
   - interval: 10m

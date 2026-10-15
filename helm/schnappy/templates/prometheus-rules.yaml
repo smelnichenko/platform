@@ -216,9 +216,11 @@ spec:
             summary: "source {{"{{"}} $labels.source {{"}}"}} was disabled after ten consecutive failures"
         - alert: MasiSourceStale
           # an enabled source whose last success is older than three of its own intervals
+          # each gauge one series a source (max by): with two masi pods scraped (a rollout, N equal pods) the matches
+          # failed to evaluate on the duplicates - the newest success any pod saw is the source's
           expr: |
-            (time() - masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
-            > on(source, job, namespace) (3 * masi_source_interval_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
+            (time() - max by (source, job, namespace) (masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}))
+            > on(source, job, namespace) (3 * max by (source, job, namespace) (masi_source_interval_seconds{job="schnappy-masi", namespace="{{ $ns }}"}))
           for: 15m
           labels:
             severity: warning
@@ -245,13 +247,13 @@ spec:
           # closes nothing: last-success moves, this does not.
           expr: |
             (
-              (time() - masi_source_last_misses_counted_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
-              > on(source, job, namespace) (3 * masi_source_interval_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
+              (time() - max by (source, job, namespace) (masi_source_last_misses_counted_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}))
+              > on(source, job, namespace) (3 * max by (source, job, namespace) (masi_source_interval_seconds{job="schnappy-masi", namespace="{{ $ns }}"}))
             )
             # a source that is not succeeding at all is MasiSourceStale's; this one is for the run that succeeds and closes nothing
             unless on(source, job, namespace) (
-              (time() - masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
-              > on(source, job, namespace) (3 * masi_source_interval_seconds{job="schnappy-masi", namespace="{{ $ns }}"})
+              (time() - max by (source, job, namespace) (masi_source_last_success_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}))
+              > on(source, job, namespace) (3 * max by (source, job, namespace) (masi_source_interval_seconds{job="schnappy-masi", namespace="{{ $ns }}"}))
             )
           for: 15m
           labels:
