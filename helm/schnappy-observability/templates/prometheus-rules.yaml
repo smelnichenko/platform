@@ -342,8 +342,10 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PostgresArchivingFailed"
             summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: WAL archiving failing"
+        # not while a backup runs: CNPG sets the condition False (reason BackupStarted) from its start to its end - pending
+        # at every hourly backup (2026-10-15); one that never ends is PostgresBackupMissed's
         - alert: PostgresBackupFailed
-          expr: cnpg_cluster_condition{type="LastBackupSucceeded"} == 0
+          expr: cnpg_cluster_condition{type="LastBackupSucceeded", reason!="BackupStarted"} == 0
           for: 5m
           labels:
             severity: critical

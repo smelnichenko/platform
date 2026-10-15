@@ -30,6 +30,9 @@ data:
                   path: [status, conditions]
                   labelsFromPath:
                     type: [type]
+                    # LastBackupSucceeded is False with BackupStarted while a backup runs - every hour - and with
+                    # LastBackupFailed after one failed: the alert tells the two apart by it
+                    reason: [reason]
                   valueFrom: [status]
             - name: last_successful_backup_timestamp_seconds
               help: "When the Cluster's last successful backup ended"

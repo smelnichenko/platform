@@ -22,7 +22,13 @@ tests:
         values: '0x120'
       - series: 'cnpg_cluster_last_successful_backup_timestamp_seconds{namespace="p", cluster="arch"}'
         values: '0x120'
-      - series: 'cnpg_cluster_condition{namespace="p", cluster="failed", type="LastBackupSucceeded"}'
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="failed", type="LastBackupSucceeded", reason="LastBackupFailed"}'
+        values: '0x120'
+      # a backup running (CNPG sets the condition False, reason BackupStarted, until it ends - every hour, 2026-10-15:
+      # pending at each one): never this alert; one that never ends is PostgresBackupMissed's
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="running", type="LastBackupSucceeded", reason="BackupStarted"}'
+        values: '0x120'
+      - series: 'cnpg_cluster_last_successful_backup_timestamp_seconds{namespace="p", cluster="running"}'
         values: '0x120'
       - series: 'cnpg_cluster_last_successful_backup_timestamp_seconds{namespace="p", cluster="failed"}'
         values: '0x120'
@@ -40,7 +46,7 @@ tests:
       - eval_time: 60m
         alertname: PostgresBackupFailed
         exp_alerts:
-          - exp_labels: {severity: critical, namespace: p, cluster: failed, type: LastBackupSucceeded}
+          - exp_labels: {severity: critical, namespace: p, cluster: failed, type: LastBackupSucceeded, reason: LastBackupFailed}
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/PostgresBackupFailed"
               summary: "Postgres p/failed: its last backup failed"
