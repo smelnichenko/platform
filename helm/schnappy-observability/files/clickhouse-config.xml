@@ -23,7 +23,8 @@
   <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
   <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
   <!-- ClickHouse's own logs kept 14 days: with no TTL they grew without end (52 GB on ten, 2026-10-16, beside 2.5 GB
-       of pod logs) - every backup copied them and a new release's first start loaded them. A changed definition makes
+       of pod logs) - every backup copied them and a new release's first start loaded them. Every one 26.8 keeps by
+       default, the ones not written yet too (crash_log aside: a crash's record kept). A changed definition makes
        ClickHouse rename the old table (query_log_0, ...) at its next start and begin a new one: the renamed ones keep
        their rows until dropped. -->
   <query_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></query_log>
@@ -34,6 +35,19 @@
   <processors_profile_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></processors_profile_log>
   <text_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></text_log>
   <error_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></error_log>
+  <background_schedule_pool_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></background_schedule_pool_log>
+  <query_metric_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></query_metric_log>
+  <query_thread_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></query_thread_log>
+  <query_views_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></query_views_log>
+  <backup_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></backup_log>
+  <s3queue_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></s3queue_log>
+  <iceberg_metadata_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></iceberg_metadata_log>
+  <delta_lake_metadata_log><ttl>event_date + INTERVAL 14 DAY DELETE</ttl></delta_lake_metadata_log>
+  <!-- its default config names its engine (sorted by finish, not event time): a ttl setting beside it refuses the
+       server's start - the TTL goes inside the engine, the rest as the default's -->
+  <opentelemetry_span_log>
+    <engine>engine MergeTree partition by toYYYYMM(finish_date) order by (finish_date, finish_time_us) ttl finish_date + INTERVAL 14 DAY DELETE</engine>
+  </opentelemetry_span_log>
   <prometheus>
     <endpoint>/metrics</endpoint>
     <port>9363</port>

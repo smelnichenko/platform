@@ -49,6 +49,15 @@ steps:
     commands:
       - sh .woodpecker/cnpg-backup-render.sh
 
+  # ClickHouse started on the chart's config in the chart's image: a config it refuses fails here, not at production's
+  # restart; every system log it keeps has a TTL (the script says why)
+  - name: clickhouse-config-start
+    image: clickhouse/clickhouse-server:26.8.15.10-alpine
+    environment:
+      CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.15.10-alpine
+    commands:
+      - sh .woodpecker/clickhouse-config-start.sh
+
   # Alert rules are code: promtool checks the syntax and runs the unit tests under
   # helm/schnappy/tests/rules/ against the rules rendered as production sees them, in the
   # Prometheus image the cluster runs (see helm/schnappy-observability for the version).

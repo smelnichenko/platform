@@ -754,4 +754,13 @@ done
 err=$(tempo "grafana/tempo@$pin" 2>&1 >/dev/null) && fail "tempo.image with a digest and no tag rendered"
 echo "$err" | grep -q 'no version tag' || fail "unexpected error: $err"
 
+# --- schnappy-observability: ClickHouse restarts on a changed config ------------------------
+# its config and users are subPath mounts, never updated in a running pod: the pod's checksum follows both files'
+# content (the system logs' TTL, 2026-10-16, waited for an unrelated restart otherwise)
+f=helm/schnappy-observability/files
+ch=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true --set clickhouse.password=x \
+  --show-only templates/clickhouse-statefulset.yaml) || fail "ClickHouse's StatefulSet did not render"
+want=$(cat "$f/clickhouse-config.xml" "$f/clickhouse-users.xml" | sha256sum | cut -d' ' -f1)
+echo "$ch" | grep -q "^        checksum/config: $want\$" || fail "ClickHouse's pod checksum is not its config's and users' ($want)"
+
 echo "chart render checks: OK"

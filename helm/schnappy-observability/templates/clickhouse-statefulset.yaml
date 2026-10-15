@@ -16,6 +16,10 @@ spec:
       labels:
         {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
+      # the server's config and users are subPath mounts, never updated in a running pod: a change restarts it (the
+      # system logs' TTL, 2026-10-16, would otherwise wait for an unrelated restart). The schemas are the init Job's
+      annotations:
+        checksum/config: {{ print (.Files.Get "files/clickhouse-config.xml") (.Files.Get "files/clickhouse-users.xml") | sha256sum }}
     spec:
       # 30s is too short for ClickHouse to flush MergeTree parts/buffers cleanly.
       terminationGracePeriodSeconds: 120
