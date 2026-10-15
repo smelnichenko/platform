@@ -29,6 +29,8 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [PostgresBackupFailed](PostgresBackupFailed.md)
 - [PostgresBackupMissed](PostgresBackupMissed.md)
 - [PostgresBackupNeverSucceeded](PostgresBackupNeverSucceeded.md)
+- [PostgresBackupStuck](PostgresBackupStuck.md)
+- [PostgresBackupsUnwatched](PostgresBackupsUnwatched.md)
 - [ScyllaBackupMissed](ScyllaBackupMissed.md)
 - [ScyllaBackupNeverSucceeded](ScyllaBackupNeverSucceeded.md)
 - [ScyllaManagerTaskFailed](ScyllaManagerTaskFailed.md)

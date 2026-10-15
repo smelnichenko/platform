@@ -343,7 +343,7 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/PostgresArchivingFailed"
             summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: WAL archiving failing"
         # not while a backup runs: CNPG sets the condition False (reason BackupStarted) from its start to its end - pending
-        # at every hourly backup (2026-10-15); one that never ends is PostgresBackupMissed's
+        # at every hourly backup (2026-10-15); one that never ends is PostgresBackupStuck's
         - alert: PostgresBackupFailed
           expr: cnpg_cluster_condition{type="LastBackupSucceeded", reason!="BackupStarted"} == 0
           for: 5m
@@ -352,6 +352,17 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PostgresBackupFailed"
             summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: its last backup failed"
+        # a backup running for 3 h has stopped (production's takes minutes): its status lost - the API server restarted
+        # during it (42-kubernetes-1.35, 2026-10-15) - it stays running for ever and CNPG refuses every backup after it;
+        # PostgresBackupMissed says so only a day later
+        - alert: PostgresBackupStuck
+          expr: cnpg_cluster_condition{type="LastBackupSucceeded", reason="BackupStarted"} == 0
+          for: 3h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/PostgresBackupStuck"
+            summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: a backup running for 3 h"
         - alert: PostgresBackupMissed
           expr: time() - cnpg_cluster_last_successful_backup_timestamp_seconds > 26 * 3600
           for: 1h
@@ -372,6 +383,16 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PostgresBackupNeverSucceeded"
             summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }} has a backup store but no successful backup"
+        # every alert above reads CNPG's Cluster status through kube-state-metrics' custom resources: that config broken
+        # or kube-state-metrics not scraped, they all go quiet - no series, nothing to fire on
+        - alert: PostgresBackupsUnwatched
+          expr: absent(cnpg_cluster_condition{type="Ready"})
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/PostgresBackupsUnwatched"
+            summary: "No CNPG Cluster's status scraped - Postgres' backups and archiving are watched by nothing"
         - alert: ScyllaBackupMissed
           expr: >-
             (time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600)

@@ -25,7 +25,7 @@ tests:
       - series: 'cnpg_cluster_condition{namespace="p", cluster="failed", type="LastBackupSucceeded", reason="LastBackupFailed"}'
         values: '0x120'
       # a backup running (CNPG sets the condition False, reason BackupStarted, until it ends - every hour, 2026-10-15:
-      # pending at each one): never this alert; one that never ends is PostgresBackupMissed's
+      # pending at each one): never this alert; one that never ends is PostgresBackupStuck's
       - series: 'cnpg_cluster_condition{namespace="p", cluster="running", type="LastBackupSucceeded", reason="BackupStarted"}'
         values: '0x120'
       - series: 'cnpg_cluster_last_successful_backup_timestamp_seconds{namespace="p", cluster="running"}'
@@ -53,6 +53,51 @@ tests:
       # backups at t=0: 26 h later (+1 h for) they are stale; the "ok" one is the stale one too here - see the next test
       - eval_time: 60m
         alertname: PostgresBackupMissed
+      # running for an hour: no backup stuck yet
+      - eval_time: 60m
+        alertname: PostgresBackupStuck
+      # the Clusters' status scraped (the "test" one's Ready): watched
+      - eval_time: 60m
+        alertname: PostgresBackupsUnwatched
+  # kube-state-metrics' CNPG series gone at 30 m (its custom-resource config broken, or it not scraped): after 30 m more
+  - interval: 1m
+    input_series:
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="ok", type="Ready"}'
+        values: '1x30'
+      - series: 'kube_pod_info{namespace="p", pod="x"}'
+        values: '1x120'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: PostgresBackupsUnwatched
+      - eval_time: 70m
+        alertname: PostgresBackupsUnwatched
+        exp_alerts:
+          - exp_labels: {severity: warning, type: Ready}
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/PostgresBackupsUnwatched"
+              summary: "No CNPG Cluster's status scraped - Postgres' backups and archiving are watched by nothing"
+  # a backup that never ends (its status lost: an API server restart during it, 2026-10-15) - stuck after 3 h; one that
+  # runs 2 h and ends, and a failed one, never
+  - interval: 1m
+    input_series:
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="stuck", type="LastBackupSucceeded", reason="BackupStarted"}'
+        values: '0x300'
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="slow", type="LastBackupSucceeded", reason="BackupStarted"}'
+        values: '0x120'
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="slow", type="LastBackupSucceeded", reason="LastBackupSucceeded"}'
+        values: '_x120 1x180'
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="failed", type="LastBackupSucceeded", reason="LastBackupFailed"}'
+        values: '0x300'
+    alert_rule_test:
+      - eval_time: 179m
+        alertname: PostgresBackupStuck
+      - eval_time: 4h
+        alertname: PostgresBackupStuck
+        exp_alerts:
+          - exp_labels: {severity: warning, namespace: p, cluster: stuck, type: LastBackupSucceeded, reason: BackupStarted}
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/PostgresBackupStuck"
+              summary: "Postgres p/stuck: a backup running for 3 h"
   # minute samples over 30 h (a series with no sample for 5 minutes is gone: hourly ones never let a for: run)
   - interval: 1m
     input_series:
