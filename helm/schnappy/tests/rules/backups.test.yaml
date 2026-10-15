@@ -64,8 +64,6 @@ tests:
     input_series:
       - series: 'cnpg_cluster_condition{namespace="p", cluster="ok", type="Ready"}'
         values: '1x30'
-      - series: 'kube_pod_info{namespace="p", pod="x"}'
-        values: '1x120'
     alert_rule_test:
       - eval_time: 50m
         alertname: PostgresBackupsUnwatched
