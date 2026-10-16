@@ -14,5 +14,6 @@ check "the ScheduledBackup's schedule has CNPG's six fields" "$(echo "$schedule"
 check "once a day: second, minute and hour fixed, every day of every month" \
   "$(echo "$schedule" | awk '{ print ($1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ && $4 $5 $6 == "***") }')" 1
 retention=$(printf '%s\n' "$out" | awk '/^kind: Cluster/ { c = 1 } c && /^    retentionPolicy:/ { gsub(/"/, ""); print $2; exit }')
-check "the Cluster's store keeps a window (spec.backup.retentionPolicy)" "$(echo "$retention" | grep -cE '^[0-9]+[dwm]$')" 1
+# CNPG's CRD wants a positive count ("0d" refused at apply)
+check "the Cluster's store keeps a window (spec.backup.retentionPolicy)" "$(echo "$retention" | grep -cE '^[1-9][0-9]*[dwm]$')" 1
 [ "$fails" -eq 0 ] && echo "cnpg-backup-render: ALL-PASS" || { echo "cnpg-backup-render: $fails FAILED"; exit 1; }

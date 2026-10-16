@@ -763,4 +763,23 @@ ch=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true 
 want=$(cat "$f/clickhouse-config.xml" "$f/clickhouse-users.xml" | sha256sum | cut -d' ' -f1)
 echo "$ch" | grep -q "^        checksum/config: $want\$" || fail "ClickHouse's pod checksum is not its config's and users' ($want)"
 
+# --- schnappy-observability: the labels the backup alerts select on, kube-state-metrics' ---------
+# PostgresBackupFailed and PostgresBackupStuck tell a running backup from a failed one by the condition's reason;
+# ScyllaBackupMissed and NeverSucceeded join Manager's tasks by task_id and pick the backups by task_type - each label
+# gone from the custom-resource config, the alert never fires (or fires during every backup)
+ksm=$(helm template t helm/schnappy-observability/ --set prometheus.enabled=true --set kubeStateMetrics.enabled=true \
+  --show-only templates/kube-state-metrics-custom-resources.yaml) \
+  || fail "kube-state-metrics' custom resources did not render"
+for label in 'reason: \[reason\]' 'task_id: \[status, taskID\]' 'task_type: \[spec, type\]'; do
+  echo "$ksm" | grep -qE "^ +$label\$" || fail "kube-state-metrics' custom resources lost the label the alerts select on: $label"
+done
+
+# --- schnappy-data: ScyllaDB's own arguments reach the ScyllaCluster ------------------------------
+# production's memory reserve rides scyllaArgs (infra's values): the operator appends it to ScyllaDB's command line
+sc() { helm template t helm/schnappy-data/ --set postgres.password=x --set scyllaOperator.enabled=true \
+  --set scyllaOperator.version=1 --set scyllaOperator.agentVersion=1 --show-only templates/scylla-cluster.yaml "$@"; }
+sc --set 'scyllaOperator.scyllaArgs=--reserve-memory 512M' | grep -qx '  scyllaArgs: "--reserve-memory 512M"' \
+  || fail "scyllaOperator.scyllaArgs did not reach the ScyllaCluster's spec.scyllaArgs"
+sc | grep -q 'scyllaArgs:' && fail "a ScyllaCluster without scyllaArgs set rendered one"
+
 echo "chart render checks: OK"

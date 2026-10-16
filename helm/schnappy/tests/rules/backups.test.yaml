@@ -186,6 +186,9 @@ tests:
               summary: "Scylla Manager: backup task n/new (new) has not succeeded since Manager started"
       - eval_time: 10h
         alertname: ScyllaManagerDown
+      # the backup tasks listed, Manager scraped: watched
+      - eval_time: 10h
+        alertname: ScyllaBackupsUnwatched
   - interval: 1m
     input_series:
       - series: 'scylla_manager_scheduler_run_total{cluster="c", task="r", type="repair", status="ERROR"}'
@@ -212,3 +215,25 @@ tests:
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/ScyllaManagerDown"
               summary: "Scylla Manager is not scraped - its backups and repairs are watched by nothing"
+      # Manager not scraped: no task listed either - ScyllaManagerDown's, not this one's
+      - eval_time: 60m
+        alertname: ScyllaBackupsUnwatched
+  # Manager scraped; its backup task listed for 30 minutes, then gone (kube-state-metrics' config broken): after 30 m more
+  - interval: 1m
+    input_series:
+      - series: 'up{job="scylla-manager", namespace="scylla-manager"}'
+        values: '1x120'
+      - series: 'scylladb_manager_task_info{namespace="n", name="daily", task_type="Backup", task_id="t"}'
+        values: '1x30'
+      - series: 'scylladb_manager_task_info{namespace="n", name="weekly", task_type="Repair", task_id="r"}'
+        values: '1x120'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ScyllaBackupsUnwatched
+      - eval_time: 70m
+        alertname: ScyllaBackupsUnwatched
+        exp_alerts:
+          - exp_labels: {severity: warning, task_type: Backup}
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/ScyllaBackupsUnwatched"
+              summary: "No Scylla Manager backup task listed - Scylla's backups are watched by nothing"

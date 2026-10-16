@@ -431,6 +431,19 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ScyllaManagerDown"
             summary: "Scylla Manager is not scraped - its backups and repairs are watched by nothing"
+        # Manager scraped, but no backup task listed by kube-state-metrics: ScyllaBackupMissed and NeverSucceeded join
+        # Manager's last success to that list - its custom-resource config broken, or the operator's task gone, and both
+        # go quiet. Not without Manager (ScyllaManagerDown says that)
+        - alert: ScyllaBackupsUnwatched
+          expr: >-
+            absent(scylladb_manager_task_info{task_type="Backup"})
+            and on () (count(up{job="scylla-manager", namespace="scylla-manager"} == 1) > 0)
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ScyllaBackupsUnwatched"
+            summary: "No Scylla Manager backup task listed - Scylla's backups are watched by nothing"
 
 {{- if .Values.prometheus.lanOnlyProbeUrls }}
     - name: infra-lan-only-urls

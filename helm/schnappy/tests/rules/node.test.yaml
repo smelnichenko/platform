@@ -45,6 +45,9 @@ tests:
       - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
         values: '0x30'
     alert_rule_test:
+      # pending for its 5 minutes first (a blip is no page)
+      - eval_time: 3m
+        alertname: NodeFilesystemCriticallyFull
       - eval_time: 10m
         alertname: NodeFilesystemCriticallyFull
         exp_alerts:
@@ -120,6 +123,19 @@ tests:
               summary: "/ on ten fills within 24 h at its 6 h rate"
               description: "At the last 6 h's rate it runs out within 24 h (-381B free then - below zero). Find what grows."
 
+  # flat for 5 h, then losing 15 an hour for 2: the 6 h trend still leaves 220 a day on - no alert; the last hour's alone
+  # (a window too short) would read -60 and page on a burst
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '330x299 330-0.25x120'
+      - series: 'node_filesystem_size_bytes{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '1000x420'
+      - series: 'node_filesystem_readonly{job="node-exporter",instance="ten",device="/dev/nvme1n1p2",fstype="ext4",mountpoint="/"}'
+        values: '0x420'
+    alert_rule_test:
+      - eval_time: 7h
+        alertname: NodeFilesystemFillingUp
   # the same loss with 50 % free (room to act later), or a slow loss under 40 %: no trend alert
   - interval: 1m
     input_series:

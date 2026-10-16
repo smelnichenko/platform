@@ -35,6 +35,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [ScyllaBackupNeverSucceeded](ScyllaBackupNeverSucceeded.md)
 - [ScyllaManagerTaskFailed](ScyllaManagerTaskFailed.md)
 - [ScyllaManagerDown](ScyllaManagerDown.md)
+- [ScyllaBackupsUnwatched](ScyllaBackupsUnwatched.md)
 
 ### masi (every alert of the group; CI: `.woodpecker/runbooks-exist.sh`)
 
