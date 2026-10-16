@@ -334,8 +334,10 @@ spec:
     # (and a deleted cluster's) counters at 0 and its last success.
     - name: infra-backups
       rules:
+        # each over kube-state-metrics' pods (max without its instance and pod): its rollout starts new series, which
+        # restarted every for: below - a 3 h or a 26 h wait begun again at each roll
         - alert: PostgresArchivingFailed
-          expr: cnpg_cluster_condition{type="ContinuousArchiving"} == 0
+          expr: max without (instance, pod) (cnpg_cluster_condition{type="ContinuousArchiving"}) == 0
           for: 15m
           labels:
             severity: critical
@@ -345,18 +347,18 @@ spec:
         # not while a backup runs: CNPG sets the condition False (reason BackupStarted) from its start to its end - pending
         # at every hourly backup (2026-10-15); one that never ends is PostgresBackupStuck's
         - alert: PostgresBackupFailed
-          expr: cnpg_cluster_condition{type="LastBackupSucceeded", reason!="BackupStarted"} == 0
+          expr: max without (instance, pod) (cnpg_cluster_condition{type="LastBackupSucceeded", reason!="BackupStarted"}) == 0
           for: 5m
           labels:
             severity: critical
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PostgresBackupFailed"
             summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: its last backup failed"
-        # a backup running for 3 h has stopped (production's takes minutes): its status lost - the API server restarted
-        # during it (42-kubernetes-1.35, 2026-10-15) - it stays running for ever and CNPG refuses every backup after it;
+        # a backup running for 3 h has stopped (production's takes minutes): its status lost - an upgrade restarted the
+        # API server during it (2026-10-15) - it stays running for ever and CNPG refuses every backup after it;
         # PostgresBackupMissed says so only a day later
         - alert: PostgresBackupStuck
-          expr: cnpg_cluster_condition{type="LastBackupSucceeded", reason="BackupStarted"} == 0
+          expr: max without (instance, pod) (cnpg_cluster_condition{type="LastBackupSucceeded", reason="BackupStarted"}) == 0
           for: 3h
           labels:
             severity: warning
@@ -364,7 +366,7 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/PostgresBackupStuck"
             summary: "Postgres {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cluster {{ "}}" }}: a backup running for 3 h"
         - alert: PostgresBackupMissed
-          expr: time() - cnpg_cluster_last_successful_backup_timestamp_seconds > 26 * 3600
+          expr: time() - max without (instance, pod) (cnpg_cluster_last_successful_backup_timestamp_seconds) > 26 * 3600
           for: 1h
           labels:
             severity: warning
@@ -375,7 +377,7 @@ spec:
         # condition: CNPG 1.30 sets that True with no store too (the test environment's, 2026-10-14)
         - alert: PostgresBackupNeverSucceeded
           expr: >-
-            cnpg_cluster_backup_store_info
+            max without (instance, pod) (cnpg_cluster_backup_store_info)
             unless on (namespace, cluster) cnpg_cluster_last_successful_backup_timestamp_seconds
           for: 26h
           labels:
@@ -431,12 +433,13 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ScyllaManagerDown"
             summary: "Scylla Manager is not scraped - its backups and repairs are watched by nothing"
-        # Manager scraped, but no backup task listed by kube-state-metrics: ScyllaBackupMissed and NeverSucceeded join
+        # Manager scraped, but no backup task listed by kube-state-metrics with its Manager ID (none yet in its status: the
+        # joins below drop it): ScyllaBackupMissed and NeverSucceeded join
         # Manager's last success to that list - its custom-resource config broken, or the operator's task gone, and both
         # go quiet. Not without Manager (ScyllaManagerDown says that)
         - alert: ScyllaBackupsUnwatched
           expr: >-
-            absent(scylladb_manager_task_info{task_type="Backup"})
+            absent(scylladb_manager_task_info{task_type="Backup", task_id!=""})
             and on () (count(up{job="scylla-manager", namespace="scylla-manager"} == 1) > 0)
           for: 30m
           labels:

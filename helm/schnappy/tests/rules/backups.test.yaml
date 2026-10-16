@@ -237,3 +237,50 @@ tests:
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/ScyllaBackupsUnwatched"
               summary: "No Scylla Manager backup task listed - Scylla's backups are watched by nothing"
+  # kube-state-metrics rolled (a new pod: new series, its pod and instance) while a backup ran: the 3 h counted across
+  # the roll - counted per series, it began again at 100 m and nothing fired at 4 h
+  - interval: 1m
+    input_series:
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="roll", type="LastBackupSucceeded", reason="BackupStarted", pod="ksm-a", instance="10.0.0.1:8080"}'
+        values: '0x100'
+      - series: 'cnpg_cluster_condition{namespace="p", cluster="roll", type="LastBackupSucceeded", reason="BackupStarted", pod="ksm-b", instance="10.0.0.2:8080"}'
+        values: '_x100 0x200'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: PostgresBackupStuck
+        exp_alerts:
+          - exp_labels: {severity: warning, namespace: p, cluster: roll, type: LastBackupSucceeded, reason: BackupStarted}
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/PostgresBackupStuck"
+              summary: "Postgres p/roll: a backup running for 3 h"
+  # the same across a roll for a store never backed up: its 26 h counted from the first pod's series
+  - interval: 1m
+    input_series:
+      - series: 'cnpg_cluster_backup_store_info{namespace="p", cluster="never", pod="ksm-a", instance="10.0.0.1:8080"}'
+        values: '1x600'
+      - series: 'cnpg_cluster_backup_store_info{namespace="p", cluster="never", pod="ksm-b", instance="10.0.0.2:8080"}'
+        values: '_x600 1x1200'
+    alert_rule_test:
+      - eval_time: 27h
+        alertname: PostgresBackupNeverSucceeded
+        exp_alerts:
+          - exp_labels: {severity: warning, namespace: p, cluster: never}
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/PostgresBackupNeverSucceeded"
+              summary: "Postgres p/never has a backup store but no successful backup"
+  # Manager scraped, the backup task listed without its Manager ID yet (status.taskID empty): the joins drop it -
+  # unwatched as if none were listed
+  - interval: 1m
+    input_series:
+      - series: 'up{job="scylla-manager", namespace="scylla-manager"}'
+        values: '1x120'
+      - series: 'scylladb_manager_task_info{namespace="n", name="daily", task_type="Backup", task_id=""}'
+        values: '1x120'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: ScyllaBackupsUnwatched
+        exp_alerts:
+          - exp_labels: {severity: warning, task_type: Backup}
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/ScyllaBackupsUnwatched"
+              summary: "No Scylla Manager backup task listed - Scylla's backups are watched by nothing"

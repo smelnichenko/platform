@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "schnappy.alertmanager.labels" . | nindent 4 }}
   annotations:
-    # its application prunes, and local-path's volume goes with its claim: Argo never prunes or deletes this one
+    # local-path's volume goes with its claim: Argo never prunes or deletes this one, whatever its application's policy
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes:

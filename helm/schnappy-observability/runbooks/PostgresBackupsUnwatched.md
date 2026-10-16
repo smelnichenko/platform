@@ -13,7 +13,7 @@ Nothing is broken by this alone, but `PostgresArchivingFailed`, `PostgresBackupF
 ## First steps
 
 ```bash
-kubectl -n schnappy-infra get pods -l app.kubernetes.io/name=kube-state-metrics
+kubectl -n schnappy-infra get pods -l app.kubernetes.io/component=kube-state-metrics
 kubectl -n schnappy-infra logs deploy/schnappy-kube-state-metrics --since=1h | grep -iE 'custom|cnpg|error' | tail -20
 kubectl get clusters.postgresql.cnpg.io -A
 ```

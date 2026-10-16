@@ -14,7 +14,7 @@ Nothing is broken by this alone, but `ScyllaBackupMissed` and `ScyllaBackupNever
 
 ```bash
 kubectl get scylladbmanagertasks.scylla.scylladb.com -A
-kubectl -n schnappy-infra get pods -l app.kubernetes.io/name=kube-state-metrics
+kubectl -n schnappy-infra get pods -l app.kubernetes.io/component=kube-state-metrics
 kubectl -n schnappy-infra logs deploy/schnappy-kube-state-metrics --since=1h | grep -iE 'custom|scylla|error' | tail -20
 ```
 

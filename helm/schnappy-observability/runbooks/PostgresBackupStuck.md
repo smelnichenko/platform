@@ -24,7 +24,7 @@ kubectl -n $NS logs $(kubectl -n $NS get clusters.postgresql.cnpg.io $C -o jsonp
 
 | Symptom | Cause |
 |---|---|
-| the Backup `running`, the primary's log showing `barman-cloud-backup` ended (or no process running it) | its status lost: the API server or CloudNativePG's operator restarted while the backup ran (an upgrade's control-plane restart, 42-kubernetes-1.35, 2026-10-15) |
+| the Backup `running`, the primary's log showing `barman-cloud-backup` ended (or no process running it) | its status lost: the API server or CloudNativePG's operator restarted while the backup ran (an upgrade's control-plane restart, 2026-10-15) |
 | `barman-cloud-backup` still running, the store slow | the Pi backup store (versitygw on both Pis, the VIP :9000) degraded, or the Gluster volume busy |
 | the primary pod restarted during the backup | the backup's process gone with it; CloudNativePG did not notice |
 

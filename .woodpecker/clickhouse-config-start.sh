@@ -27,6 +27,11 @@ until q 'select 1' > /dev/null 2>&1; do
   [ "$i" -le 120 ] || { echo "FAIL ClickHouse not answering after 120 s"; exit 1; }
   sleep 1
 done
+# the server that answered is the chart's release (CI_STEP_IMAGE_CHECK is a copy of the step's image: the step's own
+# image: changed alone, it still read as the chart's)
+running=$(q 'select version()')
+want=${chart##*:}; want=${want%%@*}; want=${want%%-*}
+[ "$running" = "$want" ] || { kill "$server"; echo "FAIL the server started is ClickHouse $running, not the chart's $want"; exit 1; }
 q 'SYSTEM FLUSH LOGS'
 untimed=$(q "select arrayStringConcat(groupArray(name), ' ') from system.tables where database = 'system'
              and name like '%\\_log' and name != 'crash_log' and engine like '%MergeTree%'
@@ -35,4 +40,4 @@ logs=$(q "select count() from system.tables where database = 'system' and name l
 kill "$server"
 [ -z "$untimed" ] || { echo "FAIL system logs kept for ever: $untimed"; exit 1; }
 [ "$logs" -ge 10 ] || { echo "FAIL only $logs system logs made - the check saw too little"; exit 1; }
-echo "PASS ClickHouse ($chart) started on the chart's config; its $logs system logs each with a TTL (crash_log aside)"
+echo "PASS ClickHouse $running ($chart) started on the chart's config; its $logs system logs each with a TTL (crash_log aside)"
