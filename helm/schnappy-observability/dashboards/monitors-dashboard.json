@@ -115,7 +115,7 @@
       },
       "targets": [
         {
-          "expr": "monitor_extracted_value",
+          "expr": "max by (page) (monitor_extracted_value{job=\"schnappy-monitor\", namespace=\"$namespace\"})",
           "legendFormat": "{{page}}",
           "refId": "A"
         }
@@ -170,7 +170,7 @@
       },
       "targets": [
         {
-          "expr": "sum(monitor_check_total{job=\"schnappy-app\"})",
+          "expr": "sum(monitor_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\"})",
           "legendFormat": "Total",
           "refId": "A"
         }
@@ -225,7 +225,7 @@
       },
       "targets": [
         {
-          "expr": "sum(monitor_check_total{job=\"schnappy-app\",matched=\"true\"})",
+          "expr": "sum(monitor_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\", matched=\"true\"})",
           "legendFormat": "Matched",
           "refId": "A"
         }
@@ -288,7 +288,7 @@
       },
       "targets": [
         {
-          "expr": "rate(monitor_check_duration_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"schnappy-app\"}[5m]) * 1000",
+          "expr": "sum by (page) (rate(monitor_check_duration_seconds_sum{job=\"schnappy-monitor\", namespace=\"$namespace\"}[5m])) / sum by (page) (rate(monitor_check_duration_seconds_count{job=\"schnappy-monitor\", namespace=\"$namespace\"}[5m])) * 1000",
           "legendFormat": "{{page}} avg ms",
           "refId": "A"
         }
@@ -351,7 +351,7 @@
       },
       "targets": [
         {
-          "expr": "sum(monitor_check_total{job=\"schnappy-app\",matched=\"true\"}) / sum(monitor_check_total{job=\"schnappy-app\"})",
+          "expr": "sum(monitor_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\", matched=\"true\"}) / sum(monitor_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\"})",
           "legendFormat": "Success %",
           "refId": "A"
         }
@@ -467,7 +467,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (page) (increase(monitor_check_total{job=\"schnappy-app\"}[1m]))",
+          "expr": "sum by (page) (increase(monitor_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\"}[1m]))",
           "legendFormat": "{{page}}",
           "refId": "A"
         }
@@ -555,12 +555,12 @@
       },
       "targets": [
         {
-          "expr": "monitor_check_duration_seconds_max{job=\"schnappy-app\"}",
+          "expr": "max by (page) (monitor_check_duration_seconds_max{job=\"schnappy-monitor\", namespace=\"$namespace\"})",
           "legendFormat": "{{page}} max",
           "refId": "A"
         },
         {
-          "expr": "rate(monitor_check_duration_seconds_sum{job=\"schnappy-app\"}[5m]) / rate(monitor_check_duration_seconds_count{job=\"schnappy-app\"}[5m])",
+          "expr": "sum by (page) (rate(monitor_check_duration_seconds_sum{job=\"schnappy-monitor\", namespace=\"$namespace\"}[5m])) / sum by (page) (rate(monitor_check_duration_seconds_count{job=\"schnappy-monitor\", namespace=\"$namespace\"}[5m]))",
           "legendFormat": "{{page}} avg",
           "refId": "B"
         }
@@ -660,7 +660,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (feed) (rate(rss_check_total{job=\"schnappy-app\"}[5m]))",
+          "expr": "sum by (feed) (rate(rss_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\"}[5m]))",
           "legendFormat": "{{feed}}",
           "refId": "A"
         }
@@ -748,7 +748,7 @@
       },
       "targets": [
         {
-          "expr": "rss_check_duration_seconds_max{job=\"schnappy-app\"}",
+          "expr": "max by (feed) (rss_check_duration_seconds_max{job=\"schnappy-monitor\", namespace=\"$namespace\"})",
           "legendFormat": "{{feed}}",
           "refId": "A"
         }
@@ -836,7 +836,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (feed) (rate(rss_check_total{job=\"schnappy-app\",success=\"true\"}[5m])) / sum by (feed) (rate(rss_check_total{job=\"schnappy-app\"}[5m]))",
+          "expr": "sum by (feed) (rate(rss_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\", success=\"true\"}[5m])) / sum by (feed) (rate(rss_check_total{job=\"schnappy-monitor\", namespace=\"$namespace\"}[5m]))",
           "legendFormat": "{{feed}}",
           "refId": "A"
         }
@@ -852,7 +852,30 @@
     "web"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(jvm_memory_used_bytes{job=\"schnappy-monitor\"}, namespace)",
+          "refId": "ns"
+        },
+        "definition": "label_values(jvm_memory_used_bytes{job=\"schnappy-monitor\"}, namespace)",
+        "current": {
+          "text": "schnappy-production",
+          "value": "schnappy-production"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
