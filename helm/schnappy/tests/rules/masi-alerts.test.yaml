@@ -1,5 +1,8 @@
 # promtool unit tests for the masi alert group (rendered by .woodpecker/rules-unit-tests.sh).
 # Series names carry the job and namespace the rendered expressions select on.
+# masi registers its fixed-label counters (ledger failures, account refusals, digest outcomes) at 0 when it starts
+# (masi 087b2ca), so their series begin at 0 as here; the model mismatch's labels are the models, so its series is born
+# at 1 ('_' = no sample yet).
 rule_files:
   - rendered-rules.yaml
 
@@ -56,7 +59,7 @@ tests:
       - series: 'masi_llm_ledger_failures_total{job="schnappy-masi", namespace="schnappy-production", what="reserve"}'
         values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
       - series: 'masi_llm_model_mismatch_total{job="schnappy-masi", namespace="schnappy-production", configured="claude-opus-5", returned="claude-opus-5-20270101"}'
-        values: '0 1x19'
+        values: '_ _ 1x80'      # born at 1: increase() alone never fires on it
     alert_rule_test:
       - eval_time: 75m
         alertname: MasiCostRate
@@ -79,6 +82,9 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiModelMismatch
               summary: "the API answered with a model other than the one masi priced (claude-opus-5 → claude-opus-5-20270101)"
+      - eval_time: 75m
+        alertname: MasiModelMismatch
+        exp_alerts: []          # still 1 an hour later: nothing new
 
   - interval: 1m
     input_series:

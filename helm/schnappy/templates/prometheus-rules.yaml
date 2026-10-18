@@ -179,7 +179,12 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/MasiLedgerFailures"
             summary: "masi could not write its LLM ledger: spend may be escaping the budget"
         - alert: MasiModelMismatch
-          expr: increase(masi_llm_model_mismatch_total{job="schnappy-masi", namespace="{{ $ns }}"}[1h]) > 0
+          # its labels are the models, known only when it happens: the series is born at 1, which increase() never
+          # sees - so also a series above 0 that did not exist an hour ago
+          expr: |
+            increase(masi_llm_model_mismatch_total{job="schnappy-masi", namespace="{{ $ns }}"}[1h]) > 0
+              or (masi_llm_model_mismatch_total{job="schnappy-masi", namespace="{{ $ns }}"} > 0
+                  unless masi_llm_model_mismatch_total{job="schnappy-masi", namespace="{{ $ns }}"} offset 1h)
           labels:
             severity: warning
             namespace: {{ $ns }}
