@@ -460,6 +460,14 @@ echo "$ku" | grep -q 'Write' && fail "KafkaUser schnappy-masi must not write"
 data() { helm template t helm/schnappy-data/ --set postgres.password=test --set cnpg.enabled=true --set vault.secretsEnabled=true "$@"; }
 rendered=$(data)
 
+# every app with a database here is admitted to Postgres by name, masi too (it got in only through the namespace's
+# default allow until 2026-10-18: a tighter default would have cut masi alone off its database)
+pgnp=$(data --set networkPolicies.enabled=true --show-only templates/network-policies.yaml | awk '/^---/ { on = 0 } /^  name: t-schnappy-cnpg-postgres$/ { on = 1 } on')
+[ -n "$pgnp" ] || fail "no cnpg-postgres NetworkPolicy rendered"
+for c in monitor admin chat chess masi; do
+  echo "$pgnp" | grep -q "app.kubernetes.io/component: $c\$" || fail "the Postgres policy does not admit $c"
+done
+
 # A plain synced Job with a sync-wave is immutable once its template changes (a database added,
 # an image bumped): Argo's patch fails and rolls the whole data sync back (s3gw-buckets
 # 2026-06-29, init-users 2026-09-17). Such Jobs must be Sync hooks with BeforeHookCreation.

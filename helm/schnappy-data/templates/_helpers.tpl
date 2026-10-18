@@ -191,6 +191,11 @@ app.kubernetes.io/component: chat
 app.kubernetes.io/component: chess
 {{- end }}
 
+{{- define "schnappy.masi.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: masi
+{{- end }}
+
 {{- define "schnappy.gateway.selectorLabels" -}}
 {{ include "schnappy.selectorLabels" . }}
 app.kubernetes.io/component: gateway

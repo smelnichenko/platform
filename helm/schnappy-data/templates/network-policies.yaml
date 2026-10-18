@@ -29,6 +29,10 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "schnappy.chess.selectorLabels" . | nindent 14 }}
+        # masi has a database here too: until 2026-10-18 it got in only through the namespace's default allow
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.masi.selectorLabels" . | nindent 14 }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: postgres-init-users
