@@ -46,6 +46,36 @@ echo "$docs" | grep -q '"10.0.0.0/8"$' || fail "docs policy lost its allowed ran
 err=$(mesh --set 'gatewayLanOnly.allowedCidrs=null' 2>&1 >/dev/null) && fail "docs prefixes without allowedCidrs rendered"
 echo "$err" | grep -q 'gatewayLanOnly.allowedCidrs must list' || fail "unexpected error: $err"
 
+# --- schnappy-mesh: no actuator through the gateway but health --------------------------------
+act=$(mesh --show-only templates/gateway-actuator-deny.yaml)
+echo "$act" | grep -q '^  action: DENY$' || fail "actuator policy is not a DENY"
+echo "$act" | grep -q "gateway-name: $gw\$" || fail "actuator policy does not select Gateway $gw"
+echo "$act" | grep -qE 'hosts:|from:' && fail "actuator policy is bound to hosts or sources: it must deny every caller on every host"
+# every root a route serves an app under (a backend on 8080, the site's / aside) is covered, and its health left open
+roots=$(mesh --show-only templates/httproutes.yaml | awk '/PathPrefix, value: \/api/ { sub(/.*value: /, ""); sub(/ }.*/, ""); print }')
+[ -n "$roots" ] || fail "no /api route prefix read from httproutes.yaml"
+for p in $roots; do
+  case $p in /api/auth|/api/captcha|/api/user|/api/permissions) continue ;; esac  # admin's paths (its context /api: its actuator is /api/actuator, which routes to monitor's, covered)
+  echo "$act" | grep -q "^              - \"$p/actuator\*\"\$" || fail "actuator policy does not cover $p/actuator"
+  echo "$act" | grep -q "^              - \"$p/actuator/health\"\$" || fail "actuator policy does not leave $p/actuator/health open"
+  echo "$act" | grep -q "^              - \"$p/actuator/health/\*\"\$" || fail "actuator policy does not leave $p/actuator/health/ open"
+done
+# the policy as Istio applies it (python3 + py3-yaml: the step adds them): denied where a path matches a "paths" entry
+# and no "notPaths" one - exact, prefix (x*) or suffix (*x)
+python3 - "$act" <<'PY_ACTUATOR' || fail "actuator policy decides a path wrongly"
+import sys, yaml
+op = yaml.safe_load(sys.argv[1])["spec"]["rules"][0]["to"][0]["operation"]
+m = lambda pats, p: any(p.startswith(x[:-1]) if x.endswith("*") else p.endswith(x[1:]) if x.startswith("*") else p == x for x in pats)
+denied = lambda p: m(op["paths"], p) and not m(op.get("notPaths", []), p)
+want = {"/api/masi/actuator/prometheus": True, "/api/actuator/prometheus": True, "/api/masi/actuator/env": True,
+        "/api/chat/actuator": True, "/api/actuator/healthz": True, "/api/actuator/health/readiness": False,
+        "/api/actuator/health": False, "/api/masi/actuator/health/liveness": False, "/api/masi/jobs": False,
+        "/api/monitors": False}
+bad = {p: denied(p) for p, w in want.items() if denied(p) != w}
+print(bad or "ok")
+sys.exit(1 if bad else 0)
+PY_ACTUATOR
+
 # --- schnappy-observability: Prometheus route ----------------------------------------------
 obs() {
   helm template t helm/schnappy-observability/ --set gateway.enabled=true --set gateway.name=gw \

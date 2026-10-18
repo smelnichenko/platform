@@ -1,7 +1,7 @@
-{{- if and .Values.gateway.enabled .Values.gatewayLanOnly.docsPrefixes }}
+{{- if and .Values.gateway.enabled .Values.apiRoots }}
 {{- $fn := include "schnappy.fullname" . }}
 {{- if not .Values.gatewayLanOnly.allowedCidrs }}
-{{- fail "gatewayLanOnly.allowedCidrs must list at least one range when gatewayLanOnly.docsPrefixes is set" }}
+{{- fail "gatewayLanOnly.allowedCidrs must list at least one range when apiRoots is set" }}
 {{- end }}
 # The services' API documentation (springdoc: the OpenAPI document and Swagger UI) is served without a
 # login, on hosts that DO have one: it must not answer the internet either (operator, 2026-09-22).
@@ -22,7 +22,7 @@ spec:
     - to:
         - operation:
             paths:
-              {{- range $prefix := .Values.gatewayLanOnly.docsPrefixes }}
+              {{- range $prefix := .Values.apiRoots }}
               - {{ printf "%s/api-docs*" $prefix | quote }}
               - {{ printf "%s/v3/api-docs*" $prefix | quote }}
               - {{ printf "%s/swagger-ui*" $prefix | quote }}

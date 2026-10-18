@@ -23,6 +23,8 @@ steps:
   - name: helm-lint
     image: alpine/helm:latest
     commands:
+      # the render checks read a policy as YAML (alpine/helm ships neither)
+      - apk add --no-cache python3 py3-yaml
       - helm lint helm/schnappy/ --set site.dnsResolver=10.43.0.10
       - helm lint helm/schnappy-data/ --set postgres.password=test
       - helm lint helm/schnappy-auth/

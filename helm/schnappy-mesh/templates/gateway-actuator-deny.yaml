@@ -1,0 +1,30 @@
+{{- if and .Values.gateway.enabled .Values.apiRoots }}
+{{- $fn := include "schnappy.fullname" . }}
+# The services' actuators answer nobody through the gateway but their health: /actuator/prometheus is readable without a
+# login (Prometheus scrapes it inside the mesh), and through the gateway it gave anyone on pmon.dev masi's AI spend and
+# every request path (review of masi's production enable, 2026-10-18). Health stays open: the k6 smoke reads
+# /api/actuator/health/readiness from outside. Any source, any host - the LAN as well: nothing reads an actuator through
+# the gateway. The gateway judges the path the client sent (before a route rewrites it), so one prefix per API root.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-gateway-actuator-deny
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ $fn }}-gateway
+  action: DENY
+  rules:
+    - to:
+        - operation:
+            paths:
+              {{- range $root := .Values.apiRoots }}
+              - {{ printf "%s/actuator*" $root | quote }}
+              {{- end }}
+            notPaths:
+              {{- range $root := .Values.apiRoots }}
+              - {{ printf "%s/actuator/health" $root | quote }}
+              - {{ printf "%s/actuator/health/*" $root | quote }}
+              {{- end }}
+{{- end }}
