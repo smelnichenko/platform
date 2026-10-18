@@ -1,0 +1,65 @@
+# promtool unit tests for JVMHeapHigh and JvmMemoryHigh (rendered by .woodpecker/rules-unit-tests.sh), on the series
+# the services export: generational ZGC, both generations reporting the whole heap (768 MiB here) as their max, scraped
+# through the sidecar; kube-state-metrics' limits per container. Pool by pool a full heap read 0.5, and the namespace-wide
+# sum against every pool's max (Metaspace -1, the 1 GiB class space) could not pass ~0.5 (review, 2026-10-18).
+rule_files:
+  - rendered-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # a full heap split across the generations: 0.55 + 0.35 of the heap - neither pool alone is past 0.85
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_used_bytes{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", area="heap", id="ZGC Old Generation"}'
+        values: '442918093x15'
+      - series: 'jvm_memory_used_bytes{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", area="heap", id="ZGC Young Generation"}'
+        values: '281857605x15'
+      - series: 'jvm_memory_max_bytes{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", area="heap", id="ZGC Old Generation"}'
+        values: '805306368x15'
+      - series: 'jvm_memory_max_bytes{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", area="heap", id="ZGC Young Generation"}'
+        values: '805306368x15'
+      # a second pod at 0.4 + 0.3: not full
+      - series: 'jvm_memory_used_bytes{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", area="heap", id="ZGC Old Generation"}'
+        values: '322122547x15'
+      - series: 'jvm_memory_used_bytes{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", area="heap", id="ZGC Young Generation"}'
+        values: '241591910x15'
+      - series: 'jvm_memory_max_bytes{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", area="heap", id="ZGC Old Generation"}'
+        values: '805306368x15'
+      - series: 'jvm_memory_max_bytes{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", area="heap", id="ZGC Young Generation"}'
+        values: '805306368x15'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: JVMHeapHigh
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, pod: masi-a }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/JVMHeapHigh
+              summary: "JVM heap usage high"
+
+  # the JVM's own memory against its container's limit (1536 MiB): masi-a at 1400 MiB of heap and non-heap; monitor-a
+  # at 1000 MiB with its sidecar's limit (1 GiB) not taken for its own
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_used_bytes{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", area="heap", id="ZGC Old Generation"}'
+        values: '1048576000x15'
+      - series: 'jvm_memory_used_bytes{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", area="nonheap", id="Metaspace"}'
+        values: '419430400x15'
+      - series: 'kube_pod_container_resource_limits{job="schnappy-kube-state-metrics", namespace="schnappy-production", pod="masi-a", container="masi", resource="memory", unit="byte"}'
+        values: '1610612736x15'
+      - series: 'kube_pod_container_resource_limits{job="schnappy-kube-state-metrics", namespace="schnappy-production", pod="masi-a", container="istio-proxy", resource="memory", unit="byte"}'
+        values: '1073741824x15'
+      - series: 'jvm_memory_used_bytes{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", area="heap", id="ZGC Old Generation"}'
+        values: '1048576000x15'
+      - series: 'kube_pod_container_resource_limits{job="schnappy-kube-state-metrics", namespace="schnappy-production", pod="monitor-a", container="monitor", resource="memory", unit="byte"}'
+        values: '4294967296x15'
+      - series: 'kube_pod_container_resource_limits{job="schnappy-kube-state-metrics", namespace="schnappy-production", pod="monitor-a", container="istio-proxy", resource="memory", unit="byte"}'
+        values: '1073741824x15'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: JvmMemoryHigh
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, pod: masi-a }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/JvmMemoryHigh
+              summary: "JVM memory usage high (91.15%)"

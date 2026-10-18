@@ -96,7 +96,12 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/HikariPoolExhausted"
             summary: "HikariCP connection pool nearly exhausted"
         - alert: JVMHeapHigh
-          expr: jvm_memory_used_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", area="heap"} / jvm_memory_max_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", area="heap"} > 0.85
+          # a pod's heap: used summed over its pools, against the heap's max - one pool's (generational ZGC reports the
+          # whole heap as each generation's max; G1's Old carries it, Eden none): pool by pool, a full heap read 0.5
+          expr: |
+            sum by (namespace, job, pod) (jvm_memory_used_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", area="heap"})
+              / max by (namespace, job, pod) (jvm_memory_max_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", area="heap"})
+              > 0.85
           for: 10m
           labels:
             severity: warning
@@ -105,10 +110,14 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/JVMHeapHigh"
             summary: "JVM heap usage high"
         - alert: JvmMemoryHigh
+          # a pod's JVM (heap and non-heap used) against its app container's memory limit: what the OOM killer judges.
+          # It was every pod of the namespace summed against every pool's max (Metaspace's -1, the 1 GiB class space
+          # reserve): it could not pass ~0.5
           expr: |
-            sum(jvm_memory_used_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"})
-            / sum(jvm_memory_max_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"})
-            > 0.85
+            sum by (namespace, job, pod) (jvm_memory_used_bytes{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"})
+              / on (namespace, pod) group_left
+                max by (namespace, pod) (kube_pod_container_resource_limits{namespace="{{ $ns }}", resource="memory", container!~"istio-proxy|istio-init"})
+              > 0.85
           for: 10m
           labels:
             severity: warning
