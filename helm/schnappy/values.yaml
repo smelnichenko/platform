@@ -298,8 +298,10 @@ masiService:
       - cyber.teamdash.com
       - bigbank.teamdash.com
       - tehik.teamdash.com
-      # an ATS row auto-detected from a MeetFrank apply link
-      - sisutech.teamtailor.com
+      # ATS rows auto-detected from MeetFrank apply links, switched on in production 2026-10-19 (operator: "collect more
+      # in production"). sisutech.teamtailor.com is gone: its board answers 404 (as on test since 2026-09-22), its row off
+      - sisugroup.teamtailor.com
+      - lendurai.teamtailor.com
       # masi #25 and #28 (2026-09-22): the employer feeds and MeetFrank's API - seeded disabled, enabled on the Sources page
       - apply.workable.com
       - salv.jobs.personio.de
