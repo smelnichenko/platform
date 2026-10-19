@@ -12,7 +12,8 @@ metadata:
   labels:
     {{- include "schnappy.masi.labels" . | nindent 4 }}
 spec:
-  # replicas is a constraint, not a knob: the scheduler map and per-source locks are in-memory.
+  # N equal pods (plan 099): each scheduled run is claimed once per slot in the database, every writer meets at the
+  # rows and identities it writes, and a Send is claimed once per package - any number of replicas is safe.
   replicas: {{ .Values.masiService.replicas }}
   # Single node: recreate in place (maxSurge 0) so a roll never deadlocks on
   # CPU-request headroom. A brief blip per deploy is the accepted trade-off.
@@ -200,8 +201,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.masiService.browser.existingSecret }}
                   key: TOKEN
+            # the browser's sessions are shared by every masi pod: each takes its share (at least one), or two pods each
+            # starting maxParallel sessions overrun the browser's CONCURRENT and get 429s
             - name: MASI_BROWSER_MAX_PARALLEL
-              value: {{ .Values.masiService.browser.maxParallel | quote }}
+              value: {{ max 1 (div (int .Values.masiService.browser.maxParallel) (int .Values.masiService.replicas)) | quote }}
             - name: MASI_BROWSER_RUN_DEADLINE_MS
               value: {{ .Values.masiService.browser.timeoutMs | quote }}
             {{- else }}
@@ -269,4 +272,20 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+{{- if gt (int .Values.masiService.replicas) 1 }}
+---
+# with more than one pod, a voluntary eviction (a node drain, an upgrade) keeps one serving: every pod runs the same
+# lanes, so one is enough to carry on
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "schnappy.masi.serviceName" . }}
+  labels:
+    {{- include "schnappy.masi.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.masi.selectorLabels" . | nindent 6 }}
+{{- end }}
 {{- end }}
