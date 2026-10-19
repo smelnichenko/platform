@@ -50,6 +50,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [MasiSourceDisabledAuto](MasiSourceDisabledAuto.md)
 - [MasiSourceStale](MasiSourceStale.md)
 - [MasiSourceHostNotAllowed](MasiSourceHostNotAllowed.md)
+- [MasiJobClosedWithOpenListing](MasiJobClosedWithOpenListing.md)
 - [MasiSourceNotClosing](MasiSourceNotClosing.md)
 - [MasiSweepStarved](MasiSweepStarved.md)
 - [MasiReportsStale](MasiReportsStale.md)

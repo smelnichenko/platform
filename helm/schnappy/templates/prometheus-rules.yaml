@@ -277,17 +277,32 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/MasiSourceNotClosing"
             summary: "source {{"{{"}} $labels.source {{"}}"}} has counted no misses for three intervals: none of its listings can close"
         - alert: MasiSweepStarved
-          # the sweep that closes listings past their deadline stands aside while an ingest writes (one lock guards
-          # listing and job state). Twelve sweeps fit in two hours: ten skipped means it practically never runs
+          # the sweep that closes listings past their deadline leaves a job another writer holds past the lock wait to
+          # the next sweep, counting it (reason lock_wait, per job). One job held through every sweep of two hours is
+          # twelve; ten or more is a row held far longer than any write. Every pod sweeps: the pod that counted most,
+          # not their sum. ingest_busy is the count before the global lock went (one per skipped sweep) - kept while a
+          # masi image counting it may still run
           expr: |
-            sum by (job, namespace, sweep) (increase(masi_sweep_skipped_total{job="schnappy-masi", namespace="{{ $ns }}", reason="ingest_busy"}[2h])) >= 10
+            max by (job, namespace, sweep) (sum by (job, namespace, sweep, pod) (increase(masi_sweep_skipped_total{job="schnappy-masi", namespace="{{ $ns }}", reason=~"lock_wait|ingest_busy"}[2h]))) >= 10
           for: 10m
           labels:
             severity: warning
             namespace: {{ $ns }}
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiSweepStarved"
-            summary: "masi's {{"{{"}} $labels.sweep {{"}}"}} sweep was skipped {{"{{"}} $value | printf \"%.0f\" {{"}}"}} times in two hours: an ingest holds the lock almost all the time"
+            summary: "masi's {{"{{"}} $labels.sweep {{"}}"}} sweep left {{"{{"}} $value | printf \"%.0f\" {{"}}"}} job(s) in two hours to rows another writer held past the lock wait"
+        - alert: MasiJobClosedWithOpenListing
+          # a CLOSED job a listing still shows open: nothing heals it (the repair heals only the reverse), so 0 is the
+          # only right value. Every pod publishes the same database count: max, not sum
+          expr: |
+            max by (job, namespace) (masi_jobs_closed_with_open_listing{job="schnappy-masi", namespace="{{ $ns }}"}) > 0
+          for: 30m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiJobClosedWithOpenListing"
+            summary: "{{"{{"}} $value | printf \"%.0f\" {{"}}"}} CLOSED masi job(s) still have an open listing"
         - alert: MasiReportsStale
           # the weekly snapshot is written Monday 06:00 and caught up on every cron and restart;
           # nine days without one means the generator itself is failing, which nothing else shows

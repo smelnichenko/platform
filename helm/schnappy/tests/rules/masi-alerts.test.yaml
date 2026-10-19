@@ -279,7 +279,55 @@ tests:
           - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, sweep: expired }
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiSweepStarved
-              summary: "masi's expired sweep was skipped 12 times in two hours: an ingest holds the lock almost all the time"
+              summary: "masi's expired sweep left 12 job(s) in two hours to rows another writer held past the lock wait"
+
+  # since the global lock went: counted per job left to a row held past the lock wait - one job held through every
+  # sweep of two hours is twelve; two held jobs now and then are not a starved sweep
+  - interval: 10m
+    input_series:
+      - series: 'masi_sweep_skipped_total{job="schnappy-masi", namespace="schnappy-production", sweep="expired", reason="lock_wait", pod="masi-a"}'
+        values: '0 0 2 2 2 2 2 2 2 2 2 2 2 3+1x12'
+      # a second pod sweeping the same held job a few times: the alert takes the pod that counted most, not the sum
+      - series: 'masi_sweep_skipped_total{job="schnappy-masi", namespace="schnappy-production", sweep="expired", reason="lock_wait", pod="masi-b"}'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: MasiSweepStarved
+        exp_alerts: []          # two jobs once in two hours
+      - eval_time: 4h
+        alertname: MasiSweepStarved
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, sweep: expired }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSweepStarved
+              summary: "masi's expired sweep left 12 job(s) in two hours to rows another writer held past the lock wait"
+
+  # a CLOSED job with an open listing: nothing heals it, 0 is the only right value; two pods publish the same count
+  - interval: 5m
+    input_series:
+      - series: 'masi_jobs_closed_with_open_listing{job="schnappy-masi", namespace="schnappy-production", pod="masi-a"}'
+        values: '0 0 2x12'
+      - series: 'masi_jobs_closed_with_open_listing{job="schnappy-masi", namespace="schnappy-production", pod="masi-b"}'
+        values: '0 0 2x12'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: MasiJobClosedWithOpenListing
+        exp_alerts: []          # above 0 for 15 minutes: not yet
+      - eval_time: 45m
+        alertname: MasiJobClosedWithOpenListing
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiJobClosedWithOpenListing
+              summary: "2 CLOSED masi job(s) still have an open listing"   # max of the pods, not their sum
+  - interval: 5m
+    input_series:
+      - series: 'masi_jobs_closed_with_open_listing{job="schnappy-masi", namespace="schnappy-production", pod="masi-a"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: MasiJobClosedWithOpenListing
+        exp_alerts: []          # 0 is the right value
 
   # the weekly report gauge. promtool's clock starts at epoch 0, so "the gauge holds an old
   # period end" is modelled by holding it at 0 while time() runs past the nine-day threshold.
