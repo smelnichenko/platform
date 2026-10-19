@@ -329,6 +329,41 @@ tests:
         alertname: MasiJobClosedWithOpenListing
         exp_alerts: []          # 0 is the right value
 
+  # the count's time. promtool's clock starts at epoch 0, so a count made "now" is a timestamp equal to the eval time.
+  # Pod a's counts succeed until 1h, then fail (its timestamp stays at 3600); pod b counts throughout in the second case
+  # only. Sampled every 5m: a 10m gap would pass Prometheus' 5m lookback and reset the rule's for
+  - interval: 5m
+    input_series:
+      - series: 'masi_jobs_closed_with_open_listing_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", pod="masi-a"}'
+        values: '0+300x12 3600x36'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: MasiJobClosedWithOpenListingNotCounted
+        exp_alerts: []          # counted just now
+      - eval_time: 2h
+        alertname: MasiJobClosedWithOpenListingNotCounted
+        exp_alerts: []          # an hour since the last count: not past it
+      - eval_time: 2h10m
+        alertname: MasiJobClosedWithOpenListingNotCounted
+        exp_alerts: []          # past it, not yet for fifteen minutes
+      - eval_time: 2h30m
+        alertname: MasiJobClosedWithOpenListingNotCounted
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiJobClosedWithOpenListingNotCounted
+              summary: "masi has not counted its closed jobs with an open listing for 1h 30m 0s"
+  - interval: 5m
+    input_series:
+      - series: 'masi_jobs_closed_with_open_listing_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", pod="masi-a"}'
+        values: '0+300x12 3600x36'
+      - series: 'masi_jobs_closed_with_open_listing_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", pod="masi-b"}'
+        values: '0+300x48'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: MasiJobClosedWithOpenListingNotCounted
+        exp_alerts: []          # one pod still counts: the newest count, not each pod's
+
   # the weekly report gauge. promtool's clock starts at epoch 0, so "the gauge holds an old
   # period end" is modelled by holding it at 0 while time() runs past the nine-day threshold.
   # The series is sampled every minute because the rule's `for` needs an unbroken hour of it.

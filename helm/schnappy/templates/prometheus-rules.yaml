@@ -303,6 +303,20 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiJobClosedWithOpenListing"
             summary: "{{"{{"}} $value | printf \"%.0f\" {{"}}"}} CLOSED masi job(s) still have an open listing"
+        - alert: MasiJobClosedWithOpenListingNotCounted
+          # the count above keeps its last value when counting fails (each pod counts every ten minutes): a count failing
+          # for good would show its last 0 and never fire. The time of the newest successful count, on any pod - every
+          # pod counts the same database. An hour is six counts missed; a pod's start (0 until its first count, seconds
+          # later) passes inside the for
+          expr: |
+            time() - max by (job, namespace) (masi_jobs_closed_with_open_listing_counted_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}) > 3600
+          for: 15m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiJobClosedWithOpenListingNotCounted"
+            summary: "masi has not counted its closed jobs with an open listing for {{"{{"}} $value | humanizeDuration {{"}}"}}"
         - alert: MasiReportsStale
           # the weekly snapshot is written Monday 06:00 and caught up on every cron and restart;
           # nine days without one means the generator itself is failing, which nothing else shows
