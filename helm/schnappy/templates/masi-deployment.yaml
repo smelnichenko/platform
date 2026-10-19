@@ -2,6 +2,9 @@
 {{- if and (eq (.Values.masiService.apply.enabled | toString) "true") (ne (.Values.masiService.mail.enabled | toString) "true") }}
 {{- fail "masiService.apply.enabled needs masiService.mail.enabled: a send goes through masi's mail server" }}
 {{- end }}
+{{- if and (eq (.Values.masiService.apply.enabled | toString) "true") (ne (.Values.masiService.apply.production | toString) "true") (not .Values.masiService.mail.deliverAllTo) }}
+{{- fail "masiService.apply.enabled outside production needs masiService.mail.deliverAllTo (the sink); production sets masiService.apply.production" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -166,6 +169,8 @@ spec:
               value: {{ required "masiService.apply.replyTo is required when masiService.apply.enabled" .Values.masiService.apply.replyTo | quote }}
             - name: MASI_APPLY_BCC
               value: {{ required "masiService.apply.bcc is required when masiService.apply.enabled" .Values.masiService.apply.bcc | quote }}
+            - name: MASI_APPLY_PRODUCTION
+              value: {{ .Values.masiService.apply.production | default false | toString | quote }}
             {{- end }}
             - name: MAIL_FROM
               value: {{ .Values.mail.fromAddress | default "noreply@example.com" | quote }}

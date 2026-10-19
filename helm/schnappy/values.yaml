@@ -237,6 +237,10 @@ masiService:
     from: ""      # a sender on the mail server's verified domain, e.g. "Sergei Melnichenko <apply@pmon.dev>"
     replyTo: ""   # where a recruiter's answer goes: the operator's own address
     bcc: ""       # the operator's copy of exactly what was sent
+    # Sending to the real recipients is only for the environment that says it is production: anywhere else
+    # mail.deliverAllTo (the sink) must be set, or masi refuses to send - a copy holding production's contacts must
+    # never mail a recruiter because a sink was forgotten.
+    production: false
   analysis:
     # Read open jobs with the cheap model BEFORE a package is asked for, so every job gets a match score against the
     # active CV master (the score itself is free and always computed). Costs a fraction of a cent per job, capped by the
