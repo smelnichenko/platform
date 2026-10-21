@@ -229,6 +229,12 @@ masiService:
     # A NON-production environment's mail sink: its user table follows the identity provider and holds real people's
     # addresses, so with this set every digest goes here and none to a reader. Leave empty in production.
     deliverAllTo: ""
+  alerts:
+    # The operator's instant e-mail alerts: a pipeline that broke, a registry that found new rows, a new match above
+    # matchScore. Needs mail.enabled above. Off until switched on per environment.
+    enabled: false
+    to: ""
+    matchScore: 0.8
   apply:
     # Send an application on the operator's click (plan 103): a REVIEWED package, previewed, one mail to the contact the
     # job's own posting names - never on a schedule, never in bulk. Needs mail.enabled above (its server, secret and

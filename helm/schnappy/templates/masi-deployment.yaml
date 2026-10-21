@@ -189,6 +189,13 @@ spec:
             {{- end }}
             - name: MASI_SITE_URL
               value: {{ required "masiService.mail.siteUrl is required when masiService.mail.enabled" .Values.masiService.mail.siteUrl | quote }}
+            # the operator's instant e-mail alerts: pipeline failures, new registry rows, matches above the score
+            - name: MASI_ALERTS_ENABLED
+              value: {{ .Values.masiService.alerts.enabled | default false | toString | quote }}
+            - name: MASI_ALERTS_TO
+              value: {{ .Values.masiService.alerts.to | default "" | quote }}
+            - name: MASI_ALERTS_MATCH_SCORE
+              value: {{ .Values.masiService.alerts.matchScore | default 0.8 | quote }}
             {{- if eq (.Values.masiService.apply.enabled | toString) "true" }}
             # sending an application on the operator's click: one mail per press, never on a schedule
             - name: MASI_APPLY_ENABLED
