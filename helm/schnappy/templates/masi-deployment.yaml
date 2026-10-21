@@ -161,6 +161,8 @@ spec:
               value: {{ .Values.masiService.enrich.contactPictures.gravatar | toString | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_UNAVATAR
               value: {{ .Values.masiService.enrich.contactPictures.unavatar | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_MAX_REQUESTS_PER_DAY
+              value: {{ .Values.masiService.enrich.contactPictures.maxRequestsPerDay | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_COMPANY_SITE
               value: {{ .Values.masiService.enrich.contactPictures.companySite | toString | quote }}
             {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}

@@ -266,6 +266,7 @@ masiService:
       initialDelay: 90s
       revisit: 30d
       gravatar: true
+      maxRequestsPerDay: 0
       unavatar: true
       companySite: true
   http:
