@@ -258,19 +258,22 @@ masiService:
     enabled: false
     perTick: 5
     contactPictures:
-      # Collect contacts' pictures in the background from Gravatar, unavatar.io and the company's own site. A prototype,
-      # off until switched on. perTick contacts every tick, a contact revisited after the revisit period.
+      # Collect contacts' pictures in the background from Gravatar, unavatar.io, the company's own site, LinkedIn and
+      # a web image search by name. A prototype, off until switched on. perTick contacts every tick, a contact
+      # revisited after the revisit period.
       enabled: false
       perTick: 5
       tick: 10m
       initialDelay: 90s
       revisit: 30d
       gravatar: true
-      maxRequestsPerDay: 0
-      linkedin: false
-      linkedinUrlTemplate: "https://www.linkedin.com/company/{name}"
       unavatar: true
       companySite: true
+      linkedin: false
+      linkedinUrlTemplate: "https://www.linkedin.com/company/{name}"
+      nameSearch: false
+      nameSearchUrlTemplate: "https://duckduckgo.com/?q={name}&iax=images&ia=images"
+      maxRequestsPerDay: 0
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
     # browser's request guard. A host that is not here cannot be contacted; an empty list means
