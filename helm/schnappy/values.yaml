@@ -257,6 +257,17 @@ masiService:
     # 30 days. perTick companies every ten minutes, most open jobs first. Off until switched on.
     enabled: false
     perTick: 5
+    contactPictures:
+      # Collect contacts' pictures in the background from Gravatar, unavatar.io and the company's own site. A prototype,
+      # off until switched on. perTick contacts every tick, a contact revisited after the revisit period.
+      enabled: false
+      perTick: 5
+      tick: 10m
+      initialDelay: 90s
+      revisit: 30d
+      gravatar: true
+      unavatar: true
+      companySite: true
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
     # browser's request guard. A host that is not here cannot be contacted; an empty list means
