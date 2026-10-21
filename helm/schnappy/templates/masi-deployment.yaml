@@ -165,6 +165,8 @@ spec:
               value: {{ .Values.masiService.enrich.contactPictures.linkedin | toString | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_NAME_SEARCH
               value: {{ .Values.masiService.enrich.contactPictures.nameSearch | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_LINK_DISTANCE
+              value: {{ .Values.masiService.enrich.contactPictures.linkDistance | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_NAME_SEARCH_URL_TEMPLATE
               value: {{ .Values.masiService.enrich.contactPictures.nameSearchUrlTemplate | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_LINKEDIN_URL_TEMPLATE
