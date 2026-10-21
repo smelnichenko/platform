@@ -146,6 +146,23 @@ spec:
               value: {{ .Values.masiService.enrich.enabled | toString | quote }}
             - name: MASI_ENRICH_PER_TICK
               value: {{ .Values.masiService.enrich.perTick | quote }}
+            # the background collection of contacts' pictures (Gravatar, unavatar.io, the company's own site)
+            - name: MASI_ENRICH_CONTACT_PICTURES_ENABLED
+              value: {{ .Values.masiService.enrich.contactPictures.enabled | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_PER_TICK
+              value: {{ .Values.masiService.enrich.contactPictures.perTick | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_TICK
+              value: {{ .Values.masiService.enrich.contactPictures.tick | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_INITIAL_DELAY
+              value: {{ .Values.masiService.enrich.contactPictures.initialDelay | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_REVISIT
+              value: {{ .Values.masiService.enrich.contactPictures.revisit | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_GRAVATAR
+              value: {{ .Values.masiService.enrich.contactPictures.gravatar | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_UNAVATAR
+              value: {{ .Values.masiService.enrich.contactPictures.unavatar | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_COMPANY_SITE
+              value: {{ .Values.masiService.enrich.contactPictures.companySite | toString | quote }}
             {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}
             # the weekly digest by mail. SPRING_MAIL_HOST is what makes a mail sender exist at all: set only here
             - name: MASI_MAIL_ENABLED
