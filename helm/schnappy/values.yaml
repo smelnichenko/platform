@@ -272,7 +272,7 @@ masiService:
       linkedin: false
       linkedinUrlTemplate: "https://www.linkedin.com/company/{name}"
       nameSearch: false
-      nameSearchUrlTemplate: "https://www.bing.com/images/search?q={name}"
+      nameSearchUrlTemplate: "https://duckduckgo.com/?q={name}&iax=images&ia=images"
       linkDistance: 8
       maxRequestsPerDay: 0
   http:
