@@ -161,6 +161,10 @@ spec:
               value: {{ .Values.masiService.enrich.contactPictures.gravatar | toString | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_UNAVATAR
               value: {{ .Values.masiService.enrich.contactPictures.unavatar | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_LINKEDIN
+              value: {{ .Values.masiService.enrich.contactPictures.linkedin | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_LINKEDIN_URL_TEMPLATE
+              value: {{ .Values.masiService.enrich.contactPictures.linkedinUrlTemplate | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_MAX_REQUESTS_PER_DAY
               value: {{ .Values.masiService.enrich.contactPictures.maxRequestsPerDay | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_COMPANY_SITE

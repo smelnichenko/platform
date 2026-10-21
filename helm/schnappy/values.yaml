@@ -267,6 +267,8 @@ masiService:
       revisit: 30d
       gravatar: true
       maxRequestsPerDay: 0
+      linkedin: false
+      linkedinUrlTemplate: "https://www.linkedin.com/company/{name}"
       unavatar: true
       companySite: true
   http:
