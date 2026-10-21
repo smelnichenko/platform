@@ -112,6 +112,9 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.masiService.ai.existingSecret }}
                   key: ANTHROPIC_API_KEY
+            # a service-account key is not scoped to a workspace: the id tells Anthropic which one it acts in
+            - name: ANTHROPIC_WORKSPACE_ID
+              value: {{ .Values.masiService.ai.workspaceId | default "" | quote }}
             # Per-service model choice: never the chart-level AI_MODEL (Haiku in test values).
             - name: MASI_AI_TUNING_MODEL
               value: {{ .Values.masiService.ai.tuningModel | quote }}

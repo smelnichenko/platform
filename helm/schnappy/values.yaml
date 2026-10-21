@@ -204,6 +204,7 @@ masiService:
   ai:
     enabled: false
     existingSecret: ""
+    workspaceId: ""
     tuningModel: "claude-opus-5"
     extractModel: "claude-haiku-4-5-20251001"
     # the AI match: a verdict per requirement against the master's evidence (about 0.008 USD a posting)
