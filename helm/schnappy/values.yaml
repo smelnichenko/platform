@@ -272,7 +272,7 @@ masiService:
       linkedin: false
       linkedinUrlTemplate: "https://www.linkedin.com/company/{name}"
       nameSearch: false
-      nameSearchUrlTemplate: "https://duckduckgo.com/?q={name}&iax=images&ia=images"
+      nameSearchUrlTemplate: "https://www.bing.com/images/search?q={name}"
       maxRequestsPerDay: 0
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
