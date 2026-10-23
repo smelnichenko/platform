@@ -193,7 +193,7 @@ masiService:
     failureThreshold: 60
   resources:
     requests: { memory: "512Mi", cpu: "100m" }
-    limits: { memory: "1536Mi", cpu: "2000m" }
+    limits: { memory: "2Gi", cpu: "2000m" }
   service:
     type: ClusterIP
     port: 8080
