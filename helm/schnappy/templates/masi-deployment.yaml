@@ -147,6 +147,10 @@ spec:
             # the background visits to hiring companies' own sites (the open fetcher: public HTTPS, robots.txt honoured)
             - name: MASI_COLLECTOR_GITHUB_TOKEN
               value: {{ .Values.masiService.collector.githubToken | quote }}
+            - name: MASI_ASSISTANT_GMAIL_USERNAME
+              value: {{ .Values.masiService.assistant.gmailUsername | default "" | quote }}
+            - name: MASI_ASSISTANT_GMAIL_PASSWORD
+              value: {{ .Values.masiService.assistant.gmailPassword | default "" | quote }}
             - name: MASI_LINKEDIN_LI_AT
               value: {{ .Values.masiService.collector.linkedinLiAt | quote }}
             - name: MASI_ENRICH_ENABLED

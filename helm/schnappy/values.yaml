@@ -230,6 +230,10 @@ masiService:
     # A NON-production environment's mail sink: its user table follows the identity provider and holds real people's
     # addresses, so with this set every digest goes here and none to a reader. Leave empty in production.
     deliverAllTo: ""
+  assistant:
+    # The virtual assistant's own Gmail (its correspondence, not masi's system mail): username + app password.
+    gmailUsername: ""
+    gmailPassword: ""
   collector:
     # The operator's GitHub PAT (public read only): the anonymous 60/hour core limit cannot fill a 3000/day cap.
     githubToken: ""
