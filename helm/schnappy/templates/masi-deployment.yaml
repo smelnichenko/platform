@@ -203,6 +203,12 @@ spec:
               value: {{ .Values.masiService.alerts.to | default "" | quote }}
             - name: MASI_ALERTS_MATCH_SCORE
               value: {{ .Values.masiService.alerts.matchScore | default 0.8 | quote }}
+            - name: MASI_ALERTS_TELEGRAM_BOT_TOKEN
+              value: {{ .Values.masiService.alerts.telegramBotToken | default "" | quote }}
+            - name: MASI_ALERTS_TELEGRAM_CHAT_ID
+              value: {{ .Values.masiService.alerts.telegramChatId | default "" | quote }}
+            - name: MASI_ALERTS_DISCORD_WEBHOOK
+              value: {{ .Values.masiService.alerts.discordWebhook | default "" | quote }}
             {{- if eq (.Values.masiService.apply.enabled | toString) "true" }}
             # sending an application on the operator's click: one mail per press, never on a schedule
             - name: MASI_APPLY_ENABLED

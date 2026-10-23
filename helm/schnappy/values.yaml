@@ -241,6 +241,10 @@ masiService:
     enabled: false
     to: ""
     matchScore: 0.8
+    # The messengers the digest also leaves through; each channel needs its own token and chat.
+    telegramBotToken: ""
+    telegramChatId: ""
+    discordWebhook: ""
   apply:
     # Send an application on the operator's click (plan 103): a REVIEWED package, previewed, one mail to the contact the
     # job's own posting names - never on a schedule, never in bulk. Needs mail.enabled above (its server, secret and
