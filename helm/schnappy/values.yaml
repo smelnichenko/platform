@@ -230,6 +230,9 @@ masiService:
     # A NON-production environment's mail sink: its user table follows the identity provider and holds real people's
     # addresses, so with this set every digest goes here and none to a reader. Leave empty in production.
     deliverAllTo: ""
+  collector:
+    # The operator's GitHub PAT (public read only): the anonymous 60/hour core limit cannot fill a 3000/day cap.
+    githubToken: ""
   alerts:
     # The operator's instant e-mail alerts: a pipeline that broke, a registry that found new rows, a new match above
     # matchScore. Needs mail.enabled above. Off until switched on per environment.

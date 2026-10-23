@@ -145,6 +145,8 @@ spec:
             - name: MASI_MATCH_PER_TICK
               value: {{ .Values.masiService.analysis.matchPerTick | quote }}
             # the background visits to hiring companies' own sites (the open fetcher: public HTTPS, robots.txt honoured)
+            - name: MASI_COLLECTOR_GITHUB_TOKEN
+              value: {{ .Values.masiService.collector.githubToken | quote }}
             - name: MASI_ENRICH_ENABLED
               value: {{ .Values.masiService.enrich.enabled | toString | quote }}
             - name: MASI_ENRICH_PER_TICK
