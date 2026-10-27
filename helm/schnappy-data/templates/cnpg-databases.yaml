@@ -1,0 +1,32 @@
+{{- /*
+A service database's extensions, kept present by CNPG: an entry of postgres.databases with `extensions` (and its
+`owner`, the role that owns the database - CNPG's Database needs it and would ALTER a different one) gets a Database.
+Creating an extension wants a superuser, which no service role is: masi's migration 084 needs pgvector, created by hand
+in production and missing in test, where masi crash-looped three days (2026-10-24..27) - and a rebuild would too.
+retain: deleting this resource never drops the database.
+*/ -}}
+{{- if eq (.Values.cnpg.enabled | toString) "true" }}
+{{- range .Values.postgres.databases }}
+{{- if .extensions }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ include "schnappy.postgres.serviceName" $ }}-{{ .name }}
+  labels:
+    {{- include "schnappy.labels" $ | nindent 4 }}
+spec:
+  cluster:
+    name: {{ include "schnappy.postgres.serviceName" $ }}
+  name: {{ .name }}
+  owner: {{ required (printf "postgres.databases %s: extensions need its owner" .name) .owner }}
+  ensure: present
+  databaseReclaimPolicy: retain
+  extensions:
+    {{- range .extensions }}
+    - name: {{ . }}
+      ensure: present
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

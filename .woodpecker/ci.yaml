@@ -50,6 +50,7 @@ steps:
     image: alpine/helm:latest
     commands:
       - sh .woodpecker/cnpg-backup-render.sh
+      - sh .woodpecker/cnpg-databases-render.sh
 
   # ClickHouse started on the chart's config in the chart's image: a config it refuses fails here, not at production's
   # restart; every system log it keeps has a TTL (the script says why)
