@@ -145,14 +145,27 @@ spec:
             - name: MASI_MATCH_PER_TICK
               value: {{ .Values.masiService.analysis.matchPerTick | quote }}
             # the background visits to hiring companies' own sites (the open fetcher: public HTTPS, robots.txt honoured)
-            - name: MASI_COLLECTOR_GITHUB_TOKEN
-              value: {{ .Values.masiService.collector.githubToken | quote }}
             - name: MASI_ASSISTANT_GMAIL_USERNAME
               value: {{ .Values.masiService.assistant.gmailUsername | default "" | quote }}
+            {{- with .Values.masiService.credentials.existingSecret }}
+            # the operator's credentials from Vault (<prefix>/masi-credentials), each optional: one not there is off
+            - name: MASI_COLLECTOR_GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef: { name: {{ . }}, key: github_token, optional: true }
+            - name: MASI_ASSISTANT_GMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ . }}, key: gmail_password, optional: true }
+            - name: MASI_LINKEDIN_LI_AT
+              valueFrom:
+                secretKeyRef: { name: {{ . }}, key: linkedin_li_at, optional: true }
+            {{- else }}
+            - name: MASI_COLLECTOR_GITHUB_TOKEN
+              value: {{ .Values.masiService.collector.githubToken | quote }}
             - name: MASI_ASSISTANT_GMAIL_PASSWORD
               value: {{ .Values.masiService.assistant.gmailPassword | default "" | quote }}
             - name: MASI_LINKEDIN_LI_AT
               value: {{ .Values.masiService.collector.linkedinLiAt | quote }}
+            {{- end }}
             - name: MASI_ENRICH_ENABLED
               value: {{ .Values.masiService.enrich.enabled | toString | quote }}
             - name: MASI_ENRICH_PER_TICK

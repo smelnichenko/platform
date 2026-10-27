@@ -234,6 +234,11 @@ masiService:
     # The virtual assistant's own Gmail (its correspondence, not masi's system mail): username + app password.
     gmailUsername: ""
     gmailPassword: ""
+  # The operator's credentials masi uses (the assistant's Gmail app password, the LinkedIn li_at cookie, the GitHub
+  # PAT) from Vault <prefix>/masi-credentials (gmail_password, linkedin_li_at, github_token), never values in git: with
+  # existingSecret set, the plain values below are not read. Each key optional - one not in Vault leaves that one off.
+  credentials:
+    existingSecret: ""
   collector:
     # The operator's GitHub PAT (public read only): the anonymous 60/hour core limit cannot fill a 3000/day cap.
     githubToken: ""
