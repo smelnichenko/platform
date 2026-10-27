@@ -186,6 +186,8 @@ spec:
               value: {{ .Values.masiService.enrich.contactPictures.maxRequestsPerDay | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_COMPANY_SITE
               value: {{ .Values.masiService.enrich.contactPictures.companySite | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_FACE
+              value: {{ .Values.masiService.enrich.contactPictures.face | toString | quote }}
             {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}
             # the weekly digest by mail. SPRING_MAIL_HOST is what makes a mail sender exist at all: set only here
             - name: MASI_MAIL_ENABLED

@@ -294,6 +294,8 @@ masiService:
       nameSearch: false
       nameSearchUrlTemplate: "https://duckduckgo.com/?q={name}&iax=images&ia=images"
       linkDistance: 8
+      # ArcFace face matching (embeddings and same-face links); off where its distances are not yet to be trusted
+      face: true
       maxRequestsPerDay: 0
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
