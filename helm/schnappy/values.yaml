@@ -188,6 +188,9 @@ masiService:
     pullPolicy: IfNotPresent
   replicas: 1
   javaOpts: "-Xmx768m"
+  # A collector run's ceiling: the most a source's own deadlineSeconds may ask for. Unset keeps the code's 15 minutes.
+  collect:
+    maxDeadline: ""
   # startup budget = failureThreshold × 10 s: a start on a busy node took 279 s (2026-09-28); 60 is 10 minutes
   startupProbe:
     failureThreshold: 60

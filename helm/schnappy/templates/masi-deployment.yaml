@@ -82,6 +82,13 @@ spec:
             # the OpenAPI document and Swagger UI: served only where this says so (test); the gateway keeps them LAN-only besides
             - name: MASI_API_DOCS_ENABLED
               value: {{ .Values.masiService.apiDocs.enabled | toString | quote }}
+            # The most a source's own deadlineSeconds may ask for. It was 900 seconds literal in the code, which cut the
+            # GitHub sweep's 7200 to fifteen minutes without saying so. Unset keeps the old fifteen minutes, so only a
+            # values file that asks for more changes behaviour.
+            {{- if .Values.masiService.collect.maxDeadline }}
+            - name: MASI_COLLECT_MAX_DEADLINE
+              value: {{ .Values.masiService.collect.maxDeadline | quote }}
+            {{- end }}
             - name: DB_HOST
               value: {{ include "schnappy.postgres.serviceName" . }}
             - name: SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES
