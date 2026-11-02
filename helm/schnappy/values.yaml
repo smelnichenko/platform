@@ -308,9 +308,11 @@ masiService:
       face: false
       # the cosine distance under which two ArcFace faces are linked: the model's own is about 0.6-0.7, and 0.4 (the
       # old in-code default) linked almost any two faces - the reason the lane is off
-      faceThreshold: 0.7
-      # the largest picture kept, in bytes; a source's answer over it is not read and counts as a miss
-      maxBytes: 8388608
+      faceThreshold: "0.7"
+      # the largest picture kept, in bytes; a source's answer over it is not read and counts as a miss.
+      # Quoted: as a bare number Helm hands the pod "8.388608e+06", which the app cannot bind to a long - it refused to
+      # start with exactly that (production, 2026-11-02). The threshold is quoted for the same reason.
+      maxBytes: "8388608"
       maxRequestsPerDay: 0
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the
