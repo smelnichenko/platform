@@ -287,9 +287,9 @@ masiService:
     perTick: 5
     contactPictures:
       # Collect contacts' pictures in the background from Gravatar, unavatar.io, the company's own site, LinkedIn and
-      # a web image search by name. A prototype, off until switched on. perTick contacts every tick, a contact
-      # revisited after the revisit period.
-      enabled: false
+      # a web image search by name. On in production from 2026-11-02 (operator); perTick contacts every tick, a contact
+      # revisited after the revisit period. perTick and tick are deliberately unchanged when it was switched on.
+      enabled: true
       perTick: 5
       tick: 10m
       initialDelay: 90s
@@ -302,8 +302,15 @@ masiService:
       nameSearch: false
       nameSearchUrlTemplate: "https://duckduckgo.com/?q={name}&iax=images&ia=images"
       linkDistance: 8
-      # ArcFace face matching (embeddings and same-face links); off where its distances are not yet to be trusted
-      face: true
+      # ArcFace face matching (embeddings and same-face links); off where its distances are not yet to be trusted -
+      # production's same-face links were wrong at 0.05-0.40 (different people), so it is OFF: a picture is kept on the
+      # AI portrait check, and no same-face link is written.
+      face: false
+      # the cosine distance under which two ArcFace faces are linked: the model's own is about 0.6-0.7, and 0.4 (the
+      # old in-code default) linked almost any two faces - the reason the lane is off
+      faceThreshold: 0.7
+      # the largest picture kept, in bytes; a source's answer over it is not read and counts as a miss
+      maxBytes: 8388608
       maxRequestsPerDay: 0
   http:
     # The only hosts masi's collectors may contact — exact names, no wildcard, checked in the fetcher and in the

@@ -208,6 +208,10 @@ spec:
               value: {{ .Values.masiService.enrich.contactPictures.companySite | toString | quote }}
             - name: MASI_ENRICH_CONTACT_PICTURES_FACE
               value: {{ .Values.masiService.enrich.contactPictures.face | toString | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_MAX_BYTES
+              value: {{ .Values.masiService.enrich.contactPictures.maxBytes | quote }}
+            - name: MASI_ENRICH_CONTACT_PICTURES_FACE_THRESHOLD
+              value: {{ .Values.masiService.enrich.contactPictures.faceThreshold | quote }}
             {{- if eq (.Values.masiService.mail.enabled | toString) "true" }}
             # the weekly digest by mail. SPRING_MAIL_HOST is what makes a mail sender exist at all: set only here
             - name: MASI_MAIL_ENABLED
