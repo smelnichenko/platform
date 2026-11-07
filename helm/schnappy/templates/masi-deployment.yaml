@@ -159,6 +159,9 @@ spec:
             - name: MASI_COLLECTOR_GITHUB_TOKEN
               valueFrom:
                 secretKeyRef: { name: {{ . }}, key: github_token, optional: true }
+            - name: MASI_COLLECTOR_MEETFRANK_TOKEN
+              valueFrom:
+                secretKeyRef: { name: {{ . }}, key: meetfrank_token, optional: true }
             - name: MASI_ASSISTANT_GMAIL_PASSWORD
               valueFrom:
                 secretKeyRef: { name: {{ . }}, key: gmail_password, optional: true }
@@ -168,6 +171,8 @@ spec:
             {{- else }}
             - name: MASI_COLLECTOR_GITHUB_TOKEN
               value: {{ .Values.masiService.collector.githubToken | quote }}
+            - name: MASI_COLLECTOR_MEETFRANK_TOKEN
+              value: {{ .Values.masiService.collector.meetfrankToken | default "" | quote }}
             - name: MASI_ASSISTANT_GMAIL_PASSWORD
               value: {{ .Values.masiService.assistant.gmailPassword | default "" | quote }}
             - name: MASI_LINKEDIN_LI_AT
