@@ -272,9 +272,11 @@ spec:
             {{- if eq (.Values.masiService.browser.enabled | toString) "true" }}
             - name: MASI_BROWSER_ENABLED
               value: "true"
-            # CDP over the Service port named `http`: the websocket upgrades through Envoy.
+            # CDP over the Service port named `http`: the websocket upgrades through Envoy. headless=false: browserless
+            # launches the browser on the image's own virtual screen (Xvfb :99) - a site that refuses a headless browser
+            # (DuckDuckGo's bot check) reads it as the regular browser it is.
             - name: MASI_BROWSER_ENDPOINT
-              value: "ws://{{ include "schnappy.masiBrowser.serviceName" . }}:3000"
+              value: "ws://{{ include "schnappy.masiBrowser.serviceName" . }}:3000{{ if eq (.Values.masiService.browser.headless | toString) "false" }}?headless=false{{ end }}"
             - name: MASI_BROWSER_TOKEN
               valueFrom:
                 secretKeyRef:

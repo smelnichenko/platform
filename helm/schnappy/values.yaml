@@ -257,6 +257,8 @@ masiService:
     telegramBotToken: ""
     telegramChatId: ""
     discordWebhook: ""
+    # MasiCostRate fires above this hourly LLM spend (USD/h); the budgets are the daily/monthly caps.
+    costRateUsdPerHour: 1
   apply:
     # Send an application on the operator's click (plan 103): a REVIEWED package, previewed, one mail to the contact the
     # job's own posting names - never on a schedule, never in bulk. Needs mail.enabled above (its server, secret and
@@ -366,13 +368,10 @@ masiService:
       - api.meetfrank.com
       # the Tax and Customs Board's quarterly company figures (a Nextcloud share; the /s/<token> link redirects on the same host)
       - ncfailid.emta.ee
-  alerts:
-    # MasiCostRate fires above this hourly LLM spend (USD/h); the budgets are the daily/monthly caps.
-    costRateUsdPerHour: 1
-  # Headless Chromium for BROWSER collectors: its own pod, connected over CDP. The masi image
-  # never contains a browser. Pinned by DIGEST (v2.56.7); the CD sed anchor (`# masi$`) never
-  # touches this block. Requires no token: access is the NetworkPolicy (ingress from masi
-  # only) plus the dedicated mesh ALLOW policy for masi's principal.
+  # Chromium for BROWSER collectors: its own pod, connected over CDP. The masi image never
+  # contains a browser. Pinned by DIGEST (v2.56.7); the CD sed anchor (`# masi$`) never
+  # touches this block. Access: the token (existingSecret below), the NetworkPolicy (ingress
+  # from masi only) and the dedicated mesh ALLOW policy for masi's principal.
   browser:
     enabled: false
     image:
@@ -390,6 +389,11 @@ masiService:
     # run is always ended by masi, not by the pod mid-navigation.
     maxParallel: 2
     timeoutMs: 600000
+    # false: the browser runs as a regular one on the image's virtual screen (Xvfb, started by its own start script),
+    # not headless - DuckDuckGo answers a headless browser with its bot check. Verified under this pod's own
+    # restrictions (read-only root, /tmp, home and shm only, uid 999, no capabilities): DuckDuckGo and LHV's landing both
+    # render (2026-11-07).
+    headless: false
     # /dev/shm as a memory emptyDir: Kubernetes' default 64 MiB crashes renderers.
     shmSize: 512Mi
     resources:
