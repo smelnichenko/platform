@@ -264,7 +264,13 @@ echo "$dep" | grep -q 'postgres-\(chess\|chat\|monitor\|admin\)' && fail "masi r
 [ "$(envref "$dep" ANTHROPIC_API_KEY)" = "t-ai-masi ANTHROPIC_API_KEY" ] || fail "masi does not read ANTHROPIC_API_KEY from its own ai-masi secret"
 echo "$dep" | grep -q 't-schnappy-ai$' && fail "masi must never read the shared ai secret"
 [ "$(envref "$dep" MASI_BROWSER_TOKEN)" = "t-masi-browser TOKEN" ] || fail "masi does not read the browser token"
-[ "$(envv "$dep" MASI_BROWSER_ENDPOINT)" = '"ws://t-schnappy-masi-browser:3000"' ] || fail "masi browser endpoint wrong"
+# the browser on its virtual screen by default (headless=false: DuckDuckGo's bot check refuses a headless one); headless
+# on request, with no query
+[ "$(envv "$dep" MASI_BROWSER_ENDPOINT)" = '"ws://t-schnappy-masi-browser:3000?headless=false"' ] || fail "masi browser endpoint wrong"
+hl=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set masiService.enabled=true --set masiService.browser.enabled=true \
+  --set masiService.browser.existingSecret=t-masi-browser --set masiService.browser.headless=true \
+  --show-only templates/masi-deployment.yaml)
+[ "$(envv "$hl" MASI_BROWSER_ENDPOINT)" = '"ws://t-schnappy-masi-browser:3000"' ] || fail "masi browser endpoint not plain when headless"
 [ "$(envv "$dep" PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD)" = '"1"' ] || fail "masi would try to download a browser"
 [ "$(envv "$dep" SPRING_DATASOURCE_HIKARI_DATA-SOURCE-PROPERTIES)" = '"sslmode=require"' ] || fail "masi postgres connection not sslmode=require"
 [ -n "$(envv "$dep" KEYCLOAK_JWKS_URI)" ] && [ -n "$(envv "$dep" KEYCLOAK_ISSUER)" ] || fail "masi lost its Keycloak JWT validation env"
