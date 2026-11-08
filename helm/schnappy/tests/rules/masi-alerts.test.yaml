@@ -364,6 +364,45 @@ tests:
         alertname: MasiJobClosedWithOpenListingNotCounted
         exp_alerts: []          # one pod still counts: the newest count, not each pod's
 
+  # plan 110: rows not connected to Estonia. Two pods count the same database: the newest/largest count, not the sum
+  - interval: 5m
+    input_series:
+      - series: 'masi_out_of_scope_rows{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", kind="postings"}'
+        values: '0x6 2x12'
+      - series: 'masi_out_of_scope_rows{job="schnappy-masi", namespace="schnappy-production", pod="masi-b", kind="postings"}'
+        values: '0x6 2x12'
+      - series: 'masi_out_of_scope_rows{job="schnappy-masi", namespace="schnappy-production", pod="masi-a", kind="people"}'
+        values: '0x18'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: MasiOutOfScopeRows
+        exp_alerts: []          # nothing out of scope
+      - eval_time: 50m
+        alertname: MasiOutOfScopeRows
+        exp_alerts: []          # two left, not yet for thirty minutes
+      - eval_time: 65m
+        alertname: MasiOutOfScopeRows
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, kind: postings }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiOutOfScopeRows
+              summary: "2 masi postings not connected to Estonia"
+  - interval: 5m
+    input_series:
+      - series: 'masi_out_of_scope_counted_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", pod="masi-a"}'
+        values: '0+300x12 3600x36'
+    alert_rule_test:
+      - eval_time: 2h10m
+        alertname: MasiOutOfScopeNotCounted
+        exp_alerts: []          # past an hour, not yet for fifteen minutes
+      - eval_time: 2h30m
+        alertname: MasiOutOfScopeNotCounted
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiOutOfScopeNotCounted
+              summary: "masi has not counted its rows not connected to Estonia for 1h 30m 0s"
+
   # the weekly report gauge. promtool's clock starts at epoch 0, so "the gauge holds an old
   # period end" is modelled by holding it at 0 while time() runs past the nine-day threshold.
   # The series is sampled every minute because the rule's `for` needs an unbroken hour of it.

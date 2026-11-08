@@ -52,6 +52,8 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [MasiSourceHostNotAllowed](MasiSourceHostNotAllowed.md)
 - [MasiJobClosedWithOpenListing](MasiJobClosedWithOpenListing.md)
 - [MasiJobClosedWithOpenListingNotCounted](MasiJobClosedWithOpenListingNotCounted.md)
+- [MasiOutOfScopeRows](MasiOutOfScopeRows.md)
+- [MasiOutOfScopeNotCounted](MasiOutOfScopeNotCounted.md)
 - [MasiSourceNotClosing](MasiSourceNotClosing.md)
 - [MasiSweepStarved](MasiSweepStarved.md)
 - [MasiReportsStale](MasiReportsStale.md)

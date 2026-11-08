@@ -317,6 +317,31 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiJobClosedWithOpenListingNotCounted"
             summary: "masi has not counted its closed jobs with an open listing for {{"{{"}} $value | humanizeDuration {{"}}"}}"
+        - alert: MasiOutOfScopeRows
+          # plan 110: masi keeps only what is connected to Estonia. Every ten minutes each pod closes the open postings the
+          # scope gate would not store now and counts what it could not close, and the GitHub people who name no Estonian
+          # place (never deleted by a sweep). 0 is the only right value; every pod counts the same database: max, not sum
+          expr: |
+            max by (kind, job, namespace) (masi_out_of_scope_rows{job="schnappy-masi", namespace="{{ $ns }}"}) > 0
+          for: 30m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiOutOfScopeRows"
+            summary: "{{"{{"}} $value | printf \"%.0f\" {{"}}"}} masi {{"{{"}} $labels.kind {{"}}"}} not connected to Estonia"
+        - alert: MasiOutOfScopeNotCounted
+          # the count keeps its last value when counting fails: a count failing for good would show its last 0 and never
+          # fire. The newest successful count on any pod; an hour is six counts missed
+          expr: |
+            time() - max by (job, namespace) (masi_out_of_scope_counted_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}) > 3600
+          for: 15m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiOutOfScopeNotCounted"
+            summary: "masi has not counted its rows not connected to Estonia for {{"{{"}} $value | humanizeDuration {{"}}"}}"
         - alert: MasiReportsStale
           # the weekly snapshot is written Monday 06:00 and caught up on every cron and restart;
           # nine days without one means the generator itself is failing, which nothing else shows
