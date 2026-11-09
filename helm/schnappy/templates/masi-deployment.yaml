@@ -178,6 +178,9 @@ spec:
             - name: MASI_LINKEDIN_LI_AT
               value: {{ .Values.masiService.collector.linkedinLiAt | quote }}
             {{- end }}
+            # the monthly board census (plan 109 PR 2b): every vendor's boards from Common Crawl, each new one read once
+            - name: MASI_CENSUS_ENABLED
+              value: {{ .Values.masiService.census.enabled | default false | toString | quote }}
             - name: MASI_ENRICH_ENABLED
               value: {{ .Values.masiService.enrich.enabled | toString | quote }}
             - name: MASI_ENRICH_PER_TICK

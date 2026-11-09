@@ -284,6 +284,12 @@ masiService:
     # word score. Under the MATCH purpose share (0.25 of the day); needs ai.enabled. matchPerTick postings a tick.
     matchAuto: false
     matchPerTick: 10
+  census:
+    # The monthly board census (plan 109 PR 2b): every board each vendor hosts, from the newest Common Crawl index; each
+    # one no row reads is read once by masi's reader for it, and one with postings connected to Estonia becomes a row.
+    # One board at a time per vendor, 5 s apart; a ban stops that vendor for the month; Workable left out. Off until
+    # switched on.
+    enabled: false
   enrich:
     # Visit hiring companies' own sites in the background: a registry code the site proves, its website, careers page
     # and ATS. Public HTTPS only, robots.txt honoured, at most 10 requests a company a visit, a company revisited after
