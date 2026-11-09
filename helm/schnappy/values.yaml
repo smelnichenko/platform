@@ -320,6 +320,14 @@ masiService:
       # the cosine distance under which two ArcFace faces are linked: the model's own is about 0.6-0.7, and 0.4 (the
       # old in-code default) linked almost any two faces - the reason the lane is off
       faceThreshold: "0.7"
+      # one source and one contact's picture. max: how many times it may come back empty; bySource for those that differ
+      # (NAME_SEARCH=2,GITHUB=5; 0 never asks it). refresh: how often a source holding a picture is asked again;
+      # refreshBySource for those that differ (GRAVATAR=7d,NAME_SEARCH=90d). A changed number takes effect at once
+      tries:
+        max: "3"
+        bySource: ""
+        refresh: "30d"
+        refreshBySource: ""
       # the largest picture kept, in bytes; a source's answer over it is not read and counts as a miss.
       # Quoted: as a bare number Helm hands the pod "8.388608e+06", which the app cannot bind to a long - it refused to
       # start with exactly that (production, 2026-11-02). The threshold is quoted for the same reason.
