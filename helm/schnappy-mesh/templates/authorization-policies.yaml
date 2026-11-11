@@ -50,6 +50,26 @@ spec:
         - operation:
             ports: ["6379"]
 ---
+# OpenSearch — masi alone, on its API (9200)
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-opensearch
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: opensearch
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-masi
+      to:
+        - operation:
+            ports: ["9200"]
+---
 # Kafka — only app services on port 9092/9093
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy

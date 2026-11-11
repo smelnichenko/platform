@@ -479,6 +479,20 @@ echo "$cl" | awk '/^  inheritedMetadata:/ {m=1} m && /prometheus.io\/port: "9187
   || fail "exporterMetrics: the pods are not annotated with the exporter's port"
 cl=$(data --set cnpg.ephemeral=true --set postgres.statStatements=true --set postgres.exporterMetrics=true --show-only templates/cnpg-cluster.yaml)
 echo "$cl" | grep -qE 'pg_stat_statements|prometheus\.io' && fail "statement statistics or exporter annotations on an ephemeral cluster"
+# OpenSearch: off unless asked; on, one node of derived indexes - its image pinned by digest, no index replica (one node),
+# the root filesystem read-only, reached by masi alone on 9200 (NetworkPolicy here, AuthorizationPolicy in the mesh)
+data --show-only templates/opensearch.yaml >/dev/null 2>&1 && fail "OpenSearch rendered by default"
+os=$(data --set opensearch.enabled=true --show-only templates/opensearch.yaml)
+echo "$os" | grep -qE '^          image: opensearchproject/opensearch:[0-9.]+@sha256:[0-9a-f]{64}$' || fail "OpenSearch image not pinned by digest"
+echo "$os" | awk '/name: cluster.default_number_of_replicas/ {getline; print}' | grep -q 'value: "0"' || fail "OpenSearch indexes would want a replica on one node"
+[ "$(echo "$os" | grep -c 'readOnlyRootFilesystem: true')" = 2 ] || fail "OpenSearch's containers not on a read-only root filesystem"
+osnp=$(echo "$os" | awk '/^kind: NetworkPolicy$/ {n=1} n && /^---/ {exit} n')
+echo "$osnp" | grep -q 'app.kubernetes.io/component: masi$' || fail "OpenSearch's NetworkPolicy does not admit masi"
+[ "$(echo "$osnp" | grep -c 'app.kubernetes.io/component:')" = 2 ] || fail "OpenSearch's NetworkPolicy admits more than masi"
+echo "$osnp" | grep -q 'port: 9200$' || fail "OpenSearch's NetworkPolicy not on 9200"
+osap=$(helm template t helm/schnappy-mesh/ --show-only templates/authorization-policies.yaml | awk '/name: t-schnappy-opensearch$/ {a=1} a && /^---/ {exit} a')
+[ "$(echo "$osap" | grep -c 'sa/t-schnappy-')" = 1 ] && echo "$osap" | grep -q 'sa/t-schnappy-masi$' || fail "OpenSearch's AuthorizationPolicy admits more or other than masi"
+helm template t helm/schnappy-mesh/ --show-only templates/service-accounts.yaml | grep -q 'name: t-schnappy-opensearch$' || fail "no OpenSearch ServiceAccount"
 pgnp=$(data --set networkPolicies.enabled=true --show-only templates/network-policies.yaml | awk '/^---/ { on = 0 } /^  name: t-schnappy-cnpg-postgres$/ { on = 1 } on')
 [ -n "$pgnp" ] || fail "no cnpg-postgres NetworkPolicy rendered"
 for c in monitor admin chat chess masi; do

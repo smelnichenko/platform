@@ -92,6 +92,22 @@ app.kubernetes.io/component: valkey
 {{- end }}
 {{- end }}
 
+{{/* ========== OpenSearch ========== */}}
+
+{{- define "schnappy.opensearch.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: opensearch
+{{- end }}
+
+{{- define "schnappy.opensearch.selectorLabels" -}}
+{{ include "schnappy.selectorLabels" . }}
+app.kubernetes.io/component: opensearch
+{{- end }}
+
+{{- define "schnappy.opensearch.serviceName" -}}
+{{- printf "%s-opensearch" (include "schnappy.fullname" .) }}
+{{- end }}
+
 {{/* ========== Kafka ========== */}}
 
 {{- define "schnappy.kafka.labels" -}}

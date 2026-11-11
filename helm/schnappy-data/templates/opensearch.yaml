@@ -1,0 +1,166 @@
+{{- if eq (.Values.opensearch.enabled | toString) "true" }}
+{{- $name := include "schnappy.opensearch.serviceName" . }}
+# One OpenSearch node of derived indexes: nothing here is the truth (Postgres is), so a lost volume is rebuilt by its
+# readers, never restored. The config directory is copied into a writable volume - the image's entrypoint writes its
+# keystore there - so the root filesystem stays read-only.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.opensearch.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "schnappy.opensearch.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: 9200
+      targetPort: 9200
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.opensearch.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ $name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "schnappy.opensearch.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "schnappy.opensearch.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: schnappy
+    spec:
+      serviceAccountName: {{ include "schnappy.fullname" . }}-opensearch
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: config
+          image: {{ .Values.opensearch.image }}
+          command: ["sh", "-c", "cp -a /usr/share/opensearch/config/. /config/"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests: { memory: "32Mi", cpu: "10m" }
+            limits: { memory: "64Mi", cpu: "100m" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+      containers:
+        - name: opensearch
+          image: {{ .Values.opensearch.image }}
+          env:
+            - name: discovery.type
+              value: single-node
+            - name: cluster.name
+              value: {{ $name }}
+            - name: node.name
+              value: {{ $name }}-0
+            - name: bootstrap.memory_lock
+              value: "false"
+            - name: DISABLE_SECURITY_PLUGIN
+              value: "true"
+            - name: DISABLE_INSTALL_DEMO_CONFIG
+              value: "true"
+            - name: OPENSEARCH_JAVA_OPTS
+              value: "-Xms{{ .Values.opensearch.heap }} -Xmx{{ .Values.opensearch.heap }} -XX:+ExitOnOutOfMemoryError"
+            # one node: an index's replica could never be placed (yellow forever) - every index is created without one
+            - name: cluster.default_number_of_replicas
+              value: "0"
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.opensearch.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: "/_cluster/health?local=true"
+              port: 9200
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: "/_cluster/health?local=true"
+              port: 9200
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: 9200 }
+            periodSeconds: 20
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/opensearch/data
+            - name: config
+              mountPath: /usr/share/opensearch/config
+            - name: logs
+              mountPath: /usr/share/opensearch/logs
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: logs
+          emptyDir: { sizeLimit: 256Mi }
+        - name: tmp
+          emptyDir: { sizeLimit: 512Mi }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.opensearch.storage.size }}
+        {{- with .Values.opensearch.storage.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+---
+# OpenSearch: masi alone, on its API; out, DNS only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.opensearch.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.masi.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9200
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

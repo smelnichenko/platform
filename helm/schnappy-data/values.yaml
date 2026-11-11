@@ -67,6 +67,20 @@ valkey:
     storage: ""     # empty = no PVC (cache is throwaway); set to e.g. "1Gi" for persistence
     storageClass: ""
 
+# OpenSearch: one node of derived search indexes (masi's places, then its entities), rebuilt from Postgres at will - no
+# backup. Security plugin off: only masi reaches it, through the mesh (STRICT mTLS, AuthorizationPolicy) and a
+# NetworkPolicy. The host needs vm.max_map_count >= 262144 (ten: 524288, setup-kubeadm.yml).
+opensearch:
+  enabled: false
+  image: opensearchproject/opensearch:3.9.0@sha256:3b55f6b6249cfdb92b52ee59adc8a266203ba9ef9f5d82544fad6f1af2f3609e
+  heap: 2g
+  resources:
+    requests: { memory: "3Gi", cpu: "500m", ephemeral-storage: "256Mi" }
+    limits: { memory: "4Gi", cpu: "2000m", ephemeral-storage: "1Gi" }
+  storage:
+    size: 10Gi
+    storageClass: ""
+
 # Kafka (KRaft mode)
 kafka:
   enabled: true
