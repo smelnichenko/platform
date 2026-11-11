@@ -479,6 +479,11 @@ echo "$cl" | awk '/^  inheritedMetadata:/ {m=1} m && /prometheus.io\/port: "9187
   || fail "exporterMetrics: the pods are not annotated with the exporter's port"
 cl=$(data --set cnpg.ephemeral=true --set postgres.statStatements=true --set postgres.exporterMetrics=true --show-only templates/cnpg-cluster.yaml)
 echo "$cl" | grep -qE 'pg_stat_statements|prometheus\.io' && fail "statement statistics or exporter annotations on an ephemeral cluster"
+# the Istio pods' scrape: always Istio's merged endpoint 15020, never the port a pod annotation names (CNPG writes its
+# exporter's port back over Istio's rewrite)
+pm=$(helm template t helm/schnappy-observability/ --set prometheus.enabled=true --show-only templates/podmonitor.yaml)
+echo "$pm" | grep -q 'replacement: \$1:15020$' || fail "the Istio pods' scrape address is not the merged endpoint 15020"
+echo "$pm" | grep -q '__meta_kubernetes_pod_annotation_prometheus_io_port' && fail "the Istio pods' scrape address follows a pod annotation"
 # OpenSearch: off unless asked; on, one node of derived indexes - its image pinned by digest, no index replica (one node),
 # the root filesystem read-only, reached by masi alone on 9200 (NetworkPolicy here, AuthorizationPolicy in the mesh)
 data --show-only templates/opensearch.yaml >/dev/null 2>&1 && fail "OpenSearch rendered by default"

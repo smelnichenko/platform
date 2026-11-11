@@ -33,11 +33,13 @@ spec:
         - action: keep
           sourceLabels: [__meta_kubernetes_pod_container_name]
           regex: istio-proxy
-        # Rewrite address to pod-ip:15020
+        # Rewrite address to pod-ip:15020 - Istio's merged endpoint, always there. Not taken from the pod's
+        # prometheus.io/port annotation: an operator that reconciles its pods' annotations (CNPG's inheritedMetadata) puts
+        # the application's own port back over Istio's rewrite, and the scrape went to 9187 (2026-11-12)
         - action: replace
-          sourceLabels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
-          regex: (.+);(\d+)
-          replacement: $1:$2
+          sourceLabels: [__meta_kubernetes_pod_ip]
+          regex: (.+)
+          replacement: $1:15020
           targetLabel: __address__
         # Set job label from component (e.g. app → schnappy-app)
         - action: replace
