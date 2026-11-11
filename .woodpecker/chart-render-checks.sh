@@ -468,6 +468,17 @@ rendered=$(data)
 
 # every app with a database here is admitted to Postgres by name, masi too (it got in only through the namespace's
 # default allow until 2026-10-18: a tighter default would have cut masi alone off its database)
+# per-statement statistics and the exporter's metrics: off unless asked (each restarts Postgres), on where asked, never
+# on an ephemeral cluster
+cl=$(data --show-only templates/cnpg-cluster.yaml)
+echo "$cl" | grep -qE 'pg_stat_statements|prometheus\.io' && fail "statement statistics or exporter annotations on by default"
+cl=$(data --set postgres.statStatements=true --set postgres.exporterMetrics=true --show-only templates/cnpg-cluster.yaml)
+echo "$cl" | grep -q '^      pg_stat_statements.max: "5000"$' || fail "statStatements: no pg_stat_statements.max parameter"
+echo "$cl" | grep -q '^      pg_stat_statements.track: "top"$' || fail "statStatements: no pg_stat_statements.track parameter"
+echo "$cl" | awk '/^  inheritedMetadata:/ {m=1} m && /prometheus.io\/port: "9187"/ {print "ok"; exit}' | grep -q ok \
+  || fail "exporterMetrics: the pods are not annotated with the exporter's port"
+cl=$(data --set cnpg.ephemeral=true --set postgres.statStatements=true --set postgres.exporterMetrics=true --show-only templates/cnpg-cluster.yaml)
+echo "$cl" | grep -qE 'pg_stat_statements|prometheus\.io' && fail "statement statistics or exporter annotations on an ephemeral cluster"
 pgnp=$(data --set networkPolicies.enabled=true --show-only templates/network-policies.yaml | awk '/^---/ { on = 0 } /^  name: t-schnappy-cnpg-postgres$/ { on = 1 } on')
 [ -n "$pgnp" ] || fail "no cnpg-postgres NetworkPolicy rendered"
 for c in monitor admin chat chess masi; do

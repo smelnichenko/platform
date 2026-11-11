@@ -32,6 +32,12 @@ postgres:
   maxWorkerProcesses: 8
   effectiveIoConcurrency: 1
   randomPageCost: "4.0"
+  # per-statement statistics: CNPG preloads pg_stat_statements and creates it in every database once one of its
+  # parameters is set - a rolling restart (the standby, then a switchover) to turn on or off
+  statStatements: false
+  # the CNPG exporter's metrics (port 9187) merged into the endpoint Prometheus scrapes on every Istio pod (15020): the
+  # sidecar reads these annotations only when a pod is created, so a rolling restart too
+  exporterMetrics: false
   resources:
     requests: { memory: "512Mi", cpu: "100m" }
     limits: { memory: "2Gi", cpu: "1000m" }

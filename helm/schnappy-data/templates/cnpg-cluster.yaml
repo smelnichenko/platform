@@ -37,6 +37,11 @@ spec:
       max_worker_processes: {{ .Values.postgres.maxWorkerProcesses | default 8 | quote }}
       effective_io_concurrency: {{ .Values.postgres.effectiveIoConcurrency | default 1 | quote }}
       random_page_cost: {{ .Values.postgres.randomPageCost | default "4.0" | quote }}
+      {{- if .Values.postgres.statStatements }}
+      # setting one makes CNPG preload the library and create the extension in every database
+      pg_stat_statements.max: "5000"
+      pg_stat_statements.track: "top"
+      {{- end }}
       {{- end }}
 
   bootstrap:
@@ -122,6 +127,12 @@ spec:
     annotations:
       backup.velero.io/backup-volumes: pgdata
       traffic.sidecar.istio.io/excludeOutboundPorts: "9000"
+      {{- if .Values.postgres.exporterMetrics }}
+      # Istio merges the exporter's metrics into its scraped endpoint (15020) when the pod is created with these
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9187"
+      prometheus.io/path: /metrics
+      {{- end }}
   {{- end }}
 
   {{- if and .Values.cnpg.backup (not $ephemeral) }}
