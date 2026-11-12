@@ -63,6 +63,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [MasiPlacesEmpty](MasiPlacesEmpty.md)
 - [MasiPlacesNotChecked](MasiPlacesNotChecked.md)
 - [MasiPlacesGaugeAbsent](MasiPlacesGaugeAbsent.md)
+- [MasiPlacesNotLinked](MasiPlacesNotLinked.md)
 
 ## Stub (summary only)
 

@@ -525,3 +525,24 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiPlacesGaugeAbsent
               summary: "masi is up but reports no place count: the places alerts are blind"
+
+  # a start's link that failed: one pod is enough (the other linked), after five minutes
+  - interval: 1m
+    input_series:
+      - series: 'masi_places_link_failed{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-a"}'
+        values: '1x20'
+      - series: 'masi_places_link_failed{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-b"}'
+        values: '0x20'
+      - series: 'masi_places_link_failed{job="schnappy-masi", namespace="schnappy-production", country="LV", pod="masi-a"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: MasiPlacesNotLinked
+        exp_alerts: []          # not yet for five minutes
+      - eval_time: 10m
+        alertname: MasiPlacesNotLinked
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, country: EE }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiPlacesNotLinked
+              summary: "a masi pod could not link the places of EE into the hierarchy at its start"

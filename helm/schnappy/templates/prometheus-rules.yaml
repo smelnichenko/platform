@@ -409,6 +409,17 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiPlacesNotChecked"
             summary: "masi has not checked the places of {{"{{"}} $labels.country {{"}}"}} against their source for {{"{{"}} $value | humanizeDuration {{"}}"}}"
+        # a pod started without linking a country's places into the hierarchy (a kind its build knows no level for - an
+        # older build after a newer one wrote rows): masi runs, the places keep the links they had. Any pod
+        - alert: MasiPlacesNotLinked
+          expr: max by (job, namespace, country) (masi_places_link_failed{job="schnappy-masi", namespace="{{ $ns }}"}) == 1
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiPlacesNotLinked"
+            summary: "a masi pod could not link the places of {{"{{"}} $labels.country {{"}}"}} into the hierarchy at its start"
         - alert: MasiPlacesGaugeAbsent
           expr: |
             absent(masi_places{job="schnappy-masi", namespace="{{ $ns }}"})
