@@ -61,6 +61,13 @@ steps:
     commands:
       - sh .woodpecker/clickhouse-config-start.sh
 
+  # masi's allow-list and its documentation (docs/masi-allowed-hosts.md) name the same hosts: a host added or removed on
+  # one side only fails here
+  - name: masi-allowed-hosts-doc
+    image: alpine/helm:latest
+    commands:
+      - sh .woodpecker/allowed-hosts-doc.sh
+
   # Alert rules are code: promtool checks the syntax and runs the unit tests under
   # helm/schnappy/tests/rules/ against the rules rendered as production sees them, in the
   # Prometheus image the cluster runs (kube-prometheus-stack, pinned in infra's argocd/apps/prometheus.yaml: v3.15.0
