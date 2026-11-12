@@ -63,6 +63,6 @@ hosts this list mostly does not name - in test such a row is refused and counted
 | `api.meetfrank.com` | `meetfrank`, `meetfrankpeople` - the public GraphQL API |
 | `ncfailid.emta.ee` | `emta` - the Tax and Customs Board's quarterly company figures (a Nextcloud share) |
 | `s3.pilw.io` | `places:ee` - the Land and Spatial Development Board's EHAK zips (settlements, municipalities, counties, with boundaries) |
-| `download.geonames.org` | `places:ee` - GeoNames' postal codes |
+| `download.geonames.org` | `places:ee` - GeoNames' file, for Estonia's former settlement names (its postal codes before the address file) |
 | `gisco-services.ec.europa.eu` | `places:eu` - Eurostat's NUTS regions with boundaries (GISCO, © EuroGeographics, non-commercial use) |
-| `geoportaal.maaruum.ee` | `addresses:ee` - the Land and Spatial Development Board's official address file (`sihtnumbrid.zip`: every valid address, its postcode and point) |
+| `geoportaal.maaruum.ee` | `addresses:ee` - the Land and Spatial Development Board's official address file (`sihtnumbrid.zip`: every valid address, its postcode and point); `places:ee` - the same file, for each place's postal codes (`addressesUrl`) |

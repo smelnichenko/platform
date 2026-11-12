@@ -28,7 +28,8 @@ kubectl -n <ns> exec <ns>-postgres-1 -c postgres -- psql -d masi -c "select key,
 |---|---|
 | The source is disabled | it is seeded off: switch it on in the Sources page |
 | Its runs fail | the feed changed (a file renamed, a zip without its `.dbf`/`.shp`/`.prj`, shapes not in EPSG 3301) - the run's error names it |
-| Runs fail with a refused host | the environment's allow-list lacks `s3.pilw.io` / `download.geonames.org` (see platform `docs/masi-allowed-hosts.md`) |
+| Runs fail with a refused host | the environment's allow-list lacks `s3.pilw.io` / `geoportaal.maaruum.ee` / `download.geonames.org` (see platform `docs/masi-allowed-hosts.md`) |
+| Runs fail reading the address file (`addressesUrl`: not found, cut, "joins no address to a settlement", "gives no postal code") | the Land Board's `sihtnumbrid.zip` moved, changed its shape, or was unreachable - the run applies nothing (EHAK's changes wait too); fix the URL or the reader, or remove `addressesUrl` from the config to read GeoNames' codes meanwhile (that churns the postal history: codes it lacks become former) |
 | No source row | a build before the row was seeded |
 
 ## Fix
