@@ -420,6 +420,32 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiPlacesNotLinked"
             summary: "a masi pod could not link the places of {{"{{"}} $labels.country {{"}}"}} into the hierarchy at its start"
+        # a country's official addresses (addresses:ee, monthly on the 13th): 35 days since its file was last read whole -
+        # once it has been (0: the source never ran, as while it is seeded off). The newest read on any pod
+        - alert: MasiAddressesNotChecked
+          expr: |
+            (time() - max by (job, namespace, country) (masi_official_addresses_checked_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}) > 35 * 86400)
+            and max by (job, namespace, country) (masi_official_addresses_checked_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}) > 0
+          for: 1h
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiAddressesNotChecked"
+            summary: "masi has not read the official address file of {{"{{"}} $labels.country {{"}}"}} whole for {{"{{"}} $value | humanizeDuration {{"}}"}}"
+        # many of a country's official addresses retired at once: the current ones a twentieth fewer than at their most in
+        # the day before (a short file read whole, or the register's own change). Visibility: nothing is stopped
+        - alert: MasiAddressesDropped
+          expr: |
+            max by (job, namespace, country) (masi_official_addresses{job="schnappy-masi", namespace="{{ $ns }}", state="current"})
+            < 0.95 * max by (job, namespace, country) (max_over_time(masi_official_addresses{job="schnappy-masi", namespace="{{ $ns }}", state="current"}[1d]))
+          for: 15m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiAddressesDropped"
+            summary: "masi's current official addresses of {{"{{"}} $labels.country {{"}}"}} fell to {{"{{"}} $value {{"}}"}}, over a twentieth fewer than in the day before"
         - alert: MasiPlacesGaugeAbsent
           expr: |
             absent(masi_places{job="schnappy-masi", namespace="{{ $ns }}"})

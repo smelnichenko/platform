@@ -64,6 +64,8 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [MasiPlacesNotChecked](MasiPlacesNotChecked.md)
 - [MasiPlacesGaugeAbsent](MasiPlacesGaugeAbsent.md)
 - [MasiPlacesNotLinked](MasiPlacesNotLinked.md)
+- [MasiAddressesNotChecked](MasiAddressesNotChecked.md)
+- [MasiAddressesDropped](MasiAddressesDropped.md)
 
 ## Stub (summary only)
 

@@ -546,3 +546,47 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiPlacesNotLinked
               summary: "a masi pod could not link the places of EE into the hierarchy at its start"
+
+  # the last complete read of a country's address file. EE: read once at the clock's start (1 s) - old after 35 days;
+  # LV: never read (0) - the source seeded off is no alert; LT: read now and then (rising with the clock)
+  - interval: 1m
+    input_series:
+      - series: 'masi_official_addresses_checked_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-a"}'
+        values: '1x50600'
+      - series: 'masi_official_addresses_checked_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", country="LV", pod="masi-a"}'
+        values: '0x50600'
+      - series: 'masi_official_addresses_checked_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", country="LT", pod="masi-a"}'
+        values: '0+60x50600'
+    alert_rule_test:
+      - eval_time: 840h30m
+        alertname: MasiAddressesNotChecked
+        exp_alerts: []          # past 35 days, not yet for an hour
+      - eval_time: 842h
+        alertname: MasiAddressesNotChecked
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, country: EE }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiAddressesNotChecked
+              summary: "masi has not read the official address file of EE whole for 35d 1h 59m 59s"
+
+  # current official addresses: EE falls from 1000 to 900 (a tenth retired) at 2h; LV from 1000 to 990 (a hundredth);
+  # both pods report the same
+  - interval: 1m
+    input_series:
+      - series: 'masi_official_addresses{job="schnappy-masi", namespace="schnappy-production", country="EE", state="current", pod="masi-a"}'
+        values: '1000x120 900x120'
+      - series: 'masi_official_addresses{job="schnappy-masi", namespace="schnappy-production", country="EE", state="current", pod="masi-b"}'
+        values: '1000x120 900x120'
+      - series: 'masi_official_addresses{job="schnappy-masi", namespace="schnappy-production", country="LV", state="current", pod="masi-a"}'
+        values: '1000x120 990x120'
+    alert_rule_test:
+      - eval_time: 2h10m
+        alertname: MasiAddressesDropped
+        exp_alerts: []          # fallen, not yet for fifteen minutes
+      - eval_time: 2h20m
+        alertname: MasiAddressesDropped
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, country: EE }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiAddressesDropped
+              summary: "masi's current official addresses of EE fell to 900, over a twentieth fewer than in the day before"
