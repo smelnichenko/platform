@@ -427,3 +427,19 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiReportsStale
               summary: "masi has not written a weekly report for over nine days"
+
+  - interval: 1m
+    input_series:
+      - series: 'masi_sql_large_results_total{job="schnappy-masi", namespace="schnappy-production", caller="ScopeWatch.openPostings"}'
+        values: '_ _ 1 1 3'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: MasiSqlLargeResults
+        exp_alerts: []          # no large result yet: no series
+      - eval_time: 3m
+        alertname: MasiSqlLargeResults
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, caller: ScopeWatch.openPostings }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiSqlLargeResults
+              summary: "masi read a query result past its row limit (ScopeWatch.openPostings)"

@@ -372,6 +372,17 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiBrowserSaturated"
             summary: "every browser session slot has been busy for 15 minutes"
+        # a query's result read past its rows (1,000 unless the code said why it reads more): a list or a sweep reading a
+        # growing table whole. masi counts each by the code that asked; the series is born at the first one and stays
+        # until masi restarts - the fix deployed
+        - alert: MasiSqlLargeResults
+          expr: max by (namespace, job, caller) (masi_sql_large_results_total{job="schnappy-masi", namespace="{{ $ns }}"}) > 0
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiSqlLargeResults"
+            summary: "masi read a query result past its row limit ({{ "{{" }} $labels.caller {{ "}}" }})"
 {{- end }}
 
     - name: {{ $ns }}-smoke-tests
