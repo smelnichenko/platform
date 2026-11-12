@@ -48,7 +48,9 @@ spec:
       initContainers:
         - name: config
           image: {{ .Values.opensearch.image }}
-          command: ["sh", "-c", "cp -a /usr/share/opensearch/config/. /config/"]
+          # a plain copy: -a would stamp the volume's own root with the image's times, which this user may not (it does
+          # not own the emptyDir's root) - the files are this user's either way
+          command: ["sh", "-c", "cp -R /usr/share/opensearch/config/. /config/"]
           volumeMounts:
             - name: config
               mountPath: /config
