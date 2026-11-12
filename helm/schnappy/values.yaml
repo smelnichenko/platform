@@ -389,6 +389,8 @@ masiService:
       # municipalities, counties, with their boundaries - and GeoNames' postal codes
       - s3.pilw.io
       - download.geonames.org
+      # the EU frame (source places:eu, monthly): Eurostat's NUTS regions from GISCO's distribution
+      - gisco-services.ec.europa.eu
   # Chromium for BROWSER collectors: its own pod, connected over CDP. The masi image never
   # contains a browser. Pinned by DIGEST (v2.56.7); the CD sed anchor (`# masi$`) never
   # touches this block. Access: the token (existingSecret below), the NetworkPolicy (ingress
