@@ -385,6 +385,10 @@ masiService:
       - api.meetfrank.com
       # the Tax and Customs Board's quarterly company figures (a Nextcloud share; the /s/<token> link redirects on the same host)
       - ncfailid.emta.ee
+      # Estonia's places (source places:ee, monthly): the Land and Spatial Development Board's EHAK zips - settlements,
+      # municipalities, counties, with their boundaries - and GeoNames' postal codes
+      - s3.pilw.io
+      - download.geonames.org
   # Chromium for BROWSER collectors: its own pod, connected over CDP. The masi image never
   # contains a browser. Pinned by DIGEST (v2.56.7); the CD sed anchor (`# masi$`) never
   # touches this block. Access: the token (existingSecret below), the NetworkPolicy (ingress

@@ -386,6 +386,40 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiSqlLargeResults"
             summary: "masi read a query result past its row limit ({{ "{{" }} $labels.caller {{ "}}" }})"
+        # a country's places (the scope gate and place search read them): each pod counts the current ones from the
+        # database, so the largest count across pods; none current on every pod is a country the gate cannot judge
+        - alert: MasiPlacesEmpty
+          expr: max by (job, namespace, country) (masi_places{job="schnappy-masi", namespace="{{ $ns }}"}) == 0
+          for: 15m
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiPlacesEmpty"
+            summary: "masi holds no current places for {{"{{"}} $labels.country {{"}}"}}"
+        # a country's places source runs monthly (places:ee on the 12th): 35 days without a check is a run missed, failed or
+        # never switched on. The newest check on any pod
+        - alert: MasiPlacesNotChecked
+          expr: |
+            time() - max by (job, namespace, country) (masi_places_checked_timestamp_seconds{job="schnappy-masi", namespace="{{ $ns }}"}) > 35 * 86400
+          for: 1h
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiPlacesNotChecked"
+            summary: "masi has not checked the places of {{"{{"}} $labels.country {{"}}"}} against their source for {{"{{"}} $value | humanizeDuration {{"}}"}}"
+        - alert: MasiPlacesGaugeAbsent
+          expr: |
+            absent(masi_places{job="schnappy-masi", namespace="{{ $ns }}"})
+            and on() (up{job="schnappy-masi", namespace="{{ $ns }}"} == 1)
+          for: 30m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiPlacesGaugeAbsent"
+            summary: "masi is up but reports no place count: the places alerts are blind"
 {{- end }}
 
     - name: {{ $ns }}-smoke-tests

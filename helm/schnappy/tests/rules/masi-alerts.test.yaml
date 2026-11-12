@@ -454,3 +454,74 @@ tests:
       - eval_time: 70m
         alertname: MasiSqlLargeResults
         exp_alerts: []          # an hour past the last one: cleared, masi not restarted
+
+  # a country's places. Two pods count the same database: the largest count decides, so one pod's 0 is not empty
+  # (EE); a country no pod counts places for is (LV, after fifteen minutes).
+  - interval: 1m
+    input_series:
+      - series: 'masi_places{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-a"}'
+        values: '4812x40'
+      - series: 'masi_places{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-b"}'
+        values: '0x40'
+      - series: 'masi_places{job="schnappy-masi", namespace="schnappy-production", country="LV", pod="masi-a"}'
+        values: '0x40'
+      - series: 'masi_places{job="schnappy-masi", namespace="schnappy-production", country="LV", pod="masi-b"}'
+        values: '0x40'
+      - series: 'up{job="schnappy-masi", namespace="schnappy-production"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MasiPlacesEmpty
+        exp_alerts: []          # LV empty, not yet for fifteen minutes
+      - eval_time: 20m
+        alertname: MasiPlacesEmpty
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production, job: schnappy-masi, country: LV }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiPlacesEmpty
+              summary: "masi holds no current places for LV"
+      - eval_time: 40m
+        alertname: MasiPlacesGaugeAbsent
+        exp_alerts: []          # the gauge is present
+
+  # the last check against the source. promtool's clock starts at 0, so a check held at 0 is one that long ago. EE: pod
+  # a's check is old, pod b's current (rising with the clock) - the newest decides; LV's only check is old. Sampled
+  # every minute: the rule's `for` needs an unbroken hour of samples (an hourly one goes stale after five minutes).
+  - interval: 1m
+    input_series:
+      - series: 'masi_places_checked_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-a"}'
+        values: '0x50600'
+      - series: 'masi_places_checked_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-b"}'
+        values: '0+60x50600'
+      - series: 'masi_places_checked_timestamp_seconds{job="schnappy-masi", namespace="schnappy-production", country="LV", pod="masi-a"}'
+        values: '0x50600'
+    alert_rule_test:
+      - eval_time: 840h
+        alertname: MasiPlacesNotChecked
+        exp_alerts: []          # 35 days exactly: not past them
+      - eval_time: 840h30m
+        alertname: MasiPlacesNotChecked
+        exp_alerts: []          # past them, not yet for an hour
+      - eval_time: 842h
+        alertname: MasiPlacesNotChecked
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, country: LV }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiPlacesNotChecked
+              summary: "masi has not checked the places of LV against their source for 35d 2h 0m 0s"
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="schnappy-masi", namespace="schnappy-production"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: MasiPlacesGaugeAbsent
+        exp_alerts: []          # not yet for thirty minutes
+      - eval_time: 35m
+        alertname: MasiPlacesGaugeAbsent
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiPlacesGaugeAbsent
+              summary: "masi is up but reports no place count: the places alerts are blind"
