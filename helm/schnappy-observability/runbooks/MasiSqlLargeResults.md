@@ -1,12 +1,12 @@
 # MasiSqlLargeResults
 
-**Severity:** warning · **For:** at once
+**Severity:** warning · **For:** at once; clears an hour after the last one
 
 ## What fired
 
 masi read a query result with more rows than its limit (1,000 unless the code that asked says, with
 `ResultSizes.expect`, that it reads more on purpose and why). `masi_sql_large_results_total{caller}` names the masi method
-that asked; the series stays until masi restarts.
+that asked. The alert clears an hour after the last one.
 
 ## Impact
 
@@ -37,4 +37,4 @@ kubectl -n <ns> logs deploy/<ns>-masi -c masi --since=2h | grep 'a result of mor
 
 ## Verification
 
-After the fix is deployed (masi restarts), the series is gone and the warning no longer appears in the log.
+After the fix is deployed, the alert clears within the hour and the warning no longer appears in the log.
