@@ -65,3 +65,4 @@ hosts this list mostly does not name - in test such a row is refused and counted
 | `s3.pilw.io` | `places:ee` - the Land and Spatial Development Board's EHAK zips (settlements, municipalities, counties, with boundaries) |
 | `download.geonames.org` | `places:ee` - GeoNames' postal codes |
 | `gisco-services.ec.europa.eu` | `places:eu` - Eurostat's NUTS regions with boundaries (GISCO, © EuroGeographics, non-commercial use) |
+| `geoportaal.maaruum.ee` | `addresses:ee` - the Land and Spatial Development Board's official address file (`sihtnumbrid.zip`: every valid address, its postcode and point) |
