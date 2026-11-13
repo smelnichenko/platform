@@ -40,7 +40,7 @@ tests:
         alertname: VeleroWeeklyBackupMissing
         exp_alerts: []
 
-  # the schedule's backup failed validation (its resource policy ConfigMap missing): the failure alert - nothing else
+  # the schedule's backup failed validation (its template refused): the failure alert - nothing else
   # counts it, and the daily-missing alert comes a day later
   - interval: 1m
     input_series:
