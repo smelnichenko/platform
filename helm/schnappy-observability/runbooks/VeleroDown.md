@@ -20,8 +20,10 @@ kubectl -n velero get deploy velero
 # the server's pods only (an old Completed one too, named by its prefix): the node-agent's carry the Deployment's selector
 # labels too (logs deploy/velero picked one)
 kubectl -n velero get pod -l name=velero -o wide
-kubectl -n velero logs -l name=velero -c velero --tail=80 --prefix
-kubectl -n velero logs -l name=velero -c velero --tail=80 --prefix --previous   # a crash loop: the run before
+# the running server pod's logs (an old Completed pod also carries name=velero: --previous stopped at it)
+POD=$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)
+kubectl -n velero logs "$POD" -c velero --tail=80
+kubectl -n velero logs "$POD" -c velero --tail=80 --previous   # a crash loop: the run before
 kubectl -n argocd get application velero -o jsonpath='{.status.sync.status} {.status.health.status}{"\n"}'
 ```
 

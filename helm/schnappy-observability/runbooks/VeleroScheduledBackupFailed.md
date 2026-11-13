@@ -18,7 +18,7 @@ immediate user-facing impact.
 ```bash
 kubectl -n velero get bsl default -o jsonpath='{.status.phase} {.status.message}{"\n"}'
 kubectl -n velero get schedules
-kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
+kubectl -n velero get backups.velero.io --sort-by=.status.startTimestamp | tail -5
 ```
 
 ## Common causes
@@ -29,7 +29,7 @@ kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
 | `NoSuchBucket` | bucket got wiped | `mc mb vip/velero` on a Pi |
 | No recent Backup objects | Schedule disabled or paused | `kubectl -n velero get schedule velero-schnappy-daily -o yaml` |
 | Kopia-maintain jobs all Error | BackupRepository CRs reference missing kopia paths | `kubectl -n velero delete backuprepository --all` (recreated lazily) |
-| Last backup `FailedValidation` | The schedule's resource policy ConfigMap (`velero-skip-ephemeral-volumes`) missing or invalid | `kubectl -n velero get backup <name> -o jsonpath='{.status.validationErrors}'`; sync the `velero` Argo app (it owns the ConfigMap) |
+| Last backup `FailedValidation` | The schedule's resource policy ConfigMap (`velero-skip-ephemeral-volumes`) missing or invalid | `kubectl -n velero get backups.velero.io <name> -o jsonpath='{.status.validationErrors}'`; sync the `velero` Argo app (it owns the ConfigMap) |
 
 ## Fix
 

@@ -16,7 +16,7 @@ The cluster-wide restore point (every namespace) is older than a week or incompl
 ## First steps
 
 ```bash
-kubectl -n velero get backups --sort-by=.status.startTimestamp | grep full-weekly | tail -3
+kubectl -n velero get backups.velero.io --sort-by=.status.startTimestamp | grep full-weekly | tail -3
 kubectl -n velero get schedule velero-full-weekly
 ```
 

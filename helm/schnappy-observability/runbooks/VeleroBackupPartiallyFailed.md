@@ -15,7 +15,7 @@ The backup holds most of the cluster; the items and volumes in its errors are mi
 ## First steps
 
 ```bash
-kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
+kubectl -n velero get backups.velero.io --sort-by=.status.startTimestamp | tail -5
 NAME=<the PartiallyFailed backup>
 kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup describe $NAME --details | sed -n '/^Errors:/,/^Warnings:/p'
 kubectl -n velero get podvolumebackups -l velero.io/backup-name=$NAME \

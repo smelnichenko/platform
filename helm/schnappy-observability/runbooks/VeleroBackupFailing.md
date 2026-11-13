@@ -14,10 +14,11 @@ The most recent backup is unusable. A scheduled one also fires [VeleroScheduledB
 ## First steps
 
 ```bash
-kubectl -n velero get backup --sort-by=.metadata.creationTimestamp | tail -5
-LATEST=$(kubectl -n velero get backup --sort-by=.metadata.creationTimestamp -o name | tail -1)
+kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp | tail -5
+LATEST=$(kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp -o name | tail -1)
 kubectl -n velero describe $LATEST | tail -30
-kubectl -n velero logs -l name=velero -c velero --tail=80 --prefix | grep -iE 'error|fail' | tail -20   # the server's, not a node-agent's
+POD=$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)  # the server's
+kubectl -n velero logs "$POD" -c velero --tail=80 | grep -iE 'error|fail' | tail -20
 ```
 
 ## Common causes
