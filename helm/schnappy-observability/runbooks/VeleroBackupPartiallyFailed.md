@@ -27,7 +27,7 @@ kubectl -n velero get podvolumebackups -l velero.io/backup-name=$NAME \
 | Symptom | Cause | Fix |
 |---|---|---|
 | `error identifying unique volume path on host` for a Job's pod | the pod ended while the backup read its volumes | label the Job's pod template `velero.io/exclude-from-backup: "true"` (every chart Job and the etcd-backup CronJob carry it since 2026-10-11; `.woodpecker/chart-render-checks.sh` enforces it in platform) |
-| `error to expose PVB: error getting client pod ...: pods "..." not found` | a Deployment's pod was replaced while the backup read its volumes (a rollout during the run: masi at 02:01 UTC, 2026-11-13) | its emptyDirs are skipped by the `velero-skip-ephemeral-volumes` policy since 2026-11-13; run the schedule once to get a clean backup |
+| `error to expose PVB: error getting client pod ...: pods "..." not found` | a Deployment's pod was replaced while the backup read its volumes (a rollout during the run: masi at 02:01 UTC, 2026-11-13) | since 2026-11-13 the schedules leave pods out, so no volume is read: check that the schedule still does - `kubectl -n velero get schedule velero-schnappy-daily -o jsonpath='{.spec.template.excludedResources}'` (`["pods"]`); run the schedule once to get a clean backup |
 | a volume of a running pod failed | node-agent on that node down, or kopia repository trouble | `kubectl -n velero get pod -l name=node-agent`; `kubectl -n velero get backuprepository` |
 
 ## Verification

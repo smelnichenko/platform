@@ -265,7 +265,7 @@ spec:
         # Vagrant copy) has no daily backup by nature and allows the second alone, never the first. Read on the
         # counters: velero_backup_last_status goes 0 at a failure and back to 1 within a minute (the schedule
         # controller re-inits it on its next reconcile - 02:39:45-02:40:45Z 2026-11-13), so a 0 held never fired; a
-        # FailedValidation (the schedule's resource policy missing or invalid) counts on its own counter alone
+        # FailedValidation (the schedule's template refused) counts on its own counter alone
         - alert: VeleroScheduledBackupFailed
           expr: |-
             increase(velero_backup_failure_total{schedule!=""}[1h]) > 0
