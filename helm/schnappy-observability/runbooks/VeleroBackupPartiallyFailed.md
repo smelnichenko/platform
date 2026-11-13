@@ -17,7 +17,7 @@ The backup holds most of the cluster; the items and volumes in its errors are mi
 ```bash
 kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
 NAME=<the PartiallyFailed backup>
-kubectl -n velero exec deploy/velero -c velero -- /velero backup describe $NAME --details | sed -n '/^Errors:/,/^Warnings:/p'
+kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup describe $NAME --details | sed -n '/^Errors:/,/^Warnings:/p'
 kubectl -n velero get podvolumebackups -l velero.io/backup-name=$NAME \
   -o custom-columns=P:.status.phase,NS:.spec.pod.namespace,POD:.spec.pod.name,V:.spec.volume,M:.status.message | grep -v Completed
 ```
@@ -27,6 +27,7 @@ kubectl -n velero get podvolumebackups -l velero.io/backup-name=$NAME \
 | Symptom | Cause | Fix |
 |---|---|---|
 | `error identifying unique volume path on host` for a Job's pod | the pod ended while the backup read its volumes | label the Job's pod template `velero.io/exclude-from-backup: "true"` (every chart Job and the etcd-backup CronJob carry it since 2026-10-11; `.woodpecker/chart-render-checks.sh` enforces it in platform) |
+| `error to expose PVB: error getting client pod ...: pods "..." not found` | a Deployment's pod was replaced while the backup read its volumes (a rollout during the run: masi at 02:01 UTC, 2026-11-13) | its emptyDirs are skipped by the `velero-skip-ephemeral-volumes` policy since 2026-11-13; run the schedule once to get a clean backup |
 | a volume of a running pod failed | node-agent on that node down, or kopia repository trouble | `kubectl -n velero get pod -l name=node-agent`; `kubectl -n velero get backuprepository` |
 
 ## Verification
@@ -34,5 +35,5 @@ kubectl -n velero get podvolumebackups -l velero.io/backup-name=$NAME \
 Run the schedule once; it must end `Completed`:
 
 ```bash
-kubectl -n velero exec deploy/velero -c velero -- /velero backup create --from-schedule velero-full-weekly --wait
+kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup create --from-schedule velero-full-weekly --wait
 ```

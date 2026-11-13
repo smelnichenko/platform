@@ -28,7 +28,7 @@ A `PartiallyFailed` run: see [VeleroBackupPartiallyFailed](VeleroBackupPartially
 After the cause is fixed, run the schedule once (about 70 minutes):
 
 ```bash
-kubectl -n velero exec deploy/velero -c velero -- /velero backup create --from-schedule velero-full-weekly --wait
+kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup create --from-schedule velero-full-weekly --wait
 ```
 
 ## Verification

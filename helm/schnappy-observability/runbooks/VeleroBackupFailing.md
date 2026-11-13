@@ -33,7 +33,7 @@ kubectl -n velero logs deploy/velero --tail=80 | grep -iE 'error|fail' | tail -2
 Run the failed schedule once; it must end `Completed` with no errors:
 
 ```bash
-kubectl -n velero exec deploy/velero -c velero -- /velero backup create --from-schedule velero-schnappy-daily --wait
+kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup create --from-schedule velero-schnappy-daily --wait
 ```
 
 ## Related

@@ -36,7 +36,7 @@ After the root cause is fixed, run the failed schedule once more. The backup car
 the metric (and the alert) follows it:
 
 ```bash
-kubectl -n velero exec deploy/velero -c velero -- /velero backup create --from-schedule velero-schnappy-daily --wait
+kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup create --from-schedule velero-schnappy-daily --wait
 ```
 
 ## Verification
