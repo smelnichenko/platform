@@ -590,3 +590,24 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/MasiAddressesDropped
               summary: "masi's current official addresses of EE fell to 900, over a twentieth fewer than in the day before"
+
+  # official addresses naming no place masi holds: EE none for the first hour, then 5 (both pods report the same); LV none
+  - interval: 1m
+    input_series:
+      - series: 'masi_official_addresses_unplaced{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-a"}'
+        values: '0x60 5x3000'
+      - series: 'masi_official_addresses_unplaced{job="schnappy-masi", namespace="schnappy-production", country="EE", pod="masi-b"}'
+        values: '0x60 5x3000'
+      - series: 'masi_official_addresses_unplaced{job="schnappy-masi", namespace="schnappy-production", country="LV", pod="masi-a"}'
+        values: '0x3060'
+    alert_rule_test:
+      - eval_time: 48h50m
+        alertname: MasiAddressesUnplaced
+        exp_alerts: []          # some, not yet for two days
+      - eval_time: 49h10m
+        alertname: MasiAddressesUnplaced
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-masi, country: EE }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/MasiAddressesUnplaced
+              summary: "5 of masi's current official addresses of EE name no place it holds, for two days"

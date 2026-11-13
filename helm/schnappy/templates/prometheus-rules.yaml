@@ -446,6 +446,20 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/MasiAddressesDropped"
             summary: "masi's current official addresses of {{"{{"}} $labels.country {{"}}"}} fell to {{"{{"}} $value {{"}}"}}, over a twentieth fewer than in the day before"
+        # current official addresses whose text names no place masi holds (an address's place is found when it is read;
+        # counted again whenever the places or the addresses change): none on the Board's file against the same month's
+        # places. Some for two days: a reform the places have not brought (places:ee late or failing), or a file of a new
+        # shape. Visibility: nothing is stopped
+        - alert: MasiAddressesUnplaced
+          expr: |
+            max by (job, namespace, country) (masi_official_addresses_unplaced{job="schnappy-masi", namespace="{{ $ns }}"}) > 0
+          for: 2d
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/MasiAddressesUnplaced"
+            summary: "{{"{{"}} $value {{"}}"}} of masi's current official addresses of {{"{{"}} $labels.country {{"}}"}} name no place it holds, for two days"
         - alert: MasiPlacesGaugeAbsent
           expr: |
             absent(masi_places{job="schnappy-masi", namespace="{{ $ns }}"})
