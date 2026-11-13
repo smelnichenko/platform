@@ -29,6 +29,7 @@ kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
 | `NoSuchBucket` | bucket got wiped | `mc mb vip/velero` on a Pi |
 | No recent Backup objects | Schedule disabled or paused | `kubectl -n velero get schedule velero-schnappy-daily -o yaml` |
 | Kopia-maintain jobs all Error | BackupRepository CRs reference missing kopia paths | `kubectl -n velero delete backuprepository --all` (recreated lazily) |
+| Last backup `FailedValidation` | The schedule's resource policy ConfigMap (`velero-skip-ephemeral-volumes`) missing or invalid | `kubectl -n velero get backup <name> -o jsonpath='{.status.validationErrors}'`; sync the `velero` Argo app (it owns the ConfigMap) |
 
 ## Fix
 

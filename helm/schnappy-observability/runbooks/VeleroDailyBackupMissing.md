@@ -29,7 +29,8 @@ kubectl -n velero get backups --sort-by=.status.startTimestamp | tail -5
 | `NoSuchBucket` | bucket got wiped | `mc mb vip/velero` on a Pi |
 | No recent Backup objects | Schedule disabled or paused | `kubectl -n velero get schedule velero-schnappy-daily -o yaml` |
 | Kopia-maintain jobs all Error | BackupRepository CRs reference missing kopia paths | `kubectl -n velero delete backuprepository --all` (recreated lazily) |
-| Last backup `PartiallyFailed`, its failed PodVolumeBackups say `pods "..." not found` | A pod was deleted while Velero read its volumes (a rollout during the 02:00 UTC run - masi at 02:01, 2026-11-13) | Run the schedule once (below). Ephemeral volumes (emptyDir, configMap, secret, projected, downwardAPI) are skipped by the `velero-skip-ephemeral-volumes` policy; a pod with a PVC replaced mid-backup can still do it |
+| Last backup `PartiallyFailed`, its failed PodVolumeBackups say `pods "..." not found` | A pod was deleted while Velero read its volumes (a rollout during the 02:00 UTC run - masi at 02:01, 2026-11-13) | Run the schedule once (below). Since the `velero-skip-ephemeral-volumes` policy no volume is read (emptyDir, hostPath and the API-projected types skipped; Velero holds manifests only - the data's own backups are CNPG's, Scylla Manager's and the Pis'), so check the policy is on the schedule: `kubectl -n velero get schedule velero-schnappy-daily -o jsonpath='{.spec.template.resourcePolicy}'` |
+| Last backup `FailedValidation` | The schedule's resource policy ConfigMap missing or invalid | `kubectl -n velero get backup <name> -o jsonpath='{.status.validationErrors}'`; sync the `velero` Argo app (it owns the ConfigMap), then run the schedule once |
 
 `exec deploy/velero` is not used here on purpose: the node-agent DaemonSet's pods and dead old server pods carry the
 Deployment's selector labels, and kubectl picks the first match - a node-agent pod has no `velero` container. Select

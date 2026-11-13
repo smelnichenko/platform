@@ -17,7 +17,7 @@ The most recent backup is unusable. A scheduled one also fires [VeleroScheduledB
 kubectl -n velero get backup --sort-by=.metadata.creationTimestamp | tail -5
 LATEST=$(kubectl -n velero get backup --sort-by=.metadata.creationTimestamp -o name | tail -1)
 kubectl -n velero describe $LATEST | tail -30
-kubectl -n velero logs deploy/velero --tail=80 | grep -iE 'error|fail' | tail -20
+kubectl -n velero logs -l name=velero -c velero --tail=80 --prefix | grep -iE 'error|fail' | tail -20   # the server's, not a node-agent's
 ```
 
 ## Common causes

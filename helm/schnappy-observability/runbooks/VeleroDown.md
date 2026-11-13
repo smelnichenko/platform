@@ -17,8 +17,11 @@ quiet until that success is older than their period - this alert is the one that
 
 ```bash
 kubectl -n velero get deploy velero
-kubectl -n velero get pod -l app.kubernetes.io/name=velero -o wide
-kubectl -n velero logs deploy/velero --tail=80
+# the server's pods only (an old Completed one too, named by its prefix): the node-agent's carry the Deployment's selector
+# labels too (logs deploy/velero picked one)
+kubectl -n velero get pod -l name=velero -o wide
+kubectl -n velero logs -l name=velero -c velero --tail=80 --prefix
+kubectl -n velero logs -l name=velero -c velero --tail=80 --prefix --previous   # a crash loop: the run before
 kubectl -n argocd get application velero -o jsonpath='{.status.sync.status} {.status.health.status}{"\n"}'
 ```
 
