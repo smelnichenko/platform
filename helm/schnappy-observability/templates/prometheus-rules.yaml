@@ -265,11 +265,17 @@ spec:
         # Vagrant copy) has no daily backup by nature and allows the second alone, never the first. Read on the
         # counters: velero_backup_last_status goes 0 at a failure and back to 1 within a minute (the schedule
         # controller re-inits it on its next reconcile - 02:39:45-02:40:45Z 2026-11-13), so a 0 held never fired; a
-        # FailedValidation (the schedule's template refused) counts on its own counter alone
+        # FailedValidation (the schedule's template refused) counts on its own counter alone. A counter born at 1 (the
+        # failure before a new Velero pod's first scrape: increase() needs two samples) is caught by its existing now and
+        # not an hour ago. It fires for the hour after the failure, whatever follows: VeleroDailyBackupMissing holds a
+        # lasting one until a backup succeeds
         - alert: VeleroScheduledBackupFailed
           expr: |-
             increase(velero_backup_failure_total{schedule!=""}[1h]) > 0
               or increase(velero_backup_validation_failure_total{schedule!=""}[1h]) > 0
+              or (velero_backup_failure_total{schedule!=""} > 0 unless velero_backup_failure_total{schedule!=""} offset 1h)
+              or (velero_backup_validation_failure_total{schedule!=""} > 0
+                  unless velero_backup_validation_failure_total{schedule!=""} offset 1h)
           for: 1m
           labels:
             severity: critical
@@ -277,20 +283,22 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/VeleroScheduledBackupFailed"
             summary: "Velero scheduled backup failed"
             description: "A backup of schedule {{ "{{" }} $labels.schedule {{ "}}" }} failed or failed validation in the last hour."
-        # Velero keeps the last success in memory only (a restart drops the series until its next success): the age
-        # alerts read it from Prometheus' history over the period - a restart hides nothing; a Velero gone after it
-        # reported is VeleroDown's (the history keeps its last success until the period runs out)
+        # the last success is a series of each Velero pod (a restart starts another): the age alerts read it from
+        # Prometheus' history over the period - a restart hides nothing; a Velero gone after it reported is VeleroDown's
+        # (the history keeps its last success until the period runs out). 26 h: the daily (02:00, about a minute since it
+        # holds manifests only) a day and two hours old - any way a run ends without success (failed, partly, refused,
+        # killed by a restart, never started) fires by 04:00 the next night and holds until one succeeds
         - alert: VeleroDailyBackupMissing
           expr: |-
-            absent(max_over_time(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}[30h])
-              > time() - 30 * 3600)
+            absent(max_over_time(velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}[26h])
+              > time() - 26 * 3600)
           for: 10m
           labels:
             severity: critical
           annotations:
             runbook_url: "https://runbooks.pmon.dev/VeleroDailyBackupMissing"
             summary: "Velero daily backup missing"
-            description: "No successful schnappy-daily backup in the last 30h."
+            description: "No successful schnappy-daily backup in the last 26h."
         # warning: the weekly backup is the cluster-wide one; production-data-check reads critical alerts only
         - alert: VeleroWeeklyBackupMissing
           expr: |-
@@ -313,8 +321,10 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/VeleroDown"
             summary: "Velero server down"
             description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."
+        # an ad-hoc backup's failure (no schedule: velero backup create by hand); a scheduled one is
+        # VeleroScheduledBackupFailed's alone
         - alert: VeleroBackupFailing
-          expr: increase(velero_backup_failure_total[1h]) > 0
+          expr: increase(velero_backup_failure_total{schedule=""}[1h]) > 0
           for: 5m
           labels:
             severity: warning

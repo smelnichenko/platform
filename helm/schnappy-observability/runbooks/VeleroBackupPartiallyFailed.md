@@ -5,8 +5,10 @@
 ## What fired
 
 A Velero backup ended `PartiallyFailed` in the last hour: `increase(velero_backup_partial_failure_total[1h]) > 0`.
-Velero leaves `velero_backup_last_status` at 1 for it, so no other alert sees it. A weekly backup that keeps
-ending this way also fires [VeleroWeeklyBackupMissing](VeleroWeeklyBackupMissing.md).
+It is no failure on the failure counters, so [VeleroScheduledBackupFailed](VeleroScheduledBackupFailed.md) does not
+fire; a scheduled backup ending this way is no success either, so
+[VeleroDailyBackupMissing](VeleroDailyBackupMissing.md) (26 h) and
+[VeleroWeeklyBackupMissing](VeleroWeeklyBackupMissing.md) (8 d) follow if it keeps happening.
 
 ## Impact
 

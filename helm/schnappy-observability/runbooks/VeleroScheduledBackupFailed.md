@@ -1,17 +1,24 @@
 # VeleroScheduledBackupFailed
 
-**Severity:** critical · **For:** 10m
+**Severity:** critical · **For:** 1m
 
 ## What fired
 
-The last backup of a Velero schedule failed: `velero_backup_last_status{schedule!=""} == 0`. Often the
-BackupStorageLocation is `Unavailable`. A `PartiallyFailed` backup does not fire it (Velero leaves the
-status at 1); that is [VeleroBackupPartiallyFailed](VeleroBackupPartiallyFailed.md).
+A backup of a Velero schedule failed, or failed validation, in the last hour: its schedule's
+`velero_backup_failure_total` or `velero_backup_validation_failure_total` rose (or was born above 0 on a
+new Velero pod). Often the BackupStorageLocation is `Unavailable`. A `PartiallyFailed` backup is
+[VeleroBackupPartiallyFailed](VeleroBackupPartiallyFailed.md).
+
+It fires for the hour after the failure and then resolves on its own, whatever happened since: a resolve
+is not a fix. A failure that lasts is held by [VeleroDailyBackupMissing](VeleroDailyBackupMissing.md)
+(26 h after the last success) until a backup succeeds; the weekly's by
+[VeleroWeeklyBackupMissing](VeleroWeeklyBackupMissing.md) (8 d).
 
 ## Impact
 
-Backups are not landing. If the cluster is destroyed now, the data since the last good backup is lost. No
-immediate user-facing impact.
+Velero holds the cluster's manifests only (no volume data: each store has its own backup or none - infra's
+`clusters/production/velero/values.yaml`). Rebuilding the cluster would start from the last good backup's
+manifests. No immediate user-facing impact.
 
 ## First steps
 
@@ -33,16 +40,16 @@ kubectl -n velero get backups.velero.io --sort-by=.status.startTimestamp | tail 
 
 ## Fix
 
-After the root cause is fixed, run the failed schedule once more. The backup carries the schedule's label, so
-the metric (and the alert) follows it:
+After the root cause is fixed, run the failed schedule once more - `<schedule>` is the alert's `schedule`
+label (`velero-schnappy-daily` or `velero-full-weekly`):
 
 ```bash
-kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup create --from-schedule velero-schnappy-daily --wait
+kubectl -n velero exec "$(kubectl -n velero get pod -l name=velero --field-selector=status.phase=Running -o name | head -1)" -c velero -- /velero backup create --from-schedule <schedule> --wait
 ```
 
 ## Verification
 
 - `kubectl -n velero get bsl default -o jsonpath='{.status.phase}'` → `Available`
-- the backup above ends `Completed`; the alert resolves 10 minutes later
-- a Velero restart sets every schedule's status back to 1 (success) until its next run. A resolve right after a
-  restart proves nothing; the schedule's next run does
+- the backup above ends `Completed` - that is the proof. The alert does not follow it: it resolves an hour after
+  the failure either way
+- the schedule's next run ends `Completed` (`kubectl -n velero get backups.velero.io --sort-by=.status.startTimestamp | tail -3`)

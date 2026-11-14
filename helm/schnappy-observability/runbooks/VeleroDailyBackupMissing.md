@@ -4,14 +4,17 @@
 
 ## What fired
 
-The last successful `velero-schnappy-daily` backup in Prometheus' history is older than 30h (none ran, or none
-succeeded), or there is no history at all (a fresh Prometheus or copy). Velero keeps the last success in memory only;
-the history keeps it across a Velero restart, so a restart alone does not fire this. A Velero gone is
-[VeleroDown](VeleroDown.md), at once - this alert follows only once the last success is 30h old.
+The last successful `velero-schnappy-daily` backup in Prometheus' history is older than 26h (none ran, or none
+succeeded - failed, partly failed, refused, killed by a Velero restart), or there is no history at all (a fresh
+Prometheus or copy). The last success is a series of each Velero pod; the history keeps it across a restart, so a
+restart alone does not fire this. It holds until a backup succeeds. A Velero gone is [VeleroDown](VeleroDown.md),
+at once - this alert follows only once the last success is 26h old.
 
 ## Impact
 
-Backups are not landing. If the cluster is destroyed now, we lose data from the last known-good backup. No immediate user-facing impact.
+Backups are not landing. Velero holds the cluster's manifests only (each store's data has its own backup or none -
+infra's `clusters/production/velero/values.yaml`): rebuilding the cluster now would start from the last good
+backup's manifests. No immediate user-facing impact.
 
 ## First steps
 

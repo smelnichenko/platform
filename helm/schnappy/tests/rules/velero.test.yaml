@@ -74,7 +74,7 @@ tests:
         alertname: VeleroScheduledBackupFailed
         exp_alerts: []
 
-  # no daily success in 30 h: missing alone
+  # no daily success in 26 h: missing alone
   - interval: 1m
     input_series:
       - series: 'velero_backup_last_status{schedule="velero-schnappy-daily"}'
@@ -89,7 +89,7 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
               summary: "Velero daily backup missing"
-              description: "No successful schnappy-daily backup in the last 30h."
+              description: "No successful schnappy-daily backup in the last 26h."
       - eval_time: 20m
         alertname: VeleroScheduledBackupFailed
         exp_alerts: []
@@ -128,7 +128,7 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
               summary: "Velero daily backup missing"
-              description: "No successful schnappy-daily backup in the last 30h."
+              description: "No successful schnappy-daily backup in the last 26h."
       - eval_time: 20m
         alertname: VeleroWeeklyBackupMissing
         exp_alerts:
@@ -203,7 +203,7 @@ tests:
         exp_alerts: []
 
   # Velero gone after it reported (scaled to 0, deleted - no target; its node-agent still up): VeleroDown after 15 min;
-  # the daily age alert silent while the history's last success is younger than 30 h, firing once it is older
+  # the daily age alert silent while the history's last success is younger than 26 h, firing once it is older
   - interval: 10m
     input_series:
       - series: 'up{namespace="velero", container="velero"}'
@@ -223,17 +223,17 @@ tests:
               runbook_url: https://runbooks.pmon.dev/VeleroDown
               summary: "Velero server down"
               description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."
-      - eval_time: 29h
+      - eval_time: 25h
         alertname: VeleroDailyBackupMissing
         exp_alerts: []
-      - eval_time: 30h30m
+      - eval_time: 26h30m
         alertname: VeleroDailyBackupMissing
         exp_alerts:
           - exp_labels: { severity: critical }
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
               summary: "Velero daily backup missing"
-              description: "No successful schnappy-daily backup in the last 30h."
+              description: "No successful schnappy-daily backup in the last 26h."
   # a Velero answering its scrape: no VeleroDown
   - interval: 1m
     input_series:
@@ -259,11 +259,11 @@ tests:
               runbook_url: https://runbooks.pmon.dev/VeleroDown
               summary: "Velero server down"
               description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."
-  # the daily threshold: its last success 31 h old fires, 29 h old does not (at -111600 s and -104400 s)
+  # the daily threshold: its last success 27 h old fires, 25 h old does not (at -97200 s and -90000 s)
   - interval: 1m
     input_series:
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
-        values: '-111600x30'
+        values: '-97200x30'
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
         values: '0x30'
     alert_rule_test:
@@ -274,11 +274,11 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/VeleroDailyBackupMissing
               summary: "Velero daily backup missing"
-              description: "No successful schnappy-daily backup in the last 30h."
+              description: "No successful schnappy-daily backup in the last 26h."
   - interval: 1m
     input_series:
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-schnappy-daily"}'
-        values: '-104400x30'
+        values: '-90000x30'
       - series: 'velero_backup_last_successful_timestamp{schedule="velero-full-weekly"}'
         values: '0x30'
     alert_rule_test:
@@ -339,3 +339,54 @@ tests:
               runbook_url: https://runbooks.pmon.dev/VeleroDown
               summary: "Velero server down"
               description: "No Velero server has answered its metrics scrape for 15 minutes: no backup runs."
+  # a counter born at 1 (the failure counted before a new Velero pod's first scrape): fired - increase() alone needs two
+  # samples and sees none
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_validation_failure_total{schedule="velero-schnappy-daily",pod="velero-new"}'
+        values: '_x5 1x40'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroScheduledBackupFailed
+        exp_alerts:
+          - exp_labels: { severity: critical, schedule: velero-schnappy-daily, pod: velero-new }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroScheduledBackupFailed
+              summary: "Velero scheduled backup failed"
+              description: "A backup of schedule velero-schnappy-daily failed or failed validation in the last hour."
+  # a plain restart (the new pod's counters born at 0): silent; an old failure of a long-lived pod: silent an hour on
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_failure_total{schedule="velero-schnappy-daily",pod="velero-old"}'
+        values: '0x10'
+      - series: 'velero_backup_failure_total{schedule="velero-schnappy-daily",pod="velero-new"}'
+        values: '_x11 0x40'
+      - series: 'velero_backup_failure_total{schedule="velero-full-weekly",pod="velero-long"}'
+        values: '0x4 1x200'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: VeleroScheduledBackupFailed
+        exp_alerts:
+          - exp_labels: { severity: critical, schedule: velero-full-weekly, pod: velero-long }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroScheduledBackupFailed
+              summary: "Velero scheduled backup failed"
+              description: "A backup of schedule velero-full-weekly failed or failed validation in the last hour."
+      - eval_time: 150m
+        alertname: VeleroScheduledBackupFailed
+        exp_alerts: []
+  # VeleroBackupFailing is an ad-hoc backup's (no schedule): a scheduled failure is VeleroScheduledBackupFailed's alone
+  - interval: 1m
+    input_series:
+      - series: 'velero_backup_failure_total{schedule="velero-schnappy-daily"}'
+        values: '0x4 1x25'
+      - series: 'velero_backup_failure_total{schedule=""}'
+        values: '0x4 1x25'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VeleroBackupFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/VeleroBackupFailing
+              summary: "Velero backup failed"
