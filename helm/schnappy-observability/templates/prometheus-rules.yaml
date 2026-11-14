@@ -462,6 +462,22 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ScyllaBackupsUnwatched"
             summary: "No Scylla Manager backup task listed - Scylla's backups are watched by nothing"
+        # the offsite git mirror on ten (ops setup-velero.yml): every repository of the Forgejo organisation pushed to the
+        # Pis' backup-git-mirror volume daily (04:00 + up to 5 min), its good run's time on ten's node_exporter (textfile
+        # collector). 26 h, read from Prometheus' history over the period: any way a night ends without a clean run
+        # (failed, a repository refused, never started, the timer gone) fires by 06:00 the next day; none ever recorded
+        # (not deployed, its file gone, node_exporter not scraped) fires too. Its job failed every night unnoticed from
+        # 2026-07 and its successor was never deployed - found 2026-11-15
+        - alert: OffsiteGitMirrorMissing
+          expr: |-
+            absent(max_over_time(offsite_git_mirror_last_success_timestamp_seconds{job="node-exporter"}[26h])
+              > time() - 26 * 3600)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorMissing"
+            summary: "The offsite git mirror has had no clean run for 26 h - the Forgejo repositories' backup on the Pis is stale"
 
 {{- if .Values.prometheus.lanOnlyProbeUrls }}
     - name: infra-lan-only-urls

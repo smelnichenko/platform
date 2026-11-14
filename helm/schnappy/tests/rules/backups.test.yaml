@@ -284,3 +284,48 @@ tests:
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/ScyllaBackupsUnwatched"
               summary: "No Scylla Manager backup task listed - Scylla's backups are watched by nothing"
+
+  # the offsite git mirror (ten's node_exporter textfile, ops setup-velero.yml): no clean run yet - fires; a clean run
+  # within 26 h - quiet; the last clean one older - fires; read from node-exporter's job alone
+  - interval: 1h
+    input_series:
+      # clean runs at 4 h and at 28 h, none after: the gauge holds the last clean run's time
+      - series: 'offsite_git_mirror_last_success_timestamp_seconds{job="node-exporter", instance="ten"}'
+        values: '_x3 14400x23 100800x30'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorMissing"
+              summary: "The offsite git mirror has had no clean run for 26 h - the Forgejo repositories' backup on the Pis is stale"
+      - eval_time: 27h
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts: []
+      - eval_time: 50h
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts: []
+      - eval_time: 56h
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorMissing"
+              summary: "The offsite git mirror has had no clean run for 26 h - the Forgejo repositories' backup on the Pis is stale"
+
+  # never recorded (the mirror not deployed, its file gone), or only under another job: fires
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node-exporter", instance="ten"}'
+        values: '1x30'
+      - series: 'offsite_git_mirror_last_success_timestamp_seconds{job="pushgateway"}'
+        values: '0+60x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorMissing"
+              summary: "The offsite git mirror has had no clean run for 26 h - the Forgejo repositories' backup on the Pis is stale"
