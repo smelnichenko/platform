@@ -26,7 +26,7 @@ gateway:
 # Both backends can be on simultaneously during cutover.
 clickhouse:
   enabled: false
-  image: clickhouse/clickhouse-server:26.8.15.10-alpine
+  image: clickhouse/clickhouse-server:26.8.34.13-alpine
   password: ""
   existingSecret: ""
   resources:
@@ -158,7 +158,7 @@ kubeStateMetrics:
 # daily restore check does). Off by default; enabled in prod.
 pushgateway:
   enabled: false
-  image: quay.io/prometheus/pushgateway:v1.11.3
+  image: quay.io/prometheus/pushgateway:v1.11.4
   storage: 16Mi
   storageClass: local-path
   resources:
