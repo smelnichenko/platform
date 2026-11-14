@@ -82,6 +82,19 @@ steps:
     commands:
       - sh .woodpecker/rules-unit-tests.sh
 
+  # Alertmanager's config in Alertmanager's own image (the one infra's values run: values.yaml's alertmanager.image -
+  # move this tag with it): amtool takes it, each alert's route as production's, and the upgrade cycle's notices through
+  # Alertmanager itself - a config it refuses fails here, not by crash-looping production's pod with no alert going out
+  - name: alertmanager-render
+    image: alpine/helm:latest
+    commands:
+      - sh .woodpecker/alertmanager-render.sh
+  - name: alertmanager-check
+    image: prom/alertmanager:v0.34.1
+    depends_on: [alertmanager-render]
+    commands:
+      - sh .woodpecker/alertmanager-check.sh
+
   # The init-users hook script against a real Postgres: what "Succeeded" must
   # mean (roles, ownership, quoted passwords, idempotent rotation, abort on a
   # missing secret or an SQL error). A stub psql cannot see that -c strings are

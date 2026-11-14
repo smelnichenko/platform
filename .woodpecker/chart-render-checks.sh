@@ -186,6 +186,13 @@ echo "$routes" | grep -q 'severity: critical' || fail "the human route for criti
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $am --set alertmanager.kagentInvestigate.enabled=true --show-only templates/alertmanager-configmap.yaml \
   | awk '/^    route:/,/^    receivers:/' | grep -q 'receiver: kagent-investigate' || fail "the kagent route cannot be switched on"
+# the upgrade cycle's notices: their own route to a receiver mailing the same address, once, no
+# "resolved" mail - a critical one (a one-way change failed) keeps the critical route's hourly repeat
+echo "$routes" | grep -A2 'alertname: UpgradeCycle' | grep -q 'receiver: email-notice' || fail "the upgrade cycle's notices lost their route"
+# shellcheck disable=SC2086
+helm template t helm/schnappy-observability/ $am --show-only templates/alertmanager-configmap.yaml \
+  | awk '/- name: email-notice/ {n=1} n && /^    [a-z]/ {exit} n' | grep -q 'send_resolved: false' \
+  || fail "the notices' receiver sends a resolved mail (or is gone)"
 
 # --- schnappy-observability: Fluent Bit keeps its place and its buffer across a roll --------------------------------
 # with stateHostPath tail's positions (its DB) and the filesystem buffer live on the node's disk: on an emptyDir every

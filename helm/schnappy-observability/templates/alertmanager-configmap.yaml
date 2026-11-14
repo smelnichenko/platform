@@ -21,6 +21,21 @@ data:
       group_interval: {{ .Values.alertmanager.groupInterval }}
       repeat_interval: {{ .Values.alertmanager.repeatInterval }}
       routes:
+        # the upgrade cycle's notices: the runner posts each as an UpgradeCycle alert lasting as long as its notice, a
+        # label of its own each (a second one of a kind for a unit is mailed) - first, so neither the critical route
+        # nor kagent takes them: one mail a notice, kind and unit grouped apart, repeated only past its life (72 h,
+        # under the 120 h a notification is kept), never a "resolved" (a notice's end is no all-clear); a page (critical:
+        # a one-way change failed) hourly until the runner resolves it
+        - match:
+            alertname: UpgradeCycle
+          receiver: email-notice
+          group_by: ['alertname', 'kind', 'unit']
+          group_wait: 30s
+          repeat_interval: 72h
+          routes:
+            - match:
+                severity: critical
+              repeat_interval: 1h
         {{- if .Values.alertmanager.kagentInvestigate.enabled }}
         # Critical alerts also fan out to kagent for an LLM auto-investigation.
         # continue:true so the human email route below still fires. OFF by default: on
@@ -58,7 +73,7 @@ data:
             send_resolved: true
             headers:
               Subject: '{{`{{ if eq .Status "firing" }}🔥 [FIRING:{{ .Alerts.Firing | len }}]{{ else }}✅ [RESOLVED:{{ .Alerts.Resolved | len }}]{{ end }} {{ .CommonLabels.alertname }} ({{ .CommonLabels.namespace }})`}}'
-            html: |
+            html: &email_html |
               {{`<!DOCTYPE html>
               <html>
               <head><meta charset="utf-8"></head>
@@ -132,10 +147,23 @@ data:
                 </p>
               </body>
               </html>`}}'
+      # the same mail (its body the email receiver's own) to the same address, without the "resolved" one a notice's
+      # end would send, its subject the notice's own (the inherited one read "UpgradeCycle ()" for every kind - a veto
+      # threaded under applied ones). Written out, not merged: Alertmanager's strict decoder read a merged headers
+      # map's Subject overridden as a key set twice, and refused the whole config
+      - name: email-notice
+        email_configs:
+          - to: '{{ .Values.alertmanager.alertEmailTo }}'
+            send_resolved: false
+            html: *email_html
+            headers:
+              Subject: '{{`[UpgradeCycle] {{ .CommonLabels.kind }}: {{ .CommonLabels.unit }}{{ with .CommonAnnotations.summary }} - {{ . }}{{ end }}`}}'
     inhibit_rules:
+      # unit too: the upgrade cycle's notices carry no namespace - one unit's page (critical, a week) held back every
+      # other unit's veto notice, its 24 h passing unseen and the major applied (no other alert carries a unit label)
       - source_match:
           severity: critical
         target_match:
           severity: warning
-        equal: ['alertname', 'namespace']
+        equal: ['alertname', 'namespace', 'unit']
 {{- end }}
