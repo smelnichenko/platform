@@ -91,7 +91,9 @@ prometheus:
 # Grafana Mimir (long-term metrics storage via MinIO S3)
 mimir:
   enabled: false
-  image: grafana/mimir:2.17.8
+  # production's own (infra clusters/production/schnappy-observability/values.yaml): a default no environment runs
+  # drifted unseen - Grafana 12.4.2, Mimir 2.17.8, Tempo 2.7.2 while production ran 13/3/3 (found 2026-11-15)
+  image: grafana/mimir:3.2.5
   retention: 90d
   minioSecret: schnappy-minio
   resources:
@@ -106,7 +108,7 @@ mimir:
 # Grafana Tempo (distributed tracing)
 tempo:
   enabled: false
-  image: grafana/tempo:2.7.2
+  image: grafana/tempo:3.1.1  # production's own (see mimir.image)
   retention: 336h
   minioSecret: schnappy-minio
   # Single-replica (PVC for WAL is RWO local-path). Stress 11 (with
@@ -168,9 +170,10 @@ pushgateway:
 # Grafana
 grafana:
   enabled: false
-  image: grafana/grafana:12.4.2
-  # pluginsPreinstallAutoUpdate: false - GF_PLUGINS_PREINSTALL_AUTO_UPDATE when set (unset: Grafana's own default).
-  # Grafana 13 on this chart's read-only root filesystem needs false (grafana-deployment.yaml says why).
+  image: grafana/grafana:13.2.3  # production's own (see mimir.image)
+  # GF_PLUGINS_PREINSTALL_AUTO_UPDATE (a value removed: Grafana's own default). Grafana 13 on this chart's read-only
+  # root filesystem needs false (grafana-deployment.yaml says why) - production's value too
+  pluginsPreinstallAutoUpdate: false
   adminUser: admin
   adminPassword: ""
   existingSecret: ""

@@ -230,7 +230,8 @@ paths() {  # every "<parent>.<key> <value>" of YAML on stdin
     print p key " " v
   }'
 }
-tempo2() { helm template t helm/schnappy-observability/ --set tempo.enabled=true --show-only "templates/$1"; }
+# Tempo 2's config named (the chart's default is Tempo 3 since 2026-11-15): its flush on shutdown still rendered
+tempo2() { helm template t helm/schnappy-observability/ --set tempo.enabled=true --set tempo.image=grafana/tempo:2.7.2 --show-only "templates/$1"; }
 tempo2 tempo-configmap.yaml | paths | grep -qx 'data.tempo.yaml.ingester.flush_all_on_shutdown true' \
   || fail "Tempo 2 does not flush all it holds on shutdown"
 tempo2 tempo-deployment.yaml | paths | grep -qx 'spec.template.spec.terminationGracePeriodSeconds 120' \

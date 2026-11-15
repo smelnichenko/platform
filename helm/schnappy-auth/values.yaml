@@ -10,7 +10,7 @@ networkPolicies:
 
 keycloak:
   enabled: false
-  image: quay.io/keycloak/keycloak:26.5.6
+  image: quay.io/keycloak/keycloak:26.5.7  # production's (ops setup-pi-services.yml keycloak_version, on the Pis)
   adminUser: admin
   adminPassword: ""
   dbPassword: ""
