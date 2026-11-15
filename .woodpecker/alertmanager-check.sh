@@ -34,7 +34,11 @@ echo "$receiver" | grep -q 'send_resolved: false' || fail "the notices' receiver
 echo "$receiver" | grep -qF "Subject: '[UpgradeCycle] {{ .CommonLabels.kind }}: {{ .CommonLabels.unit }}{{ with .CommonAnnotations.summary }} - {{ . }}{{ end }}'" \
   || fail "the notices' subject is not the notice's own"
 echo "$receiver" | grep -q 'to: .ops@example.org.' || fail "the notices are not mailed to the admin address"
-echo "$receiver" | grep -q 'html:' || fail "the notices carry no body"
+# the e-mail route's own body (one template, the alias of its anchor): a body of its own, or none, is a mail with no alert in it
+echo "$receiver" | grep -qx ' *html: \*email_html' || fail "the notices' body is not the e-mail route's"
+block "- name: email" '^  - name: |^[a-z]' | grep -qx ' *html: &email_html |' || fail "the e-mail route's body is no longer the anchor the notices use"
+# a notice mailed within seconds of its post, never held back for a group to gather (the veto's 24 h starts at its mail)
+echo "$route_block" | sed -n '1,/severity: critical/p' | grep -qx ' *group_wait: 30s' || fail "the notices wait more than 30 s to go out"
 # the notices through Alertmanager itself (no cluster, no mail sent - its smarthost unreachable here)
 alertmanager --config.file="$cfg" --storage.path=/tmp/am --cluster.listen-address= --web.listen-address=127.0.0.1:9093 \
   > /tmp/am.log 2>&1 &
