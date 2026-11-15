@@ -763,7 +763,8 @@ spec:
         # the offsite git mirror on ten (ops setup-velero.yml): every repository of the Forgejo organisation pushed to the
         # Pis' backup-git-mirror volume daily (04:00 + up to 5 min), its good run's time on ten's node_exporter (textfile
         # collector). 26 h, read from Prometheus' history over the period: any way a night ends without a clean run
-        # (failed, a repository refused, never started, the timer gone) fires by 06:00 the next day; none ever recorded
+        # (failed, a repository refused, never started, the timer gone) fires 26 h after the last clean one, held 10 min
+        # (about 06:15 the next day; a later clean run - the unit retries by itself - clears it); none ever recorded
         # (not deployed, its file gone, node_exporter not scraped) fires too. Its job failed every night unnoticed from
         # 2026-07 and its successor was never deployed - found 2026-11-15
         - alert: OffsiteGitMirrorMissing
