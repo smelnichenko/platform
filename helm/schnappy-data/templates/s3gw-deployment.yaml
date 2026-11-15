@@ -35,7 +35,7 @@ spec:
         # versitygw creates neither its backend dir nor its IAM dir, and the IAM
         # dir MUST be separate from the backend or it surfaces as a stray bucket.
         - name: init-dirs
-          image: busybox:1.37
+          image: busybox:1.38
           command: ["sh", "-c", "mkdir -p /data/buckets /data/iam"]
           resources:
             requests: { cpu: 10m, memory: 16Mi }
