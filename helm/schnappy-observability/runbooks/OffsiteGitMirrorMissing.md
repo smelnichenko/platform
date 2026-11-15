@@ -8,9 +8,11 @@ The offsite git mirror on ten has had no clean run for 26 h, or never recorded o
 (`absent(max_over_time(offsite_git_mirror_last_success_timestamp_seconds{job="node-exporter"}[26h]) > time() - 26 * 3600)`).
 
 The mirror (`offsite-backup.timer` / `offsite-backup.service` on ten, installed by ops `setup-velero.yml`, `task
-deploy:velero`) pushes every repository of the Forgejo organisation to a bare repository of its own on the Pis'
-`backup-git-mirror` Gluster volume (`/mnt/backups/git-mirror`, through the Pi holding the VIP) at 04:00, then writes
-`last-success` there and its result to `/var/lib/node_exporter/textfile/offsite_git_mirror.prom` on ten.
+deploy:velero`) pushes every repository of the Forgejo organisation to a repository of its own on the Pis'
+`backup-git-mirror` Gluster volume (`/mnt/backups/git-mirror`, through the Pi holding the VIP) at 04:00 - every ref,
+none deleted, every replaced commit kept in its reflog - then writes `last-success` there and its result to
+`/var/lib/node_exporter/textfile/offsite_git_mirror.prom` on ten. On the Pis its key runs nothing but
+`/usr/local/bin/git-mirror-gate`. A failed night is tried again 45 min later (three times in six hours at most).
 
 ## How bad
 
@@ -26,17 +28,21 @@ ssh ten 'cat /var/lib/node_exporter/textfile/offsite_git_mirror.prom'
 ssh pi1 'cat /mnt/backups/git-mirror/last-success; ls /mnt/backups/git-mirror'
 ```
 
-The sync names each repository that failed and why (`FAILED: <repo>(<step>)`).
+The sync names each repository that failed and why (`FAILED: <repo>(<step>)`); the gate names the Pi and what it
+refused (`git-mirror-gate on <pi>: ...`).
 
 ## Root-cause investigation
 
 | Symptom | Cause |
 |---|---|
-| `FAILED: no token in /var/lib/git-mirror/token`, HTTP 401 | the mirror reader's token gone or revoked: `task deploy:velero` makes a new one (the `git-mirror` account, no admin) |
-| `<repo>(its repository on the Pi)`, `Permission denied (publickey)` | the mirror's key (`/home/sm/.ssh/id_ed25519` on ten) not authorized for `sm` on the Pi holding the VIP: `task deploy:velero` authorizes it on both |
-| `<repo>(push)` with `mountpoint` in the log | the `backup-git-mirror` volume not mounted on that Pi (`findmnt /mnt/backups/git-mirror`) - setup-gluster |
-| the file has an old time, the unit `success` | the textfile not written: its owner or `/var/lib/node_exporter/textfile` (setup-host-hardening) |
+| `FAILED: no token in /var/lib/git-mirror/token`, HTTP 401 | the mirror reader's token gone or revoked: `task deploy:velero` makes the reader anew and a new token (the `git-mirror` account, no admin) |
+| `<repo>(its repository on the Pi)` with `Permission denied (publickey)` | the mirror's key (`/var/lib/git-mirror/id_ed25519` on ten) not authorized on the Pi holding the VIP: `task deploy:velero` authorizes it on both and proves each |
+| `<repo>(its repository on the Pi)` with `git-mirror-gate on <pi>: /mnt/backups/git-mirror not mounted` | the `backup-git-mirror` volume not mounted on that Pi (`findmnt /mnt/backups/git-mirror`) - setup-gluster |
+| `<repo>(its repository on the Pi)` with `was not made by this mirror` | a repository on the volume the mirror did not make: `task deploy:velero` keeps it aside (`<name>.pre-mirror-<time>.git`) |
+| `<repo>(emptied in Forgejo - its backup of N refs kept)` | Forgejo serves the repository empty while its backup holds history: deleted and made again, or a restore gone wrong. The backup is the copy to restore from (`git clone /mnt/backups/git-mirror/<repo>.git` on a Pi, then push it to Forgejo) |
+| `<repo>(fetch)`, `<repo>(clone)` | Forgejo unreachable from ten, or the repository gone mid-run: the next try (45 min) |
+| `<repo>(push)` with `index.lock` or `*.lock` | a lock left by a killed push in that backup: remove the stale lock under `/mnt/backups/git-mirror/<repo>.git` on a Pi |
 | no series at all, the unit never ran | the timer missing or disabled on ten: `task deploy:velero` |
-| `node-exporter` target down | node_exporter on ten: `task deploy:host-hardening` (its textfile collector flag) |
+| `node-exporter` target down | node_exporter on ten: `task deploy:host-hardening` (its textfile collector) |
 
 After a fix: `ssh ten sudo systemctl start offsite-backup.service` runs it now; the alert clears within a scrape.

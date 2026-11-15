@@ -329,3 +329,72 @@ tests:
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorMissing"
               summary: "The offsite git mirror has had no clean run for 26 h - the Forgejo repositories' backup on the Pis is stale"
+
+  # node_exporter gone for 5 h (ten rebooting, the exporter down) right after a good run 3 h old: the 26 h history keeps
+  # the last success - quiet (a 1 h window would fire on the gap)
+  - interval: 1h
+    input_series:
+      - series: 'offsite_git_mirror_last_success_timestamp_seconds{job="node-exporter", instance="ten"}'
+        values: '_x3 10800x1 _x5'
+    alert_rule_test:
+      - eval_time: 9h
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts: []
+
+  # the series arriving 4 min after Prometheus starts (a fresh copy, a first deploy): absent that long never fires - the
+  # 10 min hold
+  - interval: 1m
+    input_series:
+      - series: 'offsite_git_mirror_last_success_timestamp_seconds{job="node-exporter", instance="ten"}'
+        values: '_x4 240+60x30'
+    alert_rule_test:
+      # absent at 0-3 m (_x4: four samples missing), there from 4 m: never 10 min absent
+      - eval_time: 3m
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts: []
+
+  # the last good run at time 0: quiet at 25 h 59 m, firing at 26 h 12 m (26 h, then its 10 min hold) - the boundary is 26 h
+  - interval: 1m
+    input_series:
+      - series: 'offsite_git_mirror_last_success_timestamp_seconds{job="node-exporter", instance="ten"}'
+        values: '0x1640'
+    alert_rule_test:
+      - eval_time: 1559m
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts: []
+      - eval_time: 1572m
+        alertname: OffsiteGitMirrorMissing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorMissing"
+              summary: "The offsite git mirror has had no clean run for 26 h - the Forgejo repositories' backup on the Pis is stale"
+
+  # the mirror's count: 20 for two days, then 17 (a grant lost - the run still clean) - fires after its hour; steady or
+  # growing - quiet
+  # (scraped every 5 min here: an hour apart, the series is stale between samples and the hour's hold never runs out)
+  - interval: 5m
+    input_series:
+      - series: 'offsite_git_mirror_repositories{job="node-exporter", instance="ten"}'
+        values: '20x575 17x36'
+      - series: 'offsite_git_mirror_repositories{job="node-exporter", instance="steady"}'
+        values: '20x611'
+      - series: 'offsite_git_mirror_repositories{job="node-exporter", instance="grown"}'
+        values: '20x575 21x36'
+    alert_rule_test:
+      - eval_time: 47h
+        alertname: OffsiteGitMirrorShrank
+        exp_alerts: []
+      - eval_time: 48h30m
+        alertname: OffsiteGitMirrorShrank
+        exp_alerts: []
+      - eval_time: 49h30m
+        alertname: OffsiteGitMirrorShrank
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node-exporter, instance: ten }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorShrank"
+              summary: "The offsite git mirror mirrored fewer repositories than it did this week - one dropped out of its listing"
