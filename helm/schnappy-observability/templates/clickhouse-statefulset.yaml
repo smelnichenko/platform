@@ -37,7 +37,7 @@ spec:
         # from env. Compute it from CLICKHOUSE_PASSWORD here so the
         # ConfigMap stays static.
         - name: hash-password
-          image: alpine:3.20
+          image: alpine:3.24
           command:
             - sh
             - -c
