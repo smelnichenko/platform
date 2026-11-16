@@ -1,6 +1,6 @@
 smokeTest:
   enabled: false
-  image: grafana/k6:1.7.1
+  image: grafana/k6:1.8.3
   schedule: "0 6 * * *"
   # true = never fires on its own; still runnable via `kubectl create job --from=cronjob/...`
   suspend: false
