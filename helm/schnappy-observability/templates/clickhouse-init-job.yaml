@@ -24,7 +24,9 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "schnappy.clickhouse.selectorLabels" . | nindent 8 }}
+        # not the server's selector labels: the Service would take this pod (no server in it) as an endpoint
+        {{- include "schnappy.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: clickhouse-init
         job-component: clickhouse-init
         velero.io/exclude-from-backup: "true"
     spec:

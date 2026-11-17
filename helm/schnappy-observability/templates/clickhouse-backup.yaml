@@ -16,6 +16,10 @@ metadata:
   name: {{ $ch }}-backup-store
   labels:
     {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+  annotations:
+    # before the StatefulSet that reads it (Argo applies kinds it does not know after the ones it does, in one wave): a
+    # missing Secret would leave clickhouse-0 in CreateContainerConfigError, and a revert does not replace that pod
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   refreshInterval: 15m
   secretStoreRef:
@@ -48,7 +52,9 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      backoffLimit: 1
+      # one try a night: a client dropped (an envoy reset, the deadline) leaves the server still writing its backup - a
+      # retry would start a second one beside it. The next night is the retry; ClickHouseBackupMissed says so
+      backoffLimit: 0
       activeDeadlineSeconds: 3600
       template:
         metadata:

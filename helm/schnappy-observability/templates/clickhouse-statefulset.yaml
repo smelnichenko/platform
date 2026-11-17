@@ -21,8 +21,10 @@ spec:
       annotations:
         checksum/config: {{ print (.Files.Get "files/clickhouse-config.xml") (.Files.Get "files/clickhouse-users.xml") (include "schnappy.clickhouse.backupConfig" .) | sha256sum }}
         {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
-        # its backups go straight to the Pi store, past the sidecar (as production's CNPG pods' - barman through it failed)
-        traffic.sidecar.istio.io/excludeOutboundPorts: {{ regexReplaceAll "^http://[^:/]+:?" .Values.clickhouse.backup.endpoint "" | default "80" | quote }}
+        # its backups go straight to the Pi store, past the sidecar (as production's CNPG pods' - barman through it
+        # failed): the store's addresses only - a port excluded for every destination would skip the sidecar to any mesh
+        # service on it, and STRICT would reset that connection
+        traffic.sidecar.istio.io/excludeOutboundIPRanges: {{ .Values.clickhouse.backup.storeIps | join "/32," }}/32
         {{- end }}
     spec:
       # 30s is too short for ClickHouse to flush MergeTree parts/buffers cleanly.

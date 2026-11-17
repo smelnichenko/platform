@@ -46,3 +46,22 @@ kubectl -n schnappy-infra create job --from=cronjob/schnappy-clickhouse-backup c
 
 The job completes with `BACKUP_CREATED`; the CronJob's last successful time is recent and the alert resolves within
 an hour.
+
+## Turning backups off
+
+`clickhouse.backup.enabled: false` restarts ClickHouse without its backup config - but schnappy-observability has no
+prune, so what the chart made stays: delete it (on ten, the operator's OK for each), or the backup CronJob fails every
+night ("no named collection backup_store") and the app stays OutOfSync:
+
+```bash
+kubectl -n schnappy-infra delete cronjob schnappy-clickhouse-backup schnappy-clickhouse-backup-prune
+kubectl -n schnappy-infra delete externalsecret schnappy-clickhouse-backup-store   # its Secret (the store's keys) with it
+kubectl -n schnappy-infra delete secret schnappy-clickhouse-backup-store --ignore-not-found
+kubectl -n schnappy-infra delete networkpolicy schnappy-clickhouse-backup-prune
+```
+
+## If clickhouse-0 does not start after backups were turned on
+
+`CreateContainerConfigError` on `schnappy-clickhouse-backup-store`: the ExternalSecret is not Ready (Vault, ESO) -
+`kubectl -n schnappy-infra get externalsecret schnappy-clickhouse-backup-store`. Fix it, or revert the values - and then
+delete the stuck pod: the StatefulSet (OrderedReady) does not replace a pod that never became Ready.

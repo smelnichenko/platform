@@ -1,10 +1,13 @@
 <clickhouse>
-  <!-- the Pi store for BACKUP and RESTORE (clickhouse-backup.yaml): its keys from the environment, never in a query -->
+  <!-- the Pi store for BACKUP and RESTORE (clickhouse-backup.yaml): its keys from the environment, never in a query.
+       Nothing in it overridable: a query naming the collection with another url (another bucket - the keys reach every
+       one) is refused ("Override not allowed", 26.8, 2026-11-17); the store refuses a key climbing out of the bucket
+       (../, %2E%2E: 400). The collection's values show as [HIDDEN]. -->
   <named_collections>
     <backup_store>
-      <url>__URL__</url>
-      <access_key_id from_env="BACKUP_STORE_ACCESS_KEY"/>
-      <secret_access_key from_env="BACKUP_STORE_SECRET_KEY"/>
+      <url overridable="false">__URL__</url>
+      <access_key_id overridable="false" from_env="BACKUP_STORE_ACCESS_KEY"/>
+      <secret_access_key overridable="false" from_env="BACKUP_STORE_SECRET_KEY"/>
     </backup_store>
   </named_collections>
 </clickhouse>

@@ -438,3 +438,28 @@ tests:
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupNeverSucceeded"
               summary: "ClickHouse: its backup job never/schnappy-clickhouse-backup has never succeeded"
+
+  # ClickHouse's backups on, but no backup CronJob listed (a prune job's is not it): fires after its hour; listed - quiet
+  - interval: 5m
+    input_series:
+      - series: 'kube_cronjob_info{namespace="schnappy-infra", cronjob="schnappy-clickhouse-backup-prune", instance="ksm", pod="ksm-1"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ClickHouseBackupsUnwatched
+        exp_alerts: []
+      - eval_time: 65m
+        alertname: ClickHouseBackupsUnwatched
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupsUnwatched"
+              summary: "ClickHouse's backups are on, but no backup CronJob is listed - its backups are watched by nothing"
+  - interval: 5m
+    input_series:
+      - series: 'kube_cronjob_info{namespace="schnappy-infra", cronjob="schnappy-clickhouse-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: ClickHouseBackupsUnwatched
+        exp_alerts: []

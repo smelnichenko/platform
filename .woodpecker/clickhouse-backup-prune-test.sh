@@ -86,10 +86,19 @@ check "the prune CronJob renders the script (its listing guard there)" \
 check "the server: backup.xml's keys from the environment, mounted in config.d, the keys from the backup-store secret" \
   "$(printf '%s\n' "$out" | grep -c 'from_env="BACKUP_STORE_\(ACCESS\|SECRET\)_KEY"') $(printf '%s\n' "$out" | grep -c 'mountPath: /etc/clickhouse-server/config.d/50-backup.xml, subPath: backup.xml') $(printf '%s\n' "$out" | grep -A3 'name: BACKUP_STORE_' | grep -c 'name: t-schnappy-clickhouse-backup-store')" \
   "2 1 2"
-check "  the store past the sidecar (port 9000), ClickHouse's egress to the store's three addresses on 9000" \
-  "$(printf '%s\n' "$out" | grep -c 'excludeOutboundPorts: "9000"') $(printf '%s\n' "$out" | awk '/^kind: NetworkPolicy/ { n = 0 } /name: t-schnappy-clickhouse$/ { n = 1 } n && /cidr: 192.168.11.[456]\/32/ { c++ } END { print c }')" \
-  "1 3"
+check "  the store past the sidecar (its three addresses only - never a port for every destination), ClickHouse's egress to them on 9000" \
+  "$(printf '%s\n' "$out" | grep -c 'excludeOutboundIPRanges: 192.168.11.4/32,192.168.11.5/32,192.168.11.6/32$') $(printf '%s\n' "$out" | grep -c excludeOutboundPorts) $(printf '%s\n' "$out" | awk '/^kind: NetworkPolicy/ { n = 0 } /name: t-schnappy-clickhouse$/ { n = 1 } n && /cidr: 192.168.11.[456]\/32/ { c++ } END { print c }')" \
+  "1 0 3"
+# the review's (2026-11-17): nothing in the collection overridable (its url, its keys); one backup try a night; the store's
+# keys a wave before the StatefulSet; the init Job not an endpoint of ClickHouse's Service
+check "  the collection's url and keys not overridable (a query naming another bucket refused)" \
+  "$(printf '%s\n' "$out" | grep -cE '<(url|access_key_id|secret_access_key) overridable="false"')" 3
+check "  one backup try a night (backoffLimit 0); the store's keys' ExternalSecret at wave -1" \
+  "$(printf '%s\n' "$out" | awk '/^kind: CronJob/ { c = 0 } /name: t-schnappy-clickhouse-backup$/ { c = 1 } c && /backoffLimit:/ { print $2; exit }') $(printf '%s\n' "$out" | awk '/^kind: ExternalSecret/ { e = 1 } /^---/ { e = 0 } e && /sync-wave:/ { print $2 }' | tr -d '"')" \
+  "0 -1"
 off=$(helm template t helm/schnappy-observability/ --namespace schnappy-infra --set clickhouse.enabled=true --set clickhouse.existingSecret=ch)
+check "the init Job's pod: never ClickHouse's Service's selector (its template's component clickhouse-init)" \
+  "$(printf '%s\n' "$off" | awk '/^kind: Job/ { j = 1 } /^---/ { j = 0 } j && /^  template:/ { t = 1 } j && t && /app.kubernetes.io\/component:/ { print $2; exit }')" clickhouse-init
 check "  off by default: no backup config, no store keys, no CronJob" \
   "$(printf '%s\n' "$off" | grep -c 'backup_store\|BACKUP_STORE_\|kind: CronJob')" 0
 chr() { helm template t helm/schnappy-observability/ --namespace schnappy-infra --set clickhouse.enabled=true --set clickhouse.existingSecret=ch \

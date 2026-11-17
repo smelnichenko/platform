@@ -432,6 +432,17 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupNeverSucceeded"
             summary: "ClickHouse: its backup job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }} has never succeeded"
+        {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
+        # backups on, but no backup CronJob listed by kube-state-metrics: deleted or renamed, both alerts above go quiet
+        - alert: ClickHouseBackupsUnwatched
+          expr: absent(kube_cronjob_info{cronjob=~".+-clickhouse-backup"})
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupsUnwatched"
+            summary: "ClickHouse's backups are on, but no backup CronJob is listed - its backups are watched by nothing"
+        {{- end }}
         - alert: ScyllaBackupMissed
           expr: >-
             (time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600)
