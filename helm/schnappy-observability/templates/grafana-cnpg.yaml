@@ -1,0 +1,97 @@
+{{- if and .Values.grafana.enabled (eq (.Values.grafana.cnpg.enabled | toString) "true") }}
+{{- $cnpg := .Values.grafana.cnpg }}
+{{- $name := include "schnappy.grafana.cnpg.name" . }}
+{{- if and $cnpg.backup (not $cnpg.backupServerName) }}{{ fail "grafana.cnpg.backup needs backupServerName: a name of its own in the store" }}{{ end }}
+{{- if and $cnpg.backup (hasPrefix "schnappy-production-postgres" $cnpg.backupServerName) }}{{ fail "grafana.cnpg.backupServerName: never production's - the Pis' restore check reads that one" }}{{ end }}
+{{- if and $cnpg.backup (not .Values.vault.secretsEnabled) }}{{ fail "grafana.cnpg.backup needs vault.secretsEnabled: the store's keys come from Vault" }}{{ end }}
+# Grafana's database on CloudNativePG: its own cluster, never production's apps' database - backed up to the Pi store as
+# production's is, upgraded and restored as every CNPG cluster is. Its SQLite file (grafana.db on Grafana's volume) had
+# no backup: the pod's Velero annotation named a volume "data", Grafana's is "storage". A fresh database: every
+# dashboard and datasource is provisioned (2026-11-17: no dashboard made in the UI, no alert rule, no annotation);
+# Grafana makes its schema at its first start on it. CNPG generates the owner's password ({{ $name }}-app).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.grafana.postgres.labels" . | nindent 4 }}
+spec:
+  instances: 1
+  imageName: {{ $cnpg.imageName }}
+  # as production's database: evicted last on the one node
+  priorityClassName: data-critical
+  # out of the mesh (no sidecar): Grafana's sidecar reaches it in plaintext TCP (auto mTLS), Grafana's own TLS inside
+  # (ssl_mode require); the operator's status port needs no mesh exception
+  inheritedMetadata:
+    annotations:
+      sidecar.istio.io/inject: "false"
+  bootstrap:
+    initdb:
+      database: grafana
+      owner: grafana
+  storage:
+    size: {{ $cnpg.storage.size }}
+    {{- if $cnpg.storage.storageClass }}
+    storageClass: {{ $cnpg.storage.storageClass }}
+    {{- end }}
+  resources:
+    {{- toYaml $cnpg.resources | nindent 4 }}
+  {{- if $cnpg.backup }}
+  backup:
+    retentionPolicy: {{ $cnpg.backupRetention | quote }}
+    barmanObjectStore:
+      destinationPath: {{ $cnpg.backupDestination }}
+      endpointURL: {{ required "grafana.cnpg.backupEndpoint: the Pi store" $cnpg.backupEndpoint }}
+      serverName: {{ $cnpg.backupServerName }}
+      s3Credentials:
+        accessKeyId:
+          name: {{ $name }}-backup-store
+          key: ACCESS_KEY
+        secretAccessKey:
+          name: {{ $name }}-backup-store
+          key: SECRET_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+---
+# the Pi backup store's credentials (Vault's backup-store - production's CNPG cluster and Scylla's agents read the same)
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $name }}-backup-store
+  labels:
+    {{- include "schnappy.grafana.postgres.labels" . | nindent 4 }}
+spec:
+  refreshInterval: 15m
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: {{ $name }}-backup-store
+  data:
+    - secretKey: ACCESS_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: access_key
+    - secretKey: SECRET_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: secret_key
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ $name }}-daily
+  labels:
+    {{- include "schnappy.grafana.postgres.labels" . | nindent 4 }}
+spec:
+  # CNPG's schedule has a seconds field first: 02:00:00 every day, after production's 01:30 and SonarQube's 01:45
+  schedule: "0 0 2 * * *"
+  # the first base backup when the cluster is up, not the next night: WAL archived before one restores nothing
+  immediate: true
+  backupOwnerReference: cluster
+  cluster:
+    name: {{ $name }}
+  {{- end }}
+{{- end }}

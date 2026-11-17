@@ -52,4 +52,26 @@ check "recovery: from barman (backup-source, the old name), its store keys there
   "$(sqr --set sonarqube.cnpg.recovery=true --set sonarqube.cnpg.recoveryServerName=s1 --set sonarqube.cnpg.backup=true --set sonarqube.cnpg.backupServerName=s2 \
     | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /source: backup-source|serverName:/ { gsub(/^ +/, ""); printf "%s;", $0 }')" \
   "source: backup-source;serverName: s1;serverName: s2;"
+# Grafana's own CNPG cluster (schnappy-observability, 2026-11-17): once a day, a bounded window, its first backup at
+# once; its name in the store its own; Grafana's own network policy never selecting its pods
+gfr() { helm template t helm/schnappy-observability/ --namespace schnappy-infra --set grafana.enabled=true --set grafana.existingSecret=gf --set vault.secretsEnabled=true \
+  --set grafana.cnpg.enabled=true --set grafana.cnpg.backupEndpoint=http://store:9000 "$@" 2>&1; }
+gf=$(gfr --set grafana.cnpg.backup=true --set grafana.cnpg.backupServerName=schnappy-grafana-pg18)
+check "Grafana's: once a day, CNPG's six fields" \
+  "$(printf '%s\n' "$gf" | awk '/^kind: ScheduledBackup/ { s = 1 } s && /^  schedule:/ { gsub(/"/, ""); sub(/^  schedule: /, ""); print; exit }' \
+    | awk '{ print (NF == 6 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ && $4 $5 $6 == "***") }')" 1
+check "Grafana's: a bounded window, its first base backup at once" \
+  "$(printf '%s\n' "$gf" | awk '/^kind: Cluster/ { c = 1 } c && /^    retentionPolicy:/ { gsub(/"/, ""); print $2; exit }' | grep -cE '^[1-9][0-9]*[dwm]$') $(printf '%s\n' "$gf" | awk '/^kind: ScheduledBackup/ { s = 1 } s && /^  immediate:/ { print $2; exit }')" "1 true"
+check "Grafana's backups under production's server name: refused" \
+  "$(gfr --set grafana.cnpg.backup=true --set grafana.cnpg.backupServerName=schnappy-production-postgres-pg18 | grep -c 'execution error.*restore check reads that one')" 1
+check "Grafana's backups without a server name: refused" \
+  "$(gfr --set grafana.cnpg.backup=true | grep -c 'execution error.*needs backupServerName')" 1
+check "Grafana on CNPG without its cluster: refused; a database neither sqlite nor cnpg: refused" \
+  "$(gfr --set grafana.cnpg.enabled=false --set grafana.database=cnpg | grep -c 'execution error.*needs grafana.cnpg.enabled') $(gfr --set grafana.database=mysql | grep -c 'execution error.*sqlite or cnpg')" "1 1"
+check "Grafana on CNPG: its database's host, user and password from CNPG's own secret, TLS" \
+  "$(gfr --set grafana.database=cnpg | grep -A1 -E 'name: GF_DATABASE_(HOST|SSL_MODE)$' | grep -oE 'value: .*' | tr -d '"' | tr '\n' ';') $(gfr --set grafana.database=cnpg | grep -c 'name: t-schnappy-grafana-pg-app$')" \
+  "value: t-schnappy-grafana-pg-rw:5432;value: require; 2"
+check "  on sqlite (the default): no GF_DATABASE_ setting at all" "$(gfr | grep -c 'GF_DATABASE_')" 0
+check "Grafana's cluster's labels: never Grafana's component (its network policy would select the database's pods)" \
+  "$(printf '%s\n' "$gf" | awk '/^kind: Cluster/ { c = 1 } c && /app.kubernetes.io\/component:/ { print $2; exit }')" grafana-postgres
 [ "$fails" -eq 0 ] && echo "cnpg-backup-render: ALL-PASS" || { echo "cnpg-backup-render: $fails FAILED"; exit 1; }

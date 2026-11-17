@@ -267,6 +267,92 @@ spec:
         - protocol: TCP
           port: 8080
     {{- end }}
+    {{- if eq (.Values.grafana.cnpg.enabled | toString) "true" }}
+    # Grafana → its own CNPG cluster (grafana-cnpg.yaml)
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.grafana.cnpg.name" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+{{- if eq (.Values.grafana.cnpg.enabled | toString) "true" }}
+---
+# Grafana's CNPG cluster: Grafana in, the operator in, its own pods; out to DNS, the Kubernetes API (status, leader
+# election), the Pi backup store when backed up - as SonarQube's and production's clusters
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.grafana.cnpg.name" . }}
+  labels:
+    {{- include "schnappy.grafana.postgres.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: {{ include "schnappy.grafana.cnpg.name" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.grafana.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
+    - from:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.grafana.cnpg.name" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.grafana.cnpg.name" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
+    {{- if .Values.grafana.cnpg.backup }}
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.4/32
+        - ipBlock:
+            cidr: 192.168.11.5/32
+        - ipBlock:
+            cidr: 192.168.11.6/32
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- end }}
+{{- end }}
 {{- end }}
 {{- if eq (.Values.clickhouse.enabled | toString) "true" }}
 ---

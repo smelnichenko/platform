@@ -122,6 +122,17 @@ app.kubernetes.io/component: grafana
 app.kubernetes.io/component: grafana
 {{- end }}
 
+{{/* Grafana's own CNPG cluster (grafana-cnpg.yaml): its name, and its labels - a component of its own, so Grafana's
+network policy never selects its pods */}}
+{{- define "schnappy.grafana.cnpg.name" -}}
+{{- printf "%s-grafana-pg" (include "schnappy.fullname" .) }}
+{{- end }}
+
+{{- define "schnappy.grafana.postgres.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: grafana-postgres
+{{- end }}
+
 {{- define "schnappy.grafana.secretName" -}}
 {{- if .Values.grafana.existingSecret }}
 {{- .Values.grafana.existingSecret }}

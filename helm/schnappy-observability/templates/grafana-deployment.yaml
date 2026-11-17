@@ -59,6 +59,30 @@ spec:
                 secretKeyRef:
                   name: {{ include "schnappy.grafana.secretName" . }}
                   key: admin-password
+            {{- if eq .Values.grafana.database "cnpg" }}
+            {{- if not (eq (.Values.grafana.cnpg.enabled | toString) "true") }}{{ fail "grafana.database: cnpg needs grafana.cnpg.enabled" }}{{ end }}
+            # its own CNPG cluster (grafana-cnpg.yaml): the owner's user and password as CNPG generated them
+            - name: GF_DATABASE_TYPE
+              value: postgres
+            - name: GF_DATABASE_HOST
+              value: "{{ include "schnappy.grafana.cnpg.name" . }}-rw:5432"
+            - name: GF_DATABASE_NAME
+              value: grafana
+            - name: GF_DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.grafana.cnpg.name" . }}-app
+                  key: username
+            - name: GF_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.grafana.cnpg.name" . }}-app
+                  key: password
+            - name: GF_DATABASE_SSL_MODE
+              value: require
+            {{- else if ne .Values.grafana.database "sqlite" }}
+            {{- fail (printf "grafana.database: sqlite or cnpg, not %q" .Values.grafana.database) }}
+            {{- end }}
             - name: GF_PLUGINS_ENABLE_ALPHA
               value: "false"
             - name: GF_PLUGINS_PLUGIN_ADMIN_ENABLED
