@@ -4,7 +4,7 @@
 # add an alert family here when its pages are written.)
 set -eu
 missing=0
-for name in $(grep -hoE 'runbooks\.pmon\.dev/(Masi|Velero|Node|PostgresBackup|PostgresArchiving|ScyllaBackup|ScyllaManager)[A-Za-z0-9]+' helm/*/templates/*.yaml | sed 's#.*/##' | sort -u); do
+for name in $(grep -hoE 'runbooks\.pmon\.dev/(Masi|Velero|Node|PostgresBackup|PostgresArchiving|ScyllaBackup|ScyllaManager|ClickHouseBackup)[A-Za-z0-9]+' helm/*/templates/*.yaml | sed 's#.*/##' | sort -u); do
   if [ ! -f "helm/schnappy-observability/runbooks/$name.md" ]; then
     echo "alert $name links a runbook that does not exist: helm/schnappy-observability/runbooks/$name.md" >&2
     missing=$((missing + 1))

@@ -52,6 +52,28 @@ app.kubernetes.io/component: clickhouse
 app.kubernetes.io/component: clickhouse
 {{- end }}
 
+{{/* ClickHouse's backup config file (config.d/50-backup.xml): the Pi store as a named collection, its keys from the
+server's environment - never in a query. Empty with backups off (the statefulset's config checksum unchanged then) */}}
+{{- define "schnappy.clickhouse.backupConfig" -}}
+{{- if eq (.Values.clickhouse.backup.enabled | toString) "true" -}}
+{{- .Files.Get "files/clickhouse-backup.xml" | trim | replace "__URL__" (printf "%s/%s/" .Values.clickhouse.backup.endpoint .Values.clickhouse.backup.bucket) }}
+{{- end -}}
+{{- end }}
+
+{{/* the Pi store's addresses and port, as ClickHouse's and the prune's egress name them */}}
+{{- define "schnappy.clickhouse.backupEgress" -}}
+{{- $b := .Values.clickhouse.backup }}
+{{- if not $b.storeIps }}{{ fail "clickhouse.backup.storeIps: the store's addresses (its VIP and the Pis behind it)" }}{{ end }}
+- to:
+    {{- range $b.storeIps }}
+    - ipBlock:
+        cidr: {{ . }}/32
+    {{- end }}
+  ports:
+    - protocol: TCP
+      port: {{ regexReplaceAll "^http://[^:/]+:?" $b.endpoint "" | default "80" | int }}
+{{- end }}
+
 {{- define "schnappy.clickhouse.serviceName" -}}
 {{- printf "%s-clickhouse" (include "schnappy.fullname" .) }}
 {{- end }}

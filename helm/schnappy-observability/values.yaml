@@ -43,6 +43,19 @@ clickhouse:
   # the plugin's version, pinned: unversioned, each Grafana kept the newest of its first start (production 4.22.0, a
   # copy built later 4.22.1 - read 2026-10-09). A changed pin is installed over the one there at the next start.
   grafanaPluginVersion: "4.22.0"
+  # BACKUP DATABASE logs to the Pi store once a day (templates/clickhouse-backup.yaml): the server writes it - the store
+  # a named collection in its config, its keys from Vault's backup-store in its environment (turning this on restarts
+  # ClickHouse). The prune keeps the newest `keep` complete backups; it runs first, and makes the bucket.
+  backup:
+    enabled: false
+    schedule: "15 2 * * *"
+    pruneSchedule: "0 2 * * *"
+    endpoint: ""
+    # the store's addresses (its VIP and the Pis behind it): ClickHouse's and the prune's egress
+    storeIps: []
+    bucket: clickhouse-backups
+    keep: 7
+    rcloneImage: rclone/rclone:1.71.2
   # Realtime envelope archive: events database fed by Kafka, gives
   # analytics + replay over the same publication stream Centrifugo
   # fans out. Enable in tandem with the schnappy-realtime chart.

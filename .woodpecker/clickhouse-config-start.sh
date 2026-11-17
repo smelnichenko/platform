@@ -10,6 +10,9 @@ chart=$(sed -n '/^clickhouse:/,/^[a-z]/s/^  image: *//p' helm/schnappy-observabi
 f=helm/schnappy-observability/files
 cp "$f/clickhouse-config.xml" /etc/clickhouse-server/config.d/00-config.xml
 cp "$f/clickhouse-users.xml" /etc/clickhouse-server/users.d/00-users.xml
+# the backup config as the chart renders it with backups on (its URL put in, its keys from the environment)
+sed 's#__URL__#http://store.invalid:9000/clickhouse-backups/#' "$f/clickhouse-backup.xml" > /etc/clickhouse-server/config.d/50-backup.xml
+export BACKUP_STORE_ACCESS_KEY=ci-access BACKUP_STORE_SECRET_KEY=ci-secret
 CLICKHOUSE_PASSWORD_SHA256=$(printf ci | sha256sum | cut -d' ' -f1)
 export CLICKHOUSE_PASSWORD_SHA256
 clickhouse su clickhouse:clickhouse clickhouse-server --config-file=/etc/clickhouse-server/config.xml \
@@ -30,6 +33,7 @@ done
 # the server that answered is the chart's release (CI_STEP_IMAGE_CHECK is a copy of the step's image: the step's own
 # image: changed alone, it still read as the chart's)
 running=$(q 'select version()')
+collection=$(q "select count() from system.named_collections where name = 'backup_store'")
 want=${chart##*:}; want=${want%%@*}; want=${want%%-*}
 [ "$running" = "$want" ] || { kill "$server"; echo "FAIL the server started is ClickHouse $running, not the chart's $want"; exit 1; }
 q 'SYSTEM FLUSH LOGS'

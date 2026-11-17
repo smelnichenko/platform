@@ -410,6 +410,28 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/PostgresBackupsUnwatched"
             summary: "No CNPG Cluster's status scraped - Postgres' backups and archiving are watched by nothing"
+        # ClickHouse's logs backup (clickhouse-backup.yaml's CronJob): its last success as kube-state-metrics reads the
+        # CronJob - a failed run is KubeJobFailed's; these say no backup has landed for a day, or none ever
+        - alert: ClickHouseBackupMissed
+          expr: >-
+            time() - max without (instance, pod) (kube_cronjob_status_last_successful_time{cronjob=~".+-clickhouse-backup"})
+            > 26 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupMissed"
+            summary: "ClickHouse: no successful backup of its logs for 26 h ({{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }})"
+        - alert: ClickHouseBackupNeverSucceeded
+          expr: >-
+            max without (instance, pod) (kube_cronjob_info{cronjob=~".+-clickhouse-backup"})
+            unless on (namespace, cronjob) kube_cronjob_status_last_successful_time
+          for: 26h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupNeverSucceeded"
+            summary: "ClickHouse: its backup job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }} has never succeeded"
         - alert: ScyllaBackupMissed
           expr: >-
             (time() - scylla_manager_scheduler_last_success{type="backup"} > 26 * 3600)

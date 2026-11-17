@@ -10,6 +10,10 @@ data:
 {{ .Files.Get "files/clickhouse-config.xml" | indent 4 }}
   users.xml: |
 {{ .Files.Get "files/clickhouse-users.xml" | indent 4 }}
+{{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
+  backup.xml: |
+{{ include "schnappy.clickhouse.backupConfig" . | indent 4 }}
+{{- end }}
   logs-schema.sql: |
 {{ .Files.Get "files/clickhouse-logs-schema.sql" | indent 4 }}
 {{- if eq (.Values.clickhouse.events.enabled | toString) "true" }}

@@ -37,6 +37,9 @@ steps:
       - sh .woodpecker/sonarqube-setup-script-test.sh
       # the Scylla schema, gateway patch and preview cleanup hooks' scripts, as rendered, against stub tools
       - sh .woodpecker/hook-scripts-test.sh
+      # ClickHouse's backup: the prune's script against a stub rclone (the newest complete ones kept, a listing failing
+      # removes nothing), the server's backup config as rendered
+      - sh .woodpecker/clickhouse-backup-prune-test.sh
       - helm lint helm/schnappy-realtime/
       # smokeTest is off by default; without the flag nothing renders.
       - helm lint helm/schnappy-test/ --set smokeTest.enabled=true

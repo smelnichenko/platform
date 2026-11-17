@@ -1,0 +1,197 @@
+{{- if and .Values.clickhouse.enabled (eq (.Values.clickhouse.backup.enabled | toString) "true") }}
+{{- $b := .Values.clickhouse.backup }}
+{{- $ch := include "schnappy.clickhouse.serviceName" . }}
+{{- if not .Values.vault.secretsEnabled }}{{ fail "clickhouse.backup needs vault.secretsEnabled: the store's keys come from Vault" }}{{ end }}
+{{- if not (regexMatch "^http://[^/]+$" ($b.endpoint | toString)) }}{{ fail "clickhouse.backup.endpoint: the Pi store, http://<host>:<port>" }}{{ end }}
+{{- if lt (int $b.keep) 2 }}{{ fail "clickhouse.backup.keep: 2 or more" }}{{ end }}
+# ClickHouse's logs backed up to the Pi store: the server writes BACKUP DATABASE logs itself - the store a named
+# collection in its config (clickhouse-configmap.yaml's backup.xml), its keys in the server's environment, never in a
+# query. Two jobs: the backup (in the mesh as the init Job - ClickHouse's ports take mTLS only), and the prune (out of
+# it, rclone): the newest `keep` complete backups kept - a complete one has its .backup file, ClickHouse's last write -
+# so days of failed backups never remove the last good one; an incomplete one goes after a day. Restored with
+# RESTORE ... FROM S3(backup_store, 'logs/<name>') (ops: test:copy:check rehearses it).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $ch }}-backup-store
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+spec:
+  refreshInterval: 15m
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: {{ $ch }}-backup-store
+  data:
+    - secretKey: ACCESS_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: access_key
+    - secretKey: SECRET_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: secret_key
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $ch }}-backup
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+spec:
+  schedule: {{ $b.schedule | quote }}
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            {{- include "schnappy.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: clickhouse-backup
+            app.kubernetes.io/part-of: schnappy
+            velero.io/exclude-from-backup: "true"
+          annotations:
+            # the client connects once its sidecar is ready (ClickHouse's ports are mTLS only)
+            proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: backup
+              image: {{ .Values.clickhouse.image }}
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: CLICKHOUSE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "schnappy.clickhouse.secretName" . }}
+                      key: CLICKHOUSE_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  name=$(date -u +%Y%m%dT%H%M%SZ)
+                  # synchronous: the client returns when the backup is complete (its .backup written) or failed
+                  out=$(clickhouse-client --host {{ $ch }} --user schnappy --password "$CLICKHOUSE_PASSWORD" \
+                    --connect_timeout 10 --receive_timeout 3500 \
+                    --query "BACKUP DATABASE logs TO S3(backup_store, 'logs/$name')" 2>&1)
+                  rc=$?
+                  echo "$out"
+                  case "$out" in *BACKUP_CREATED*) ;; *) [ "$rc" -ne 0 ] || rc=1 ;; esac
+                  echo "clickhouse backup logs/$name: rc=$rc"
+                  wget -T 5 -q -O- --post-data='' http://localhost:15020/quitquitquit || true
+                  exit "$rc"
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: 10m, memory: 64Mi }
+                limits: { memory: 256Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                readOnlyRootFilesystem: true
+          volumes:
+            - name: tmp
+              emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $ch }}-backup-prune
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+spec:
+  # before the backup: its bucket made on the first night; the newest `keep` kept, then the night's backup beside them
+  schedule: {{ $b.pruneSchedule | quote }}
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            {{- include "schnappy.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: clickhouse-backup-prune
+            app.kubernetes.io/part-of: schnappy
+            velero.io/exclude-from-backup: "true"
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: prune
+              image: {{ $b.rcloneImage }}
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: KEEP, value: {{ $b.keep | quote }} }
+                - { name: STORE, value: "store:{{ $b.bucket }}" }
+                - { name: RCLONE_CONFIG_STORE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_STORE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_STORE_ENDPOINT, value: {{ $b.endpoint | quote }} }
+                - name: RCLONE_CONFIG_STORE_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef: { name: {{ $ch }}-backup-store, key: ACCESS_KEY }
+                - name: RCLONE_CONFIG_STORE_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef: { name: {{ $ch }}-backup-store, key: SECRET_KEY }
+              command:
+                - sh
+                - -c
+                - |
+{{ .Files.Get "files/clickhouse-backup-prune.sh" | indent 20 }}
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: 10m, memory: 32Mi }
+                limits: { memory: 128Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                readOnlyRootFilesystem: true
+          volumes:
+            - name: tmp
+              emptyDir: {}
+---
+# the prune's pods to the Pi store (the namespace's default policy allows DNS, nothing outside)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $ch }}-backup-prune
+  labels:
+    {{- include "schnappy.clickhouse.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: clickhouse-backup-prune
+  policyTypes:
+    - Egress
+  egress:
+    {{- include "schnappy.clickhouse.backupEgress" . | nindent 4 }}
+{{- end }}

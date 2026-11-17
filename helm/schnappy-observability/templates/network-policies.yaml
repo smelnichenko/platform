@@ -390,10 +390,14 @@ spec:
       ports:
         - { protocol: TCP, port: 9363 }
   egress:
-    # DNS only
+    # DNS
     - ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
+    {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
+    # its backups: the server writes them to the Pi store itself (clickhouse-backup.yaml)
+    {{- include "schnappy.clickhouse.backupEgress" . | nindent 4 }}
+    {{- end }}
 {{- end }}
 {{- if eq (.Values.fluentbit.enabled | toString) "true" }}
 ---

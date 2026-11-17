@@ -398,3 +398,43 @@ tests:
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorShrank"
               summary: "The offsite git mirror mirrored fewer repositories than it did this week - one dropped out of its listing"
+
+  # ClickHouse's backup CronJob (kube-state-metrics): "ok" succeeded at 0 and again at 24 h; "stale" at 0 only; "never"
+  # never; another CronJob never either (not ClickHouse's - never these alerts). Scraped every 5 min.
+  - interval: 5m
+    input_series:
+      - series: 'kube_cronjob_info{namespace="schnappy-infra", cronjob="schnappy-clickhouse-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+      - series: 'kube_cronjob_status_last_successful_time{namespace="schnappy-infra", cronjob="schnappy-clickhouse-backup", instance="ksm", pod="ksm-1"}'
+        values: '0x288 86400x112'
+      - series: 'kube_cronjob_info{namespace="stale", cronjob="schnappy-clickhouse-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+      - series: 'kube_cronjob_status_last_successful_time{namespace="stale", cronjob="schnappy-clickhouse-backup", instance="ksm", pod="ksm-1"}'
+        values: '0x400'
+      - series: 'kube_cronjob_info{namespace="never", cronjob="schnappy-clickhouse-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+      - series: 'kube_cronjob_info{namespace="schnappy-infra", cronjob="some-other-job", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+    alert_rule_test:
+      # 26 h after the last success, its hour's hold not run out: quiet
+      - eval_time: 26h30m
+        alertname: ClickHouseBackupMissed
+        exp_alerts: []
+      # 27 h 30 m: "stale" (last at 0) fires; "ok" (24 h) does not
+      - eval_time: 27h30m
+        alertname: ClickHouseBackupMissed
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: stale, cronjob: schnappy-clickhouse-backup }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupMissed"
+              summary: "ClickHouse: no successful backup of its logs for 26 h (stale/schnappy-clickhouse-backup)"
+      - eval_time: 25h
+        alertname: ClickHouseBackupNeverSucceeded
+        exp_alerts: []
+      - eval_time: 26h30m
+        alertname: ClickHouseBackupNeverSucceeded
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: never, cronjob: schnappy-clickhouse-backup }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupNeverSucceeded"
+              summary: "ClickHouse: its backup job never/schnappy-clickhouse-backup has never succeeded"
