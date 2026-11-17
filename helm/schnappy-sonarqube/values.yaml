@@ -31,6 +31,37 @@ sonarqube:
   postgresResources:
     requests: { memory: "256Mi", cpu: "100m" }
     limits: { memory: "512Mi", cpu: "1000m" }
+  # SonarQube's pods: 0 while its database moves (nothing written between the copy and the switch) - and then no setup
+  # Job either (it waits for SonarQube's API)
+  replicas: 1
+  # the plain StatefulSet's pods (sonarqube-postgres-statefulset.yaml): 0 once SonarQube runs on CNPG - its volume kept,
+  # never started again by a sync
+  postgresReplicas: 1
+  # SonarQube's database on CloudNativePG (templates/sonarqube-cnpg.yaml): its own cluster, backed up as production's.
+  # import: its first start copies the sonarqube database from the StatefulSet above (read only) - false once SonarQube
+  # runs on it, or any re-creation of the cluster (a fix, a Velero restore) brings the copy day's data back silently.
+  # recovery: its first start from its own barman backups (recoveryServerName's; a new backupServerName then - CNPG
+  # archives into an empty one only). database: which one SonarQube uses - statefulset until the CNPG cluster has its
+  # data, then cnpg.
+  cnpg:
+    enabled: false
+    imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-bullseye@sha256:899d3ed526b659d77935dde0e6bf2d69dbbf17d3d8c6486ca8cfd04bd3c18533
+    import: false
+    recovery: false
+    recoveryServerName: ""
+    storage:
+      size: 5Gi
+      storageClass: ""
+    # Postgres 18 with its import's pg_restore: more than the old StatefulSet's 512Mi
+    resources:
+      requests: { memory: "256Mi", cpu: "100m" }
+      limits: { memory: "1Gi", cpu: "1000m" }
+    backup: false
+    backupDestination: "s3://postgres-backups/"
+    backupEndpoint: ""
+    backupServerName: ""
+    backupRetention: 30d
+  database: statefulset
   resources:
     requests: { memory: "2Gi", cpu: "500m" }
     limits: { memory: "4Gi", cpu: "4000m" }

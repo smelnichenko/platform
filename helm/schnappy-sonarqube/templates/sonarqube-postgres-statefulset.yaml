@@ -7,7 +7,7 @@ metadata:
     {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "schnappy.sonarqube.postgres.serviceName" . }}
-  replicas: 1
+  replicas: {{ .Values.sonarqube.postgresReplicas }}
   selector:
     matchLabels:
       {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 6 }}

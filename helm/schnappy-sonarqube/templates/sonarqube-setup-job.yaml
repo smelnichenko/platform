@@ -1,4 +1,5 @@
-{{- if and (eq (.Values.sonarqube.enabled | toString) "true") (eq (.Values.sonarqube.setup.enabled | toString) "true") }}
+{{- /* not while SonarQube is scaled to 0 (its database moving): the Job would wait its 40 minutes for the API and fail the sync */}}
+{{- if and (eq (.Values.sonarqube.enabled | toString) "true") (eq (.Values.sonarqube.setup.enabled | toString) "true") (gt (int .Values.sonarqube.replicas) 0) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -16,7 +17,9 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "schnappy.sonarqube.selectorLabels" . | nindent 8 }}
+        # the chart's selector labels without SonarQube's component (it was set twice - sonarqube, then sonarqube-setup:
+        # YAML a strict parser refuses, kubeconform's; the last won, as its network policy wants)
+        {{- include "schnappy.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: schnappy
         app.kubernetes.io/component: sonarqube-setup
         velero.io/exclude-from-backup: "true"

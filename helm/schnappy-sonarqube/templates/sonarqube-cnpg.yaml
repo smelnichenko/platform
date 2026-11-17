@@ -1,0 +1,176 @@
+{{- if and (eq (.Values.sonarqube.enabled | toString) "true") (eq (.Values.sonarqube.cnpg.enabled | toString) "true") }}
+{{- if not .Values.vault.secretsEnabled }}{{ fail "sonarqube.cnpg needs vault.secretsEnabled: its owner and backup-store secrets come from Vault" }}{{ end }}
+{{- $cnpg := .Values.sonarqube.cnpg }}
+{{- $name := include "schnappy.sonarqube.cnpg.name" . }}
+{{- if and $cnpg.backup (not $cnpg.backupServerName) }}{{ fail "sonarqube.cnpg.backup needs backupServerName: a name of its own in the store" }}{{ end }}
+{{- if and $cnpg.backup (hasPrefix "schnappy-production-postgres" $cnpg.backupServerName) }}{{ fail "sonarqube.cnpg.backupServerName: never production's - the Pis' restore check reads that one" }}{{ end }}
+{{- if and $cnpg.import $cnpg.recovery }}{{ fail "sonarqube.cnpg: import or recovery, not both" }}{{ end }}
+{{- if and $cnpg.import (eq (int .Values.sonarqube.postgresReplicas) 0) }}{{ fail "sonarqube.cnpg.import reads the StatefulSet: sonarqube.postgresReplicas above 0" }}{{ end }}
+{{- if and $cnpg.recovery (not $cnpg.recoveryServerName) }}{{ fail "sonarqube.cnpg.recovery needs recoveryServerName" }}{{ end }}
+{{- if and $cnpg.recovery $cnpg.backup (eq $cnpg.recoveryServerName $cnpg.backupServerName) }}{{ fail "sonarqube.cnpg.recovery: a new backupServerName - CNPG archives into an empty one only" }}{{ end }}
+# SonarQube's database on CloudNativePG (operator, 2026-11-17: "a") - its own cluster, never production's apps' database;
+# backed up to the Pi store as production's is, upgraded and restored as every CNPG cluster is. It replaces the plain
+# StatefulSet (sonarqube-postgres-statefulset.yaml), which had no backup and no upgrade path. import: its first start
+# copies the sonarqube database from that StatefulSet (old-postgres - read, never changed); SonarQube moves to it with
+# sonarqube.database: cnpg, and back with statefulset - the StatefulSet stays until its removal is decided.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+spec:
+  instances: 1
+  imageName: {{ $cnpg.imageName }}
+  # as production's database: evicted last on the one node
+  priorityClassName: data-critical
+  # SonarQube runs out of the mesh (its pod and its old database both): so does its database here
+  inheritedMetadata:
+    annotations:
+      sidecar.istio.io/inject: "false"
+  bootstrap:
+    {{- if $cnpg.recovery }}
+    recovery:
+      source: backup-source
+    {{- else }}
+    initdb:
+      database: sonarqube
+      owner: sonarqube
+      secret:
+        name: {{ $name }}-owner
+      {{- if $cnpg.import }}
+      import:
+        type: microservice
+        databases:
+          - sonarqube
+        source:
+          externalCluster: old-postgres
+      {{- end }}
+    {{- end }}
+  {{- if $cnpg.recovery }}
+  externalClusters:
+    - name: backup-source
+      barmanObjectStore:
+        destinationPath: {{ $cnpg.backupDestination }}
+        endpointURL: {{ $cnpg.backupEndpoint }}
+        serverName: {{ $cnpg.recoveryServerName }}
+        s3Credentials:
+          accessKeyId:
+            name: {{ $name }}-backup-store
+            key: ACCESS_KEY
+          secretAccessKey:
+            name: {{ $name }}-backup-store
+            key: SECRET_KEY
+        wal:
+          maxParallel: 4
+  {{- else if $cnpg.import }}
+  externalClusters:
+    - name: old-postgres
+      connectionParameters:
+        host: {{ include "schnappy.sonarqube.postgres.serviceName" . }}
+        user: sonarqube
+        dbname: sonarqube
+        port: "5432"
+        sslmode: disable
+      password:
+        name: {{ include "schnappy.sonarqube.secretName" . }}
+        key: SONARQUBE_POSTGRES_PASSWORD
+  {{- end }}
+  storage:
+    size: {{ $cnpg.storage.size }}
+    {{- if $cnpg.storage.storageClass }}
+    storageClass: {{ $cnpg.storage.storageClass }}
+    {{- end }}
+  resources:
+    {{- toYaml $cnpg.resources | nindent 4 }}
+  {{- if $cnpg.backup }}
+  backup:
+    retentionPolicy: {{ $cnpg.backupRetention | quote }}
+    barmanObjectStore:
+      destinationPath: {{ $cnpg.backupDestination }}
+      endpointURL: {{ $cnpg.backupEndpoint }}
+      serverName: {{ $cnpg.backupServerName }}
+      s3Credentials:
+        accessKeyId:
+          name: {{ $name }}-backup-store
+          key: ACCESS_KEY
+        secretAccessKey:
+          name: {{ $name }}-backup-store
+          key: SECRET_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+  {{- end }}
+{{- if .Values.vault.secretsEnabled }}
+---
+# the database owner, SonarQube's own user and password (Vault's sonarqube postgres_password - the JDBC password the
+# deployment already reads), as CNPG's initdb wants it
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $name }}-owner
+  labels:
+    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+spec:
+  refreshInterval: 15m
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: {{ $name }}-owner
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: sonarqube
+        password: "{{ "{{ .password }}" }}"
+  data:
+    - secretKey: password
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/sonarqube
+        property: postgres_password
+{{- if or $cnpg.backup $cnpg.recovery }}
+---
+# the Pi backup store's credentials (Vault's backup-store - production's CNPG cluster and Scylla's agents read the same)
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $name }}-backup-store
+  labels:
+    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+spec:
+  refreshInterval: 15m
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: {{ $name }}-backup-store
+  data:
+    - secretKey: ACCESS_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: access_key
+    - secretKey: SECRET_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: secret_key
+{{- end }}
+{{- end }}
+{{- if $cnpg.backup }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ $name }}-daily
+  labels:
+    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+spec:
+  # CNPG's schedule has a seconds field first: 01:45:00 every day, beside production's 01:30 (schnappy-data's)
+  schedule: "0 45 1 * * *"
+  # the first base backup when the cluster is up, not the next night: WAL archived before one restores nothing
+  immediate: true
+  backupOwnerReference: cluster
+  cluster:
+    name: {{ $name }}
+{{- end }}
+{{- end }}

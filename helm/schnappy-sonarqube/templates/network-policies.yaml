@@ -47,11 +47,16 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # SonarQube → its PostgreSQL
+    # SonarQube → its PostgreSQL (the StatefulSet's, and CNPG's cluster's)
     - to:
         - podSelector:
             matchLabels:
               {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 14 }}
+        {{- if eq (.Values.sonarqube.cnpg.enabled | toString) "true" }}
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.sonarqube.cnpg.name" . }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: 5432
@@ -71,11 +76,16 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from SonarQube
+    # Allow from SonarQube - and CNPG's cluster, its import reading the database once
     - from:
         - podSelector:
             matchLabels:
               {{- include "schnappy.sonarqube.selectorLabels" . | nindent 14 }}
+        {{- if and (eq (.Values.sonarqube.cnpg.enabled | toString) "true") .Values.sonarqube.cnpg.import }}
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.sonarqube.cnpg.name" . }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: 5432
@@ -119,5 +129,90 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+{{- end }}
+{{- if eq (.Values.sonarqube.cnpg.enabled | toString) "true" }}
+---
+# SonarQube's CNPG cluster: SonarQube in, the operator in, its own pods; out to DNS, the Kubernetes API (leader
+# election, status), the StatefulSet while it imports, the Pi backup store when backed up - as production's cluster's
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "schnappy.sonarqube.cnpg.name" . }}
+  labels:
+    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: {{ include "schnappy.sonarqube.cnpg.name" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.sonarqube.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
+    - from:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.sonarqube.cnpg.name" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: {{ include "schnappy.sonarqube.cnpg.name" . }}
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8000
+    {{- if .Values.sonarqube.cnpg.import }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "schnappy.sonarqube.postgres.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    {{- if .Values.sonarqube.cnpg.backup }}
+    - to:
+        - ipBlock:
+            cidr: 192.168.11.4/32
+        - ipBlock:
+            cidr: 192.168.11.5/32
+        - ipBlock:
+            cidr: 192.168.11.6/32
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- end }}
 {{- end }}
 {{- end }}
