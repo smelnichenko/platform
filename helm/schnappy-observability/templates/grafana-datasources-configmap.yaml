@@ -42,7 +42,8 @@ data:
           port: 8123
           protocol: http
           defaultDatabase: logs
-          username: schnappy
+          {{- /* its own read-only user (clickhouse.grafanaUser): Editors explore, never write or drop */}}
+          username: {{ if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}grafana{{ else }}schnappy{{ end }}
           # Logs UI defaults so Explore auto-populates Time/Message/Level
           # instead of nagging the user to pick them every time.
           logs:
@@ -62,7 +63,7 @@ data:
               urlDisplayLabel: 'View trace'
           {{- end }}
         secureJsonData:
-          password: ${CLICKHOUSE_PASSWORD}
+          password: {{ if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}${CLICKHOUSE_GRAFANA_PASSWORD}{{ else }}${CLICKHOUSE_PASSWORD}{{ end }}
       {{- end }}
       {{- if eq (.Values.tempo.enabled | toString) "true" }}
       - name: Tempo

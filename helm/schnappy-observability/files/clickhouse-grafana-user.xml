@@ -1,0 +1,26 @@
+<clickhouse>
+  <!-- Grafana's ClickHouse datasource's user (the chart's clickhouse.grafanaUser): SELECT on logs alone, read-only
+       queries (readonly 2: the plugin's own settings allowed) - Grafana's Editors explore the logs, never write, drop or
+       reach out through a table function (s3, url: no source grant). Proved on 26.8 (2026-11-17): the database, its
+       table and columns listed, SELECT with settings answered; INSERT, DROP, s3(...) and url(...) refused. Its password
+       its own (Vault's clickhouse grafana_password), never schnappy's. -->
+  <profiles>
+    <grafana_read>
+      <profile>default</profile>
+      <readonly>2</readonly>
+    </grafana_read>
+  </profiles>
+  <users>
+    <grafana>
+      <password_sha256_hex from_env="CLICKHOUSE_GRAFANA_PASSWORD_SHA256"/>
+      <networks>
+        <ip>::/0</ip>
+      </networks>
+      <profile>grafana_read</profile>
+      <quota>default</quota>
+      <grants>
+        <query>GRANT SELECT ON logs.*</query>
+      </grants>
+    </grafana>
+  </users>
+</clickhouse>

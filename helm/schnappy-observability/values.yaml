@@ -43,6 +43,10 @@ clickhouse:
   # the plugin's version, pinned: unversioned, each Grafana kept the newest of its first start (production 4.22.0, a
   # copy built later 4.22.1 - read 2026-10-09). A changed pin is installed over the one there at the next start.
   grafanaPluginVersion: "4.22.0"
+  # Grafana's datasource as a user of its own (files/clickhouse-grafana-user.xml): SELECT on logs alone, its password
+  # Vault's clickhouse grafana_password (the existingSecret's GRAFANA_PASSWORD) - not schnappy, which can write and drop.
+  # Seed that key into Vault first (ops: the seed playbook's generatable secrets), then turn this on
+  grafanaUser: false
   # BACKUP DATABASE logs to the Pi store once a day (templates/clickhouse-backup.yaml): the server writes it - the store
   # a named collection in its config, its keys from Vault's backup-store in its environment (turning this on restarts
   # ClickHouse). The prune keeps the newest `keep` complete backups; it runs first, and makes the bucket.

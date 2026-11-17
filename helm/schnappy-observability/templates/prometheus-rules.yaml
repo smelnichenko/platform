@@ -432,6 +432,27 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ClickHouseBackupNeverSucceeded"
             summary: "ClickHouse: its backup job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }} has never succeeded"
+        # Kafka's topics' dump (schnappy-data's kafka-backup.yaml): the same two readings of its CronJob
+        - alert: KafkaBackupMissed
+          expr: >-
+            time() - max without (instance, pod) (kube_cronjob_status_last_successful_time{cronjob=~".+-kafka-backup"})
+            > 26 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KafkaBackupMissed"
+            summary: "Kafka: no successful dump of its topics for 26 h ({{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }})"
+        - alert: KafkaBackupNeverSucceeded
+          expr: >-
+            max without (instance, pod) (kube_cronjob_info{cronjob=~".+-kafka-backup"})
+            unless on (namespace, cronjob) kube_cronjob_status_last_successful_time
+          for: 26h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KafkaBackupNeverSucceeded"
+            summary: "Kafka: its backup job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }} has never succeeded"
         {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
         # backups on, but no backup CronJob listed by kube-state-metrics: deleted or renamed, both alerts above go quiet
         - alert: ClickHouseBackupsUnwatched

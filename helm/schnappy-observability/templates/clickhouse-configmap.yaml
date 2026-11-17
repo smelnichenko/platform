@@ -10,6 +10,10 @@ data:
 {{ .Files.Get "files/clickhouse-config.xml" | indent 4 }}
   users.xml: |
 {{ .Files.Get "files/clickhouse-users.xml" | indent 4 }}
+{{- if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}
+  grafana-user.xml: |
+{{ .Files.Get "files/clickhouse-grafana-user.xml" | indent 4 }}
+{{- end }}
 {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
   backup.xml: |
 {{ include "schnappy.clickhouse.backupConfig" . | indent 4 }}

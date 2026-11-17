@@ -101,11 +101,20 @@ spec:
             {{- if and (eq (.Values.clickhouse.enabled | toString) "true") (eq (.Values.clickhouse.installGrafanaPlugin | toString) "true") }}
             - name: GF_INSTALL_PLUGINS
               value: "grafana-clickhouse-datasource {{ required "clickhouse.grafanaPluginVersion: the plugin's version, pinned" .Values.clickhouse.grafanaPluginVersion }}"
+            {{- if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}
+            # its own read-only user's password - the Grafana pod no longer holds schnappy's
+            - name: CLICKHOUSE_GRAFANA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.clickhouse.secretName" . }}
+                  key: GRAFANA_PASSWORD
+            {{- else }}
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.clickhouse.secretName" . }}
                   key: CLICKHOUSE_PASSWORD
+            {{- end }}
             {{- end }}
             - name: GF_ANALYTICS_CHECK_FOR_UPDATES
               value: "false"

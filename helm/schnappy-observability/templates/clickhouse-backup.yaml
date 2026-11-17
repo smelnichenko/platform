@@ -157,6 +157,9 @@ spec:
                 - { name: HOME, value: /tmp }
                 - { name: KEEP, value: {{ $b.keep | quote }} }
                 - { name: STORE, value: "store:{{ $b.bucket }}" }
+                # its backups under logs/, complete with ClickHouse's .backup
+                - { name: PREFIX, value: logs/ }
+                - { name: MARKER, value: .backup }
                 - { name: RCLONE_CONFIG_STORE_TYPE, value: s3 }
                 - { name: RCLONE_CONFIG_STORE_PROVIDER, value: Other }
                 - { name: RCLONE_CONFIG_STORE_ENDPOINT, value: {{ $b.endpoint | quote }} }
@@ -170,7 +173,7 @@ spec:
                 - sh
                 - -c
                 - |
-{{ .Files.Get "files/clickhouse-backup-prune.sh" | indent 20 }}
+{{ .Files.Get "files/backup-prune.sh" | indent 20 }}
               volumeMounts:
                 - { name: tmp, mountPath: /tmp }
               resources:

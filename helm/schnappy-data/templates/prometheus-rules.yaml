@@ -22,6 +22,19 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/PostgreSQLDown"
             summary: "PostgreSQL {{"{{"}} $labels.pod {{"}}"}} is down"
         {{- end }}
+        {{- if and (eq (.Values.strimzi.enabled | toString) "true") (eq (.Values.strimzi.backup.enabled | toString) "true") }}
+        # Kafka's backups on, but no backup CronJob listed: KafkaBackupMissed and NeverSucceeded (schnappy-observability)
+        # read it - deleted or renamed, both go quiet
+        - alert: KafkaBackupsUnwatched
+          expr: absent(kube_cronjob_info{namespace="{{ $ns }}", cronjob="{{ $fn }}-kafka-backup"})
+          for: 1h
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KafkaBackupsUnwatched"
+            summary: "Kafka's backups are on, but no backup CronJob is listed in {{ $ns }} - watched by nothing"
+        {{- end }}
         {{- if eq (.Values.strimzi.enabled | toString) "true" }}
         - alert: KafkaBrokerDown
           expr: kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~".*kafka-\\d+$"} == 0

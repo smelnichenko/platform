@@ -1,10 +1,10 @@
 #!/bin/sh
-# ClickHouse's backup prune (files/clickhouse-backup-prune.sh, the CronJob's script) against a stub rclone over a store
+# ClickHouse's backup prune (files/backup-prune.sh, the CronJob's script) against a stub rclone over a store
 # made of directories: the newest KEEP complete backups kept (complete = its .backup file), older complete ones and a
 # day-old incomplete one removed, a fresh incomplete one kept, names not the job's never touched; a listing that fails
 # removes nothing. And the CronJob renders that script.
 set -eu
-script=helm/schnappy-observability/files/clickhouse-backup-prune.sh
+script=helm/schnappy-observability/files/backup-prune.sh
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 mkdir -p "$W/bin"
@@ -75,6 +75,13 @@ check "the store's listing failing: red, nothing removed" "$(FAIL_LSF=logs/ run)
 check "one backup's listing failing: red, nothing removed - a complete one never taken for incomplete" \
   "$(FAIL_LSF="$t192" run) $(grep -c purge "$W/calls" || true)" "rc=1 0"
 
+# the Kafka dump's layout: backups at the bucket's root, complete with DONE (PREFIX empty, MARKER DONE)
+fresh
+for h in 216 192 168 144 120 96 72 48 1; do eval "n=\$t$h"; mkdir -p "$W/store/b/$n"; : > "$W/store/b/$n/DONE"; done
+mkdir -p "$W/store/b/$(ts 30)"
+kr=$(if W="$W" PATH="$W/bin:$PATH" STORE=store:b KEEP=7 PREFIX= MARKER=DONE sh "$script" > "$W/out" 2>&1; then echo rc=0; else echo rc=$?; fi)
+check "the Kafka layout (root, DONE): two oldest complete removed, the day-old incomplete removed, seven complete kept" \
+  "$kr $(ls "$W/store/b" | grep -c 'Z$') $(test -d "$W/store/b/$t216" && echo kept || echo gone)" "rc=0 7 gone"
 # the CronJob runs this script, as the chart renders it
 out=$(helm template t helm/schnappy-observability/ --namespace schnappy-infra --set clickhouse.enabled=true --set clickhouse.existingSecret=ch \
   --set vault.secretsEnabled=true --set clickhouse.backup.enabled=true --set clickhouse.backup.endpoint=http://192.168.11.5:9000 \
@@ -104,6 +111,23 @@ check "the backup user: mounted (users.d/50-backup-user.xml), granted the collec
   "1 2 1"
 check "  schnappy granted nothing of the collection (no grants in its file: Grafana's Editors query as it)" \
   "$(grep -c 'NAMED COLLECTION\|named_collection_control' helm/schnappy-observability/files/clickhouse-users.xml || true)" 0
+# Grafana's datasource on its own read-only ClickHouse user (clickhouse.grafanaUser): off, schnappy as before; on, the
+# grafana user mounted, its password's hash made, the key from Vault, the datasource and Grafana's pod on it alone
+gf_on=$(helm template t helm/schnappy-observability/ --namespace schnappy-infra --set clickhouse.enabled=true --set clickhouse.existingSecret=ch \
+  --set vault.secretsEnabled=true --set grafana.enabled=true --set grafana.existingSecret=gf --set clickhouse.grafanaUser=true)
+gf_off=$(helm template t helm/schnappy-observability/ --namespace schnappy-infra --set clickhouse.enabled=true --set clickhouse.existingSecret=ch \
+  --set vault.secretsEnabled=true --set grafana.enabled=true --set grafana.existingSecret=gf)
+check "Grafana's ClickHouse user on: mounted, its hash made, its key from Vault's grafana_password" \
+  "$(printf '%s\n' "$gf_on" | grep -c 'users.d/60-grafana-user.xml, subPath: grafana-user.xml') $(printf '%s\n' "$gf_on" | grep -c 'CLICKHOUSE_GRAFANA_PASSWORD_SHA256') $(printf '%s\n' "$gf_on" | grep -c 'property: grafana_password')" \
+  "1 3 1"
+check "  the datasource as grafana with its own password; Grafana's pod without schnappy's" \
+  "$(printf '%s\n' "$gf_on" | grep -cE 'username: grafana$|password: \$\{CLICKHOUSE_GRAFANA_PASSWORD\}$') $(printf '%s\n' "$gf_on" | awk '/^---/ { d = 0; k = 0 } /^kind: Deployment/ { k = 1 } k && /^  name: t-schnappy-grafana$/ { d = 1 } d && /name: CLICKHOUSE_PASSWORD$/ { n++ } END { print n + 0 }')" \
+  "2 0"
+check "  off (the default): schnappy as before, no grafana user" \
+  "$(printf '%s\n' "$gf_off" | grep -c 'username: schnappy$') $(printf '%s\n' "$gf_off" | grep -c 'grafana-user.xml\|GRAFANA_PASSWORD')" "1 0"
+check "  the grafana user granted SELECT on logs alone, read-only queries" \
+  "$(grep -c '<query>GRANT SELECT ON logs.\*</query>' helm/schnappy-observability/files/clickhouse-grafana-user.xml) $(grep -c '<query>' helm/schnappy-observability/files/clickhouse-grafana-user.xml) $(grep -c '<readonly>2</readonly>' helm/schnappy-observability/files/clickhouse-grafana-user.xml)" \
+  "1 1 1"
 check "the init Job's pod: never ClickHouse's Service's selector (its template's component clickhouse-init)" \
   "$(printf '%s\n' "$off" | awk '/^kind: Job/ { j = 1 } /^---/ { j = 0 } j && /^  template:/ { t = 1 } j && t && /app.kubernetes.io\/component:/ { print $2; exit }')" clickhouse-init
 check "  off by default: no backup config, no store keys, no CronJob" \

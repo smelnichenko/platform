@@ -24,7 +24,9 @@ steps:
     image: alpine/helm:latest
     commands:
       # the render checks read a policy as YAML (alpine/helm ships neither)
-      - apk add --no-cache python3 py3-yaml
+      # bash and iconv (musl-utils) for the backups' scripts (kafka-backup-test.sh runs the dump and restore as the
+      # CronJob's image does)
+      - apk add --no-cache python3 py3-yaml bash musl-utils
       - helm lint helm/schnappy/ --set site.dnsResolver=10.43.0.10
       - helm lint helm/schnappy-data/ --set postgres.password=test
       - helm lint helm/schnappy-auth/
@@ -40,6 +42,9 @@ steps:
       # ClickHouse's backup: the prune's script against a stub rclone (the newest complete ones kept, a listing failing
       # removes nothing), the server's backup config as rendered
       - sh .woodpecker/clickhouse-backup-prune-test.sh
+      # Kafka's backup: its dump against stub Kafka tools (exact counts, a short read red), its CronJob as rendered, the
+      # prune script the same in both charts
+      - bash .woodpecker/kafka-backup-test.sh
       - helm lint helm/schnappy-realtime/
       # smokeTest is off by default; without the flag nothing renders.
       - helm lint helm/schnappy-test/ --set smokeTest.enabled=true

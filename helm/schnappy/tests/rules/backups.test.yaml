@@ -463,3 +463,38 @@ tests:
       - eval_time: 65m
         alertname: ClickHouseBackupsUnwatched
         exp_alerts: []
+
+  # Kafka's dump CronJob: "ok" succeeded at 0 and at 24 h, "stale" at 0 only, "never" never; ClickHouse's never - not
+  # Kafka's alert
+  - interval: 5m
+    input_series:
+      - series: 'kube_cronjob_info{namespace="schnappy-production", cronjob="schnappy-production-kafka-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+      - series: 'kube_cronjob_status_last_successful_time{namespace="schnappy-production", cronjob="schnappy-production-kafka-backup", instance="ksm", pod="ksm-1"}'
+        values: '0x288 86400x112'
+      - series: 'kube_cronjob_info{namespace="stale", cronjob="schnappy-production-kafka-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+      - series: 'kube_cronjob_status_last_successful_time{namespace="stale", cronjob="schnappy-production-kafka-backup", instance="ksm", pod="ksm-1"}'
+        values: '0x400'
+      - series: 'kube_cronjob_info{namespace="never", cronjob="schnappy-production-kafka-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+      - series: 'kube_cronjob_info{namespace="schnappy-infra", cronjob="schnappy-clickhouse-backup", instance="ksm", pod="ksm-1"}'
+        values: '1x400'
+    alert_rule_test:
+      - eval_time: 26h30m
+        alertname: KafkaBackupMissed
+        exp_alerts: []
+      - eval_time: 27h30m
+        alertname: KafkaBackupMissed
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: stale, cronjob: schnappy-production-kafka-backup }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/KafkaBackupMissed"
+              summary: "Kafka: no successful dump of its topics for 26 h (stale/schnappy-production-kafka-backup)"
+      - eval_time: 26h30m
+        alertname: KafkaBackupNeverSucceeded
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: never, cronjob: schnappy-production-kafka-backup }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/KafkaBackupNeverSucceeded"
+              summary: "Kafka: its backup job never/schnappy-production-kafka-backup has never succeeded"

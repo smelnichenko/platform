@@ -1,0 +1,204 @@
+{{- if and (eq (.Values.strimzi.enabled | toString) "true") (eq (.Values.strimzi.backup.enabled | toString) "true") }}
+{{- $b := .Values.strimzi.backup }}
+{{- $name := printf "%s-kafka-backup" (include "schnappy.fullname" .) }}
+{{- if not (regexMatch "^http://[^/]+$" ($b.endpoint | toString)) }}{{ fail "strimzi.backup.endpoint: the Pi store, http://<host>:<port>" }}{{ end }}
+{{- if not $b.storeIps }}{{ fail "strimzi.backup.storeIps: the store's addresses (its VIP and the Pis behind it)" }}{{ end }}
+{{- if lt (int $b.keep) 2 }}{{ fail "strimzi.backup.keep: 2 or more" }}{{ end }}
+{{- if not .Values.vault.secretsEnabled }}{{ fail "strimzi.backup needs vault.secretsEnabled: the store's keys come from Vault" }}{{ end }}
+# Kafka's topics backed up to the Pi store once a day: a dump (files/kafka-backup-dump.sh, in Kafka's own client tools at
+# the cluster's version) of every topic's messages - each partition read from its earliest offset, exactly as many as
+# its offsets say, headers, keys and values - with the topics' descriptions and the consumer groups' offsets; then the
+# upload (rclone: the dump, DONE last) and the prune (files/backup-prune.sh: the newest `keep` complete dumps kept, never
+# the last good one). In the mesh with a native sidecar: Kafka's 9092 takes mTLS only (the namespace's STRICT), and a
+# classic sidecar would start after the dump's init container - the native one runs first and ends with the Job; the
+# store past it. Restored with ops' kafka-restore.yml (the console producer, a keyed message on its partition again).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $name }}-store
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  refreshInterval: 15m
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: {{ $name }}-store
+  data:
+    - secretKey: ACCESS_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: access_key
+    - secretKey: SECRET_KEY
+      remoteRef:
+        key: {{ .Values.vault.secretPathPrefix }}/backup-store
+        property: secret_key
+---
+# its own identity in the mesh (cluster.local/ns/<ns>/sa/<this>): an allow-list on Kafka's 9092 names it
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+data:
+  dump.sh: |
+{{ .Files.Get "files/kafka-backup-dump.sh" | indent 4 }}
+  prune.sh: |
+{{ .Files.Get "files/backup-prune.sh" | indent 4 }}
+  # ops' kafka-restore.yml runs it in a Job of its own (the dump fetched from the store first)
+  restore.sh: |
+{{ .Files.Get "files/kafka-backup-restore.sh" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  schedule: {{ $b.schedule | quote }}
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # one try a night: the next night is the retry, KafkaBackupMissed says so
+      backoffLimit: 0
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            {{- include "schnappy.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: kafka-backup
+            app.kubernetes.io/part-of: schnappy
+            velero.io/exclude-from-backup: "true"
+          annotations:
+            # the proxy an init container of its own that runs first (Kafka's 9092 is mTLS only) and stops with the Job
+            sidecar.istio.io/nativeSidecar: "true"
+            # the Pi store reached directly, past the proxy
+            traffic.sidecar.istio.io/excludeOutboundIPRanges: {{ $b.storeIps | join "/32," }}/32
+            checksum/scripts: {{ print (.Files.Get "files/kafka-backup-dump.sh") (.Files.Get "files/backup-prune.sh") | sha256sum }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ $name }}
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
+          initContainers:
+            # the dump, in Kafka's own client tools at the cluster's version
+            - name: dump
+              image: {{ $b.toolsImage | default (printf "apache/kafka:%s" .Values.strimzi.kafkaVersion) }}
+              command: [bash, /scripts/dump.sh]
+              env:
+                - { name: BOOTSTRAP, value: "{{ include "schnappy.fullname" . }}-kafka-bootstrap:9092" }
+                - { name: OUT, value: /dump }
+                - { name: KAFKA_BIN, value: /opt/kafka/bin }
+                # the tools' own logs (kafka-run-class.sh) under the writable /tmp, not the image's read-only tree
+                - { name: LOG_DIR, value: /tmp }
+                - { name: KAFKA_HEAP_OPTS, value: "-Xmx256m" }
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts, readOnly: true }
+                - { name: dump, mountPath: /dump }
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: 50m, memory: 256Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                readOnlyRootFilesystem: true
+          containers:
+            # the upload (the dump, DONE last: a dump without it is incomplete), then the prune
+            - name: upload
+              image: {{ $b.rcloneImage }}
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  d=$(ls /dump)
+                  [ -f "/dump/$d/DONE" ] || { echo "the dump $d has no DONE: not uploaded"; exit 1; }
+                  rclone mkdir "$STORE"
+                  rclone copy "/dump/$d" "$STORE/$d" --exclude DONE
+                  rclone copyto "/dump/$d/DONE" "$STORE/$d/DONE"
+                  echo "kafka backup $d: uploaded ($(cat "/dump/$d/DONE"))"
+                  sh /scripts/prune.sh
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: KEEP, value: {{ $b.keep | quote }} }
+                - { name: STORE, value: "store:{{ $b.bucket }}" }
+                # the dumps at the bucket's root, complete with DONE
+                - { name: PREFIX, value: "" }
+                - { name: MARKER, value: DONE }
+                - { name: RCLONE_CONFIG_STORE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_STORE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_STORE_ENDPOINT, value: {{ $b.endpoint | quote }} }
+                - name: RCLONE_CONFIG_STORE_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef: { name: {{ $name }}-store, key: ACCESS_KEY }
+                - name: RCLONE_CONFIG_STORE_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef: { name: {{ $name }}-store, key: SECRET_KEY }
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts, readOnly: true }
+                - { name: dump, mountPath: /dump, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: 10m, memory: 32Mi }
+                limits: { memory: 128Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                readOnlyRootFilesystem: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: {{ $name }}
+            - name: dump
+              emptyDir:
+                sizeLimit: 2Gi
+            - name: tmp
+              emptyDir: {}
+---
+# the backup's pods to the Pi store (the namespace's default policy reaches Kafka, not the store)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "schnappy.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "schnappy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kafka-backup
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        {{- range $b.storeIps }}
+        - ipBlock:
+            cidr: {{ . }}/32
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ regexReplaceAll "^http://[^:/]+:?" $b.endpoint "" | default "80" | int }}
+{{- end }}

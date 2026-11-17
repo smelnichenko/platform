@@ -19,7 +19,7 @@ spec:
       # the server's config and users are subPath mounts, never updated in a running pod: a change restarts it (the
       # system logs' TTL, 2026-10-16, would otherwise wait for an unrelated restart). The schemas are the init Job's
       annotations:
-        checksum/config: {{ print (.Files.Get "files/clickhouse-config.xml") (.Files.Get "files/clickhouse-users.xml") (include "schnappy.clickhouse.backupConfig" .) (ternary (.Files.Get "files/clickhouse-backup-user.xml") "" (eq (.Values.clickhouse.backup.enabled | toString) "true")) | sha256sum }}
+        checksum/config: {{ print (.Files.Get "files/clickhouse-config.xml") (.Files.Get "files/clickhouse-users.xml") (include "schnappy.clickhouse.backupConfig" .) (ternary (.Files.Get "files/clickhouse-backup-user.xml") "" (eq (.Values.clickhouse.backup.enabled | toString) "true")) (ternary (.Files.Get "files/clickhouse-grafana-user.xml") "" (eq (.Values.clickhouse.grafanaUser | toString) "true")) | sha256sum }}
         {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
         # its backups go straight to the Pi store, past the sidecar (as production's CNPG pods' - barman through it
         # failed): the store's addresses only - a port excluded for every destination would skip the sidecar to any mesh
@@ -52,12 +52,23 @@ spec:
               # BusyBox sha256sum + awk are sufficient; no apk install
               # (init container runs as non-root, can't write apk db).
               echo -n "$CLICKHOUSE_PASSWORD" | sha256sum | awk '{print $1}' > /env/CLICKHOUSE_PASSWORD_SHA256
+              {{- if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}
+              # Grafana's own user's (files/clickhouse-grafana-user.xml)
+              echo -n "$GRAFANA_PASSWORD" | sha256sum | awk '{print $1}' > /env/CLICKHOUSE_GRAFANA_PASSWORD_SHA256
+              {{- end }}
           env:
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "schnappy.clickhouse.secretName" . }}
                   key: CLICKHOUSE_PASSWORD
+            {{- if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}
+            - name: GRAFANA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "schnappy.clickhouse.secretName" . }}
+                  key: GRAFANA_PASSWORD
+            {{- end }}
           volumeMounts:
             - { name: env, mountPath: /env }
           securityContext:
@@ -108,6 +119,9 @@ spec:
             - -c
             - |
               export CLICKHOUSE_PASSWORD_SHA256="$(cat /env/CLICKHOUSE_PASSWORD_SHA256)"
+              {{- if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}
+              export CLICKHOUSE_GRAFANA_PASSWORD_SHA256="$(cat /env/CLICKHOUSE_GRAFANA_PASSWORD_SHA256)"
+              {{- end }}
               exec /entrypoint.sh
           resources:
             {{- toYaml .Values.clickhouse.resources | nindent 12 }}
@@ -115,6 +129,9 @@ spec:
             - { name: data, mountPath: /var/lib/clickhouse }
             - { name: config, mountPath: /etc/clickhouse-server/config.d/00-config.xml, subPath: config.xml }
             - { name: config, mountPath: /etc/clickhouse-server/users.d/00-users.xml, subPath: users.xml }
+            {{- if (eq (.Values.clickhouse.grafanaUser | toString) "true") }}
+            - { name: config, mountPath: /etc/clickhouse-server/users.d/60-grafana-user.xml, subPath: grafana-user.xml }
+            {{- end }}
             {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
             - { name: config, mountPath: /etc/clickhouse-server/config.d/50-backup.xml, subPath: backup.xml }
             - { name: config, mountPath: /etc/clickhouse-server/users.d/50-backup-user.xml, subPath: backup-user.xml }
