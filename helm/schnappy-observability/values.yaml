@@ -214,6 +214,9 @@ grafana:
     backupEndpoint: ""
     backupServerName: ""
     backupRetention: 30d
+    # a new cluster from its own backups (the Cluster deleted first): the archive it reads; backupServerName a new one
+    recovery: false
+    recoveryServerName: ""
   service:
     type: ClusterIP
     port: 3000

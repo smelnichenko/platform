@@ -80,6 +80,9 @@ spec:
                   key: password
             - name: GF_DATABASE_SSL_MODE
               value: require
+            # under the mesh's idle cut (its sidecar drops TCP idle for an hour; Grafana keeps a connection 4 h)
+            - name: GF_DATABASE_CONN_MAX_LIFETIME
+              value: "1800"
             {{- else if ne .Values.grafana.database "sqlite" }}
             {{- fail (printf "grafana.database: sqlite or cnpg, not %q" .Values.grafana.database) }}
             {{- end }}
@@ -166,11 +169,18 @@ spec:
               mountPath: /var/lib/grafana/dashboards
           resources:
             {{- toYaml .Values.grafana.resources | nindent 12 }}
-          livenessProbe:
+          # a first start runs every schema migration (a fresh database, a Grafana major): up to 5 minutes before liveness
+          # counts. Liveness the port alone - /api/health checks the database, so a Postgres restart would have
+          # restarted Grafana into a crash loop; readiness keeps the database check
+          startupProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            tcpSocket:
+              port: 3000
             periodSeconds: 10
           readinessProbe:
             httpGet:

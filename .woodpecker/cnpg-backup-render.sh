@@ -90,4 +90,17 @@ check "  on sqlite (the default): no GF_DATABASE_ setting at all" "$(gfr | grep 
 check "Grafana's cluster's labels: never Grafana's component (its network policy would select the database's pods)" \
   "$(printf '%s\n' "$gf" | awk '/^kind: Cluster/ { c = 1 } c && /app.kubernetes.io\/component:/ { print $2; exit }')" grafana-postgres
 check "  Argo never prunes or deletes it" "$(printf '%s\n' "$gf" | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /sync-options:/ { print $2 }')" Prune=false,Delete=false
+# the review's (2026-11-17): Grafana's probes outlive a migration and a Postgres restart; its connections under the
+# mesh's idle cut; a recovery from its own backups (the store's keys and egress with backups off)
+gdep=$(gfr --set grafana.database=cnpg | awk '/^kind: Deployment/ { d = 0 } /name: t-schnappy-grafana$/ { d = 1 } d')
+check "Grafana: a startup probe (5 minutes), liveness the port alone, readiness /api/health; a 30-minute connection lifetime" \
+  "$(printf '%s\n' "$gdep" | grep -A3 'startupProbe:' | grep -c 'path: /api/health') $(printf '%s\n' "$gdep" | grep -A1 'livenessProbe:' | grep -c tcpSocket) $(printf '%s\n' "$gdep" | grep -A1 'name: GF_DATABASE_CONN_MAX_LIFETIME' | grep -c '"1800"')" \
+  "1 1 1"
+grec=$(gfr --set grafana.cnpg.recovery=true --set grafana.cnpg.recoveryServerName=g1)
+check "Grafana's recovery: from barman (g1), database and owner grafana, the store's keys rendered, its pods' egress to the store" \
+  "$(printf '%s\n' "$grec" | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /source: backup-source|serverName: g1|database: grafana|owner: grafana/ { n++ } END { print n }') $(printf '%s\n' "$grec" | grep -c '^  name: t-schnappy-grafana-pg-backup-store$') $(printf '%s\n' "$grec" | awk '/^---/ { n = 0 } /^kind: NetworkPolicy/ { k = 1 } /^kind: / && !/NetworkPolicy/ { k = 0 } k && /^  name: t-schnappy-grafana-pg$/ { n = 1 } n && /port: 9000/ { c++ } END { print c + 0 }')" \
+  "4 1 1"
+check "  recovery into the server name it recovers from: refused; without one: refused" \
+  "$(gfr --set grafana.cnpg.recovery=true --set grafana.cnpg.recoveryServerName=g1 --set grafana.cnpg.backup=true --set grafana.cnpg.backupServerName=g1 | grep -c 'execution error.*a new backupServerName') $(gfr --set grafana.cnpg.recovery=true | grep -c 'execution error.*needs recoveryServerName')" \
+  "1 1"
 [ "$fails" -eq 0 ] && echo "cnpg-backup-render: ALL-PASS" || { echo "cnpg-backup-render: $fails FAILED"; exit 1; }

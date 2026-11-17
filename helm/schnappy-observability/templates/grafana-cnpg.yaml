@@ -3,7 +3,9 @@
 {{- $name := include "schnappy.grafana.cnpg.name" . }}
 {{- if and $cnpg.backup (not $cnpg.backupServerName) }}{{ fail "grafana.cnpg.backup needs backupServerName: a name of its own in the store" }}{{ end }}
 {{- if and $cnpg.backup (hasPrefix "schnappy-production-postgres" $cnpg.backupServerName) }}{{ fail "grafana.cnpg.backupServerName: never production's - the Pis' restore check reads that one" }}{{ end }}
-{{- if and $cnpg.backup (not .Values.vault.secretsEnabled) }}{{ fail "grafana.cnpg.backup needs vault.secretsEnabled: the store's keys come from Vault" }}{{ end }}
+{{- if and $cnpg.recovery (not $cnpg.recoveryServerName) }}{{ fail "grafana.cnpg.recovery needs recoveryServerName" }}{{ end }}
+{{- if and $cnpg.recovery $cnpg.backup (eq $cnpg.recoveryServerName $cnpg.backupServerName) }}{{ fail "grafana.cnpg.recovery: a new backupServerName - CNPG archives into an empty one only" }}{{ end }}
+{{- if and (or $cnpg.backup $cnpg.recovery) (not .Values.vault.secretsEnabled) }}{{ fail "grafana.cnpg.backup needs vault.secretsEnabled: the store's keys come from Vault" }}{{ end }}
 # Grafana's database on CloudNativePG: its own cluster, never production's apps' database - backed up to the Pi store as
 # production's is, upgraded and restored as every CNPG cluster is. Its SQLite file (grafana.db on Grafana's volume) had
 # no backup: the pod's Velero annotation named a volume "data", Grafana's is "storage". A fresh database: every
@@ -28,10 +30,37 @@ spec:
   inheritedMetadata:
     annotations:
       sidecar.istio.io/inject: "false"
+  # recovery: a new cluster from its own barman backups (recoveryServerName's - CNPG reads bootstrap only when it creates
+  # the Cluster: Grafana at 0 and the Cluster deleted first), archiving under a new backupServerName; a fresh initdb
+  # again (the Cluster deleted) also takes a new backupServerName - the old one holds this cluster's WAL
   bootstrap:
+    {{- if $cnpg.recovery }}
+    recovery:
+      source: backup-source
+      database: grafana
+      owner: grafana
+    {{- else }}
     initdb:
       database: grafana
       owner: grafana
+    {{- end }}
+  {{- if $cnpg.recovery }}
+  externalClusters:
+    - name: backup-source
+      barmanObjectStore:
+        destinationPath: {{ $cnpg.backupDestination }}
+        endpointURL: {{ required "grafana.cnpg.backupEndpoint: the Pi store" $cnpg.backupEndpoint }}
+        serverName: {{ $cnpg.recoveryServerName }}
+        s3Credentials:
+          accessKeyId:
+            name: {{ $name }}-backup-store
+            key: ACCESS_KEY
+          secretAccessKey:
+            name: {{ $name }}-backup-store
+            key: SECRET_KEY
+        wal:
+          maxParallel: 4
+  {{- end }}
   storage:
     size: {{ $cnpg.storage.size }}
     {{- if $cnpg.storage.storageClass }}
@@ -57,6 +86,8 @@ spec:
         compression: gzip
       data:
         compression: gzip
+  {{- end }}
+{{- if or $cnpg.backup $cnpg.recovery }}
 ---
 # the Pi backup store's credentials (Vault's backup-store - production's CNPG cluster and Scylla's agents read the same)
 apiVersion: external-secrets.io/v1
@@ -81,6 +112,8 @@ spec:
       remoteRef:
         key: {{ .Values.vault.secretPathPrefix }}/backup-store
         property: secret_key
+{{- end }}
+{{- if $cnpg.backup }}
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup

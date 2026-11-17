@@ -340,7 +340,7 @@ spec:
           port: 5432
         - protocol: TCP
           port: 8000
-    {{- if .Values.grafana.cnpg.backup }}
+    {{- if or .Values.grafana.cnpg.backup .Values.grafana.cnpg.recovery }}
     - to:
         - ipBlock:
             cidr: 192.168.11.4/32
