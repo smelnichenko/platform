@@ -12,6 +12,7 @@ cp "$f/clickhouse-config.xml" /etc/clickhouse-server/config.d/00-config.xml
 cp "$f/clickhouse-users.xml" /etc/clickhouse-server/users.d/00-users.xml
 # the backup config as the chart renders it with backups on (its URL put in, its keys from the environment)
 sed 's#__URL__#http://store.invalid:9000/clickhouse-backups/#' "$f/clickhouse-backup.xml" > /etc/clickhouse-server/config.d/50-backup.xml
+cp "$f/clickhouse-backup-user.xml" /etc/clickhouse-server/users.d/50-backup-user.xml
 export BACKUP_STORE_ACCESS_KEY=ci-access BACKUP_STORE_SECRET_KEY=ci-secret
 CLICKHOUSE_PASSWORD_SHA256=$(printf ci | sha256sum | cut -d' ' -f1)
 export CLICKHOUSE_PASSWORD_SHA256
@@ -33,7 +34,11 @@ done
 # the server that answered is the chart's release (CI_STEP_IMAGE_CHECK is a copy of the step's image: the step's own
 # image: changed alone, it still read as the chart's)
 running=$(q 'select version()')
-collection=$(q "select count() from system.named_collections where name = 'backup_store'")
+# the collection through its one user, a DESCRIBE with the structure given (no read, no network): backup answers - the
+# collection loaded and granted (a missing one is refused like an ungranted one); schnappy, Grafana's Editors' user, refused
+d="DESCRIBE TABLE s3(backup_store, filename = 'x', format = 'CSV', structure = 'a String')"
+collection=$(clickhouse-client --user backup --password ci -q "$d" 2>&1 | head -1 | cut -f1-2 | tr '\t' ' ')
+grants=$(q "$d" 2>&1 | grep -c 'NAMED COLLECTION ON backup_store' || true)
 want=${chart##*:}; want=${want%%@*}; want=${want%%-*}
 [ "$running" = "$want" ] || { kill "$server"; echo "FAIL the server started is ClickHouse $running, not the chart's $want"; exit 1; }
 q 'SYSTEM FLUSH LOGS'
@@ -44,4 +49,6 @@ logs=$(q "select count() from system.tables where database = 'system' and name l
 kill "$server"
 [ -z "$untimed" ] || { echo "FAIL system logs kept for ever: $untimed"; exit 1; }
 [ "$logs" -ge 10 ] || { echo "FAIL only $logs system logs made - the check saw too little"; exit 1; }
-echo "PASS ClickHouse $running ($chart) started on the chart's config; its $logs system logs each with a TTL (crash_log aside)"
+[ "$collection" = "a String" ] || { echo "FAIL the named collection backup_store not loaded or not granted to backup - got '$collection'"; exit 1; }
+[ "$grants" = 1 ] || { echo "FAIL schnappy (Grafana's Editors' user) not refused the named collection backup_store"; exit 1; }
+echo "PASS ClickHouse $running ($chart) started on the chart's config and its backup config (backup_store loaded, granted to backup alone); its $logs system logs each with a TTL (crash_log aside)"

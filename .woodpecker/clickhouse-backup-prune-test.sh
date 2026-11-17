@@ -97,6 +97,13 @@ check "  one backup try a night (backoffLimit 0); the store's keys' ExternalSecr
   "$(printf '%s\n' "$out" | awk '/^kind: CronJob/ { c = 0 } /name: t-schnappy-clickhouse-backup$/ { c = 1 } c && /backoffLimit:/ { print $2; exit }') $(printf '%s\n' "$out" | awk '/^kind: ExternalSecret/ { e = 1 } /^---/ { e = 0 } e && /sync-wave:/ { print $2 }' | tr -d '"')" \
   "0 -1"
 off=$(helm template t helm/schnappy-observability/ --namespace schnappy-infra --set clickhouse.enabled=true --set clickhouse.existingSecret=ch)
+# the store's collection reached through the backup user alone: its users.d file mounted, the job logging in as it;
+# schnappy's users file (fluent-bit's, Grafana's, the init Job's) grants it nothing of the collection
+check "the backup user: mounted (users.d/50-backup-user.xml), granted the collection and S3, the job logging in as it" \
+  "$(printf '%s\n' "$out" | grep -c 'mountPath: /etc/clickhouse-server/users.d/50-backup-user.xml, subPath: backup-user.xml') $(printf '%s\n' "$out" | grep -cE '<query>GRANT (NAMED COLLECTION ON backup_store|READ, WRITE ON S3)</query>') $(printf '%s\n' "$out" | grep -c 'clickhouse-client --host t-schnappy-clickhouse --user backup ')" \
+  "1 2 1"
+check "  schnappy granted nothing of the collection (no grants in its file: Grafana's Editors query as it)" \
+  "$(grep -c 'NAMED COLLECTION\|named_collection_control' helm/schnappy-observability/files/clickhouse-users.xml || true)" 0
 check "the init Job's pod: never ClickHouse's Service's selector (its template's component clickhouse-init)" \
   "$(printf '%s\n' "$off" | awk '/^kind: Job/ { j = 1 } /^---/ { j = 0 } j && /^  template:/ { t = 1 } j && t && /app.kubernetes.io\/component:/ { print $2; exit }')" clickhouse-init
 check "  off by default: no backup config, no store keys, no CronJob" \

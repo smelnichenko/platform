@@ -19,7 +19,7 @@ spec:
       # the server's config and users are subPath mounts, never updated in a running pod: a change restarts it (the
       # system logs' TTL, 2026-10-16, would otherwise wait for an unrelated restart). The schemas are the init Job's
       annotations:
-        checksum/config: {{ print (.Files.Get "files/clickhouse-config.xml") (.Files.Get "files/clickhouse-users.xml") (include "schnappy.clickhouse.backupConfig" .) | sha256sum }}
+        checksum/config: {{ print (.Files.Get "files/clickhouse-config.xml") (.Files.Get "files/clickhouse-users.xml") (include "schnappy.clickhouse.backupConfig" .) (ternary (.Files.Get "files/clickhouse-backup-user.xml") "" (eq (.Values.clickhouse.backup.enabled | toString) "true")) | sha256sum }}
         {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
         # its backups go straight to the Pi store, past the sidecar (as production's CNPG pods' - barman through it
         # failed): the store's addresses only - a port excluded for every destination would skip the sidecar to any mesh
@@ -117,6 +117,7 @@ spec:
             - { name: config, mountPath: /etc/clickhouse-server/users.d/00-users.xml, subPath: users.xml }
             {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
             - { name: config, mountPath: /etc/clickhouse-server/config.d/50-backup.xml, subPath: backup.xml }
+            - { name: config, mountPath: /etc/clickhouse-server/users.d/50-backup-user.xml, subPath: backup-user.xml }
             {{- end }}
             - { name: env, mountPath: /env, readOnly: true }
           # a new release's first start loads every table's parts (53 GB on ten): 10 minutes before liveness counts

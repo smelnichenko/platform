@@ -1,0 +1,22 @@
+<clickhouse>
+  <!-- the backup job's user (clickhouse-backup.yaml): the one user granted the store's named collection (backup_store)
+       and S3 - schnappy (fluent-bit, Grafana, the init Job) is refused it, so Grafana's Editors never reach the store
+       (26.8, 2026-11-17: "Not enough privileges ... NAMED COLLECTION ON backup_store"). Its password is schnappy's: whoever
+       holds it can already do everything else. Backup and restore of logs; the restore check's own table dropped. -->
+  <users>
+    <backup>
+      <password_sha256_hex from_env="CLICKHOUSE_PASSWORD_SHA256"/>
+      <networks>
+        <ip>::/0</ip>
+      </networks>
+      <profile>default</profile>
+      <quota>default</quota>
+      <grants>
+        <query>GRANT SELECT, BACKUP, CREATE TABLE, INSERT ON logs.*</query>
+        <query>GRANT DROP TABLE ON logs.podlogs_restore_check</query>
+        <query>GRANT NAMED COLLECTION ON backup_store</query>
+        <query>GRANT READ, WRITE ON S3</query>
+      </grants>
+    </backup>
+  </users>
+</clickhouse>

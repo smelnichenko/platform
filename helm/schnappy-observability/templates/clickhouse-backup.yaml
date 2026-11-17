@@ -91,7 +91,8 @@ spec:
                 - |
                   name=$(date -u +%Y%m%dT%H%M%SZ)
                   # synchronous: the client returns when the backup is complete (its .backup written) or failed
-                  out=$(clickhouse-client --host {{ $ch }} --user schnappy --password "$CLICKHOUSE_PASSWORD" \
+                  # as the backup user: the one granted the store's named collection (files/clickhouse-backup-user.xml)
+                  out=$(clickhouse-client --host {{ $ch }} --user backup --password "$CLICKHOUSE_PASSWORD" \
                     --connect_timeout 10 --receive_timeout 3500 \
                     --query "BACKUP DATABASE logs TO S3(backup_store, 'logs/$name')" 2>&1)
                   rc=$?
