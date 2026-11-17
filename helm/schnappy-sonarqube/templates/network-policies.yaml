@@ -202,7 +202,7 @@ spec:
         - protocol: TCP
           port: 5432
     {{- end }}
-    {{- if .Values.sonarqube.cnpg.backup }}
+    {{- if or .Values.sonarqube.cnpg.backup .Values.sonarqube.cnpg.recovery }}
     - to:
         - ipBlock:
             cidr: 192.168.11.4/32

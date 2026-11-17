@@ -52,6 +52,21 @@ check "recovery: from barman (backup-source, the old name), its store keys there
   "$(sqr --set sonarqube.cnpg.recovery=true --set sonarqube.cnpg.recoveryServerName=s1 --set sonarqube.cnpg.backup=true --set sonarqube.cnpg.backupServerName=s2 \
     | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /source: backup-source|serverName:/ { gsub(/^ +/, ""); printf "%s;", $0 }')" \
   "source: backup-source;serverName: s1;serverName: s2;"
+# the review's (2026-11-17): a recovery is SonarQube's database, owner and Vault's password, and reaches the store
+# without backups on; the import reads the password alone; the cluster's own component; Argo never deletes it
+rec=$(sqr --set sonarqube.cnpg.recovery=true --set sonarqube.cnpg.recoveryServerName=s1)
+check "recovery: database sonarqube, owner sonarqube, the -owner secret (no app role beside it)" \
+  "$(printf '%s\n' "$rec" | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /^    recovery:/ { r = 1 } r && /^      (database|owner):|^        name:/ { gsub(/^ +/, ""); printf "%s;", $0 } c && /^  storage:/ { r = 0 }')" \
+  "database: sonarqube;owner: sonarqube;name: t-schnappy-sonarqube-pg-owner;"
+check "  and its pods reach the store with backups off (a drill)" \
+  "$(printf '%s\n' "$rec" | awk '/^---/ { n = 0 } /^kind: NetworkPolicy/ { k = 1 } /^kind: / && !/NetworkPolicy/ { k = 0 } k && /^  name: t-schnappy-sonarqube-pg$/ { n = 1 } n && /port: 9000/ { c++ } END { print c + 0 }')" 1
+imp=$(sqr --set sonarqube.cnpg.import=true)
+check "the import reads the -owner secret's password - never SonarQube's secret (its admin password and token)" \
+  "$(printf '%s\n' "$imp" | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /^      password:/ { p = 1; next } p { gsub(/^ +/, ""); printf "%s;", $0; if (++n == 2) exit }')" \
+  "name: t-schnappy-sonarqube-pg-owner;key: password;"
+check "the cluster's component its own (never the StatefulSet's sonarqube-postgres); Argo never prunes or deletes it" \
+  "$(printf '%s\n' "$sq" | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /app.kubernetes.io\/component:|sync-options:/ { gsub(/^ +/, ""); printf "%s;", $0 }')" \
+  "app.kubernetes.io/component: sonarqube-pg;argocd.argoproj.io/sync-options: Prune=false,Delete=false;"
 # Grafana's own CNPG cluster (schnappy-observability, 2026-11-17): once a day, a bounded window, its first backup at
 # once; its name in the store its own; Grafana's own network policy never selecting its pods
 gfr() { helm template t helm/schnappy-observability/ --namespace schnappy-infra --set grafana.enabled=true --set grafana.existingSecret=gf --set vault.secretsEnabled=true \
@@ -74,4 +89,5 @@ check "Grafana on CNPG: its database's host, user and password from CNPG's own s
 check "  on sqlite (the default): no GF_DATABASE_ setting at all" "$(gfr | grep -c 'GF_DATABASE_')" 0
 check "Grafana's cluster's labels: never Grafana's component (its network policy would select the database's pods)" \
   "$(printf '%s\n' "$gf" | awk '/^kind: Cluster/ { c = 1 } c && /app.kubernetes.io\/component:/ { print $2; exit }')" grafana-postgres
+check "  Argo never prunes or deletes it" "$(printf '%s\n' "$gf" | awk '/^kind: Cluster/ { c = 1 } /^---/ { c = 0 } c && /sync-options:/ { print $2 }')" Prune=false,Delete=false
 [ "$fails" -eq 0 ] && echo "cnpg-backup-render: ALL-PASS" || { echo "cnpg-backup-render: $fails FAILED"; exit 1; }

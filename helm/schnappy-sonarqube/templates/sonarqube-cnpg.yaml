@@ -18,7 +18,10 @@ kind: Cluster
 metadata:
   name: {{ $name }}
   labels:
-    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.cnpg.labels" . | nindent 4 }}
+  annotations:
+    # its PVC goes with it: Argo never prunes or deletes it, whatever its application's policy (as SonarQube's data PVC)
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   instances: 1
   imageName: {{ $cnpg.imageName }}
@@ -30,8 +33,14 @@ spec:
       sidecar.istio.io/inject: "false"
   bootstrap:
     {{- if $cnpg.recovery }}
+    # SonarQube's database and owner, its password Vault's (the -owner secret) - CNPG's defaults would make an app
+    # database, role and secret beside them, and reconcile that role's password, not sonarqube's
     recovery:
       source: backup-source
+      database: sonarqube
+      owner: sonarqube
+      secret:
+        name: {{ $name }}-owner
     {{- else }}
     initdb:
       database: sonarqube
@@ -72,9 +81,11 @@ spec:
         dbname: sonarqube
         port: "5432"
         sslmode: disable
+      # the password alone: the -owner secret holds Vault's postgres_password - the StatefulSet's too - and nothing else
+      # (SonarQube's own secret carries its admin password and token, which CNPG's Role would then read)
       password:
-        name: {{ include "schnappy.sonarqube.secretName" . }}
-        key: SONARQUBE_POSTGRES_PASSWORD
+        name: {{ $name }}-owner
+        key: password
   {{- end }}
   storage:
     size: {{ $cnpg.storage.size }}
@@ -111,7 +122,7 @@ kind: ExternalSecret
 metadata:
   name: {{ $name }}-owner
   labels:
-    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.cnpg.labels" . | nindent 4 }}
 spec:
   refreshInterval: 15m
   secretStoreRef:
@@ -137,7 +148,7 @@ kind: ExternalSecret
 metadata:
   name: {{ $name }}-backup-store
   labels:
-    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.cnpg.labels" . | nindent 4 }}
 spec:
   refreshInterval: 15m
   secretStoreRef:
@@ -163,7 +174,7 @@ kind: ScheduledBackup
 metadata:
   name: {{ $name }}-daily
   labels:
-    {{- include "schnappy.sonarqube.postgres.labels" . | nindent 4 }}
+    {{- include "schnappy.sonarqube.cnpg.labels" . | nindent 4 }}
 spec:
   # CNPG's schedule has a seconds field first: 01:45:00 every day, beside production's 01:30 (schnappy-data's)
   schedule: "0 45 1 * * *"

@@ -15,6 +15,9 @@ metadata:
   name: {{ $name }}
   labels:
     {{- include "schnappy.grafana.postgres.labels" . | nindent 4 }}
+  annotations:
+    # its PVC goes with it: Argo never prunes or deletes it, whatever its application's policy
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   instances: 1
   imageName: {{ $cnpg.imageName }}

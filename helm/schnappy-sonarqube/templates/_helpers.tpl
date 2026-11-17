@@ -76,6 +76,13 @@ app.kubernetes.io/component: sonarqube-postgres
 app.kubernetes.io/component: sonarqube-postgres
 {{- end }}
 
+{{/* the CNPG cluster's resources: a component of their own - never the old StatefulSet's selector labels (its Service
+and network policy would take CNPG's pods if labels were ever inherited) */}}
+{{- define "schnappy.sonarqube.cnpg.labels" -}}
+{{ include "schnappy.labels" . }}
+app.kubernetes.io/component: sonarqube-pg
+{{- end }}
+
 {{- define "schnappy.sonarqube.cnpg.name" -}}
 {{- printf "%s-sonarqube-pg" (include "schnappy.fullname" .) }}
 {{- end }}
