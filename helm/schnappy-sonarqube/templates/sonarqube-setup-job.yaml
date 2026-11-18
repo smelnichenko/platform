@@ -23,12 +23,16 @@ spec:
         app.kubernetes.io/part-of: schnappy
         app.kubernetes.io/component: sonarqube-setup
         velero.io/exclude-from-backup: "true"
+      annotations:
+        # the proxy an init container of its own that runs first and stops with the Job (as kafka-backup's): a failed
+        # try restarted in this pod (OnFailure) still has it, and no quitquitquit call ends it
+        sidecar.istio.io/nativeSidecar: "true"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.fullname" . }}-sonarqube-setup
       containers:
         - name: setup
-          image: curlimages/curl:8.12.1
+          image: curlimages/curl:8.12.1@sha256:94e9e444bcba979c2ea12e27ae39bee4cd10bc7041a472c4727a558e213744e6
           env:
             - name: SQ_URL
               value: "http://{{ include "schnappy.sonarqube.serviceName" . }}:9000"

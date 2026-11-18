@@ -1,11 +1,11 @@
 #!/bin/sh
-# Runs three hook scripts as rendered (.ci-out/{scylla-schema,gateway-patch,preview-cleanup}.sh, written by
+# Runs two hook scripts as rendered (.ci-out/{scylla-schema,preview-cleanup}.sh, written by
 # chart-render-checks.sh) against stub cqlsh, kubectl and wget, per scenario. What each must guarantee: a failed or
 # timed-out call fails the hook - before set -e they ran on to "done" and reported success. The Scylla schema takes a
-# column that exists already as done, nothing else; the gateway's patch failing fails it; preview cleanup tells a "no"
+# column that exists already as done, nothing else; preview cleanup tells a "no"
 # from can-i (skipped, said) from a failure of the check, the list, a delete or the Keycloak lookup. Each run its own limit.
 set -u
-for s in scylla-schema gateway-patch preview-cleanup; do
+for s in scylla-schema preview-cleanup; do
   [ -s ".ci-out/$s.sh" ] || { echo "hook scripts test: FAIL: .ci-out/$s.sh missing (run chart-render-checks.sh)" >&2; exit 1; }
 done
 work=$(mktemp -d)
@@ -71,13 +71,6 @@ for sc in create-fails alter-times-out; do
   [ "$rc" != 0 ] && [ "$rc" != 124 ] || fail "scylla schema, $sc: exited $rc"
   ! out scylla-schema $sc | grep -q "Schema applied successfully" || fail "scylla schema, $sc: said applied"
 done
-
-# the gateway's patch: failing fails the hook, "Done." unsaid
-run gateway-patch ok; rc=$?
-[ "$rc" = 0 ] && [ "$(calls gateway-patch ok 'patch svc')" = 1 ] || fail "gateway: a patch that worked exited $rc"
-run gateway-patch patch-fails; rc=$?
-[ "$rc" != 0 ] && [ "$rc" != 124 ] && ! out gateway-patch patch-fails | grep -q '^Done\.' \
-  || fail "gateway: a failed patch exited $rc: $(out gateway-patch patch-fails | tail -2)"
 
 # preview cleanup: its own pr-7 topics deleted, another PR's kept; a "no" skips them, said; every failure fails it
 run preview-cleanup ok; rc=$?

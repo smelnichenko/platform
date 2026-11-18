@@ -525,6 +525,69 @@ dry() { helm template t helm/schnappy-mesh/ --show-only templates/authorization-
 [ "$(dry)" = "t-schnappy-postgres t-schnappy-strimzi-kafka " ] || fail "the policies in dry run by default: $(dry)"
 [ "$(dry --set authorizationPolicies.dryRun.postgres=false)" = "t-schnappy-strimzi-kafka " ] || fail "postgres enforced: $(dry --set authorizationPolicies.dryRun.postgres=false)"
 [ "$(dry --set authorizationPolicies.dryRun.strimziKafka=false)" = "t-schnappy-postgres " ] || fail "strimzi-kafka enforced: $(dry --set authorizationPolicies.dryRun.strimziKafka=false)"
+# every sync hook (Argo's PreSync/Sync/PostSync, Helm's install/upgrade hooks Argo maps to them) listed in its chart's
+# hook-templates ConfigMap: a hook changed alone is no part of its app's diff, so it never ran until something else synced
+# the app (s3gw-buckets on aws-cli 2.37.1, 2026-11-18); the ConfigMap's hash of it is in the diff
+python3 - $sel-app.yaml $sel-data.yaml $sel-obs.yaml $sel-sq.yaml $sel-auth.yaml $sel-rt.yaml $sel-mesh.yaml <<'PY_HOOK_TEMPLATES' \
+  || fail "a sync hook not in its chart's hook-templates ConfigMap (said above)"
+import re, sys, yaml
+bad = []
+for p in sys.argv[1:]:
+    hooks, keys, seen = set(), set(), 0
+    for chunk in re.split(r"(?m)^---\s*$", open(p).read()):
+        src = re.search(r"(?m)^# Source: [^/]+/templates/(\S+)$", chunk)
+        d = yaml.safe_load(chunk)
+        if not isinstance(d, dict) or not src:
+            continue
+        seen += 1
+        meta = d.get("metadata") or {}
+        ann = meta.get("annotations") or {}
+        if re.search(r"(Pre|Post)?Sync\b", ann.get("argocd.argoproj.io/hook", "")) or \
+                re.search(r"(install|upgrade)", ann.get("helm.sh/hook", "")):
+            hooks.add(src.group(1))
+        if d.get("kind") == "ConfigMap" and (meta.get("labels") or {}).get("app.kubernetes.io/component") == "hook-templates":
+            keys |= set((d.get("data") or {}).keys())
+    if not seen:
+        bad.append("%s: nothing rendered" % p)
+    if hooks - keys:
+        bad.append("%s: %s" % (p, sorted(hooks - keys)))
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_HOOK_TEMPLATES
+# every sync hook's pod has no sidecar or a native one (it stops with the Job): never a quitquitquit call ending it, whose
+# failure the hook ignored (init-users, sonarqube-setup, clickhouse-init did until 2026-11-18)
+python3 - $sel-app.yaml $sel-data.yaml $sel-obs.yaml $sel-sq.yaml $sel-auth.yaml $sel-rt.yaml $sel-mesh.yaml <<'PY_HOOK_SIDECARS' \
+  || fail "a hook's pod with a classic sidecar, or a quitquitquit call (said above)"
+import re, sys, yaml
+bad = []
+for p in sys.argv[1:]:
+    for d in yaml.safe_load_all(open(p)):
+        if not isinstance(d, dict) or d.get("kind") != "Job":
+            continue
+        ann = (d.get("metadata") or {}).get("annotations") or {}
+        if not (re.search(r"(Pre|Post)?Sync\b", ann.get("argocd.argoproj.io/hook", "")) or re.search(r"(install|upgrade)", ann.get("helm.sh/hook", ""))):
+            continue
+        pa = ((d["spec"]["template"].get("metadata") or {}).get("annotations")) or {}
+        if pa.get("sidecar.istio.io/inject") != "false" and pa.get("sidecar.istio.io/nativeSidecar") != "true":
+            bad.append("%s: its pod gets a classic sidecar (inject false, or nativeSidecar true)" % d["metadata"]["name"])
+        if "quitquitquit" in yaml.safe_dump(d["spec"]["template"]["spec"]):
+            bad.append("%s: a quitquitquit call" % d["metadata"]["name"])
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_HOOK_SIDECARS
+# and a hook changed moves its hash, none other: the data chart copied, its init-users hook changed by a comment
+rm -rf .ci-out/hookchk && mkdir -p .ci-out/hookchk && cp -r helm/schnappy-data .ci-out/hookchk/
+hk() { helm template t "$1" --set postgres.password=test --set cnpg.enabled=true --set 'postgres.databases[0].name=a' \
+  --set 'postgres.databases[0].user=a' --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
+  --show-only templates/hook-templates.yaml | awk '/^data:/ {d=1; next} d'; }
+hk helm/schnappy-data > .ci-out/hookchk/before
+echo "# a change" >> .ci-out/hookchk/schnappy-data/templates/cnpg-init-users.yaml
+hk .ci-out/hookchk/schnappy-data > .ci-out/hookchk/after
+moved=$(diff .ci-out/hookchk/before .ci-out/hookchk/after | grep '^>' || true)
+[ "$(echo "$moved" | grep -c .)" = 1 ] && echo "$moved" | grep -q '^> *cnpg-init-users.yaml: "[0-9a-f]\{64\}"$' \
+  || fail "a hook changed did not move its own hash alone in hook-templates: $moved"
 # PostgreSQL's policy exactly: the CNPG cluster the data chart makes, ALLOW, 5432 for the app services, the instances
 # (replication) and the init-users Job's own ServiceAccount (read from its Job), 8000 (the operator's plaintext status
 # calls) from any source, in dry run until its shadow_denied has read 0 for a day. One more name or rule, a DENY or
@@ -720,7 +783,23 @@ echo "$names" | tr ' ' '\n' | grep -v '^$' > .ci-out/init-users.databases
 job_deadline() { awk '/^spec:/ {s=1; next} /^[^ ]/ {s=0} s && /^  activeDeadlineSeconds:/ {print $2}'; }
 k6=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set smokeTest.enabled=true --show-only templates/k6-postsync-job.yaml)
 schema=$(helm template t helm/schnappy-data/ --show-only templates/scylla-schema-job.yaml)
-gwjob=$(mesh $lan --show-only templates/gateway.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
+# the gateway's Service customised by Istio from the Gateway's parametersRef - no hook patches it after (a kubectl Job
+# did until 2026-11-18): the Gateway names the ConfigMap, the ConfigMap's service sets the LAN address and Cluster
+gw=$(mesh $lan --set gateway.loadBalancerIP=192.0.2.7 --show-only templates/gateway.yaml)
+python3 - "$gw" <<'PY_GATEWAY_OPTIONS' || fail "the gateway's Service not customised as it must be (said above)"
+import sys, yaml
+docs = [d for d in yaml.safe_load_all(sys.argv[1]) if isinstance(d, dict)]
+kinds = sorted(d["kind"] for d in docs)
+if kinds != ["ConfigMap", "Gateway"]:
+    sys.exit("gateway.yaml renders %s - a Gateway and its options alone (no patch Job, no RBAC for one)" % kinds)
+gw = next(d for d in docs if d["kind"] == "Gateway"); cm = next(d for d in docs if d["kind"] == "ConfigMap")
+ref = ((gw["spec"].get("infrastructure") or {}).get("parametersRef")) or {}
+if ref != {"group": "", "kind": "ConfigMap", "name": cm["metadata"]["name"]}:
+    sys.exit("the Gateway's parametersRef %s does not name its ConfigMap %s" % (ref, cm["metadata"]["name"]))
+svc = yaml.safe_load(cm["data"]["service"])
+if svc != {"spec": {"externalIPs": ["192.0.2.7"], "externalTrafficPolicy": "Cluster"}}:
+    sys.exit("the gateway's Service options %s - the LAN address and Cluster alone" % svc)
+PY_GATEWAY_OPTIONS
 chinit=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true \
   --show-only templates/clickhouse-init-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
 # five databases, production's count: the deadline grows with them
@@ -744,16 +823,15 @@ pcleanup=$(helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --se
 # the scripts as their pods run them, for .woodpecker/hook-scripts-test.sh: the first "- |" block of each Job
 first_script() { awk '/^ *- \|$/ {s=1; match($0, /^ */); ind=RLENGTH + 2; next} s && /^ *[a-zA-Z][a-zA-Z_]*:/ && match($0, /^ */) && RLENGTH < ind {exit} s {print substr($0, ind + 1)}'; }
 echo "$schema" | first_script > .ci-out/scylla-schema.sh
-echo "$gwjob" | first_script > .ci-out/gateway-patch.sh
 echo "$pcleanup" | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j' | first_script > .ci-out/preview-cleanup.sh
-for s in scylla-schema gateway-patch preview-cleanup; do
+for s in scylla-schema preview-cleanup; do
   grep -q '^set -eu$' ".ci-out/$s.sh" || fail "the $s hook script not extracted"
 done
 s3jobs=$(helm template t helm/schnappy-data/ --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
   --set 's3gw.buckets={a}' --show-only templates/s3gw-buckets-job.yaml)
 # the hook Job templates judged below, by chart and file: every one the scan of the charts finds must be among them
 judged="schnappy/templates/k6-postsync-job.yaml schnappy-data/templates/scylla-schema-job.yaml
-schnappy-mesh/templates/gateway.yaml schnappy-observability/templates/clickhouse-init-job.yaml
+schnappy-observability/templates/clickhouse-init-job.yaml
 schnappy-data/templates/cnpg-init-users.yaml schnappy-sonarqube/templates/sonarqube-setup-job.yaml
 schnappy/templates/preview-cleanup-job.yaml schnappy-data/templates/s3gw-buckets-job.yaml"
 # every loop that sleeps - nested, one-line, its "do" on the next line - reads the clock inside it (a read in a loop
@@ -835,7 +913,7 @@ cc() { printf '%s\n' "$1" | calls_cost "${2:-}"; }
   | calls_cost '')" = 80 ] || fail "kubectl calls are not costed by their timeouts"
 case $(echo '  timeout 10 kubectl --request-timeout=10s get svc a' | calls_cost '') in OVERRIDE*) ;;
   *) fail "a kubectl --request-timeout in a pod is not refused" ;; esac
-for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit" "init-users:$users" \
+for pair in "k6:$k6" "schema:$schema" "clickhouse-init:$chinit" "init-users:$users" \
   "sonarqube-setup:$sqsetup" "preview-cleanup:$pcleanup" "s3gw-buckets:$s3jobs"; do
   name=${pair%%:*}; body=${pair#*:}
   [ -n "$(echo "$body" | job_deadline)" ] || fail "the $name hook Job has no activeDeadlineSeconds on its spec"
@@ -843,7 +921,7 @@ for pair in "k6:$k6" "schema:$schema" "gateway:$gwjob" "clickhouse-init:$chinit"
   echo "$body" | grep -qE '^ *(until|while) ' && fail "the $name hook Job waits in a loop without a clock bound (until/while)"
   echo "$body" | clock_bound || fail "the $name hook Job's wait reads no clock in its loop (end=\$(( \$(date +%s) + N )) before it, -lt \"\$end\" in it)"
   # every script of it stops at its first failing command: without set -e a failed or timed-out call ran on to "done" and
-  # the hook reported success (the gateway's patch, the Scylla schema)
+  # the hook reported success (the Scylla schema)
   echo "$body" | set_e_first || fail "the $name hook Job has a script not starting with set -e"
   w=$(echo "$body" | wait_bound)
   # psql's bound: the pod's PGCONNECT_TIMEOUT and statement_timeout (PGOPTIONS), when the Job sets them

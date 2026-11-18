@@ -29,6 +29,10 @@ spec:
         app.kubernetes.io/component: clickhouse-init
         job-component: clickhouse-init
         velero.io/exclude-from-backup: "true"
+      annotations:
+        # the proxy an init container of its own that runs first and stops with the Job (as kafka-backup's): no
+        # quitquitquit call at the script's end, whose failure the Job had to ignore
+        sidecar.istio.io/nativeSidecar: "true"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.fullname" . }}-clickhouse
@@ -78,12 +82,6 @@ spec:
                 /tmp/events-schema.sql
               clickhouse-client --host "$HOST" --user schnappy --password "$CLICKHOUSE_PASSWORD" --connect_timeout 5 --receive_timeout 300 --multiquery < /tmp/events-schema.sql
               {{- end }}
-
-              # Tell the istio sidecar to exit so the Job pod can
-              # reach Completed (sidecar would otherwise stay running
-              # forever, holding the pod at 2/2 Running and the Job at
-              # PodInitializing). Best-effort: not fatal if it fails.
-              wget -T 5 -q -O- --post-data='' http://localhost:15020/quitquitquit || true
           volumeMounts:
             - { name: sql, mountPath: /sql, readOnly: true }
             - { name: tmp, mountPath: /tmp }

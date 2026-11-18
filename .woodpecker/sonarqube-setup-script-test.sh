@@ -119,7 +119,7 @@ run fresh; rc=$?
 [ "$(calls fresh user_tokens/revoke)" = 0 ] || fail "a first run revoked the token Vault got"
 [ "$(calls fresh 'set_as_default name=Service')" = 1 ] && [ "$(calls fresh 'update_condition id=7&metric=new_coverage&op=LT&error=70')" = 1 ] \
   || fail "the gates' settings not set on a run that found them"
-[ "$(calls fresh quitquitquit)" = 1 ] || fail "a first run did not tell the sidecar to quit"
+[ "$(calls fresh quitquitquit)" = 0 ] || fail "a run called quitquitquit - its native sidecar stops with the Job"
 
 # failing: revoked, the sidecar left running (the Job restarts this container in the same pod, through its proxy)
 for sc in vault-fails vault-no-version generate-times-out; do
@@ -127,7 +127,7 @@ for sc in vault-fails vault-no-version generate-times-out; do
   [ "$rc" != 0 ] || fail "$sc: exited 0 (the token lost for good)"
   [ "$(calls "$sc" 'user_tokens/revoke name=ci')" -ge 1 ] && [ ! -e "$work/$sc.calls.token" ] \
     || fail "$sc: the token Vault never confirmed not revoked"
-  [ "$(calls "$sc" quitquitquit)" = 0 ] || fail "$sc: the sidecar told to quit on a failure - the restarted try has no proxy"
+  [ "$(calls "$sc" quitquitquit)" = 0 ] || fail "$sc: quitquitquit called - its native sidecar stops with the Job"
 done
 # a generate that timed out here and committed after the first revoke: revoked again, none left, nothing said
 run generate-late; rc=$?

@@ -1,0 +1,14 @@
+{{- /* Each sync hook's template, hashed. Argo starts no sync for a change to a hook alone - a hook is no part of the
+app's diff - so a hook moved in git ran the old one until something else synced this app (2026-11-18: s3gw-buckets ran
+aws-cli 2.37.1 for hours after its bump; its app had not synced for a month). This ConfigMap is in the diff: a hook
+changed moves its hash, the app goes OutOfSync, auto-sync runs it. Every sync hook of this chart is listed (platform
+CI: chart-render-checks) */}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "schnappy.fullname" . }}-app-hooks
+  labels:
+    app.kubernetes.io/part-of: schnappy
+    app.kubernetes.io/component: hook-templates
+data:
+  k6-postsync-job.yaml: {{ include (print $.Template.BasePath "/k6-postsync-job.yaml") . | sha256sum | quote }}

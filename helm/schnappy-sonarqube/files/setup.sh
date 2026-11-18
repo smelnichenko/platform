@@ -2,8 +2,8 @@ set -eu
 # a token generated and not confirmed in Vault is revoked whatever ends the run (a time-out, a failed write, a TERM
 # from the Job's deadline or an eviction): an existing token is never written again, so the next run must find none
 # and make one. A generate that timed out here may still commit after the first revoke: revoked and searched again
-# until none is left, 30 s at most. The sidecar is told to quit on success only: a failed try is restarted in this
-# pod (OnFailure) and reaches nothing once its proxy is gone
+# until none is left, 30 s at most. The sidecar is native (the pod's annotation): it stops with the Job, nothing here
+# ends it
 UNWRITTEN=""
 on_exit() {
   rc=$?
@@ -19,7 +19,6 @@ on_exit() {
     done
     [ -n "$GONE" ] || echo "ERROR: revoking 'ci' failed (none made, or revoke it by hand)"
   fi
-  [ "$rc" != 0 ] || curl -sf --max-time 5 -X POST http://localhost:15020/quitquitquit > /dev/null 2>&1 || true
   exit "$rc"
 }
 trap on_exit EXIT

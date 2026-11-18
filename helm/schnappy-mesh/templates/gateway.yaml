@@ -12,6 +12,13 @@ spec:
   infrastructure:
     labels:
       gateway.istio.io/managed: istio.io-gateway-controller
+    # the Service Istio makes for this Gateway, customised by it (the ConfigMap below) - its LAN address and
+    # externalTrafficPolicy Cluster set where Istio makes it, never patched after (a kubectl hook did, until 2026-11-18:
+    # a hook runs only when its app syncs, and bitnami/kubectl:latest is no longer published)
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      name: {{ $fn }}-gateway-options
   listeners:
     # Single HTTPS listener — no hostname constraint so any SNI
     # matching the wildcard cert SANs (pmon.dev, *.pmon.dev) lands
@@ -34,84 +41,18 @@ spec:
         namespaces:
           from: All
 ---
-# Patch gateway service with externalIPs after Istio creates it
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{ $fn }}-gateway-patch
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "5"
-spec:
-  backoffLimit: 5
-  # bounded: Argo waits for a hook until Kubernetes fails the Job
-  activeDeadlineSeconds: 900
-  template:
-    metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
-      labels:
-        velero.io/exclude-from-backup: "true"
-    spec:
-      serviceAccountName: {{ $fn }}-gateway-patch
-      restartPolicy: OnFailure
-      containers:
-        - name: patch
-          image: bitnami/kubectl:latest
-          resources:
-            requests: { cpu: 25m, memory: 32Mi }
-            limits: { cpu: 100m, memory: 64Mi }
-          command: ["sh", "-c"]
-          args:
-            - |
-              set -eu
-              echo "Waiting for gateway service..."
-              # bounded by the clock: a gateway service that never appears fails the try
-              end=$(( $(date +%s) + 300 ))
-              for i in $(seq 1 1000); do
-                timeout 10 kubectl get svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} 2>/dev/null && break
-                [ "$(date +%s)" -lt "$end" ] || { echo "no gateway service after 300s"; exit 1; }
-                sleep 2
-              done
-              echo "Patching externalIPs (externalTrafficPolicy=Cluster)..."
-              # Cluster, not Local: with Local, Cilium stopped delivering pod -> externalIP traffic
-              # (every in-cluster probe of *.pmon.dev lost its connection). Cluster is explicit here
-              # so a previous Local cannot survive. gatewayLanOnly relies on the gateway pods running
-              # on the node that owns this IP (single node today); LanOnlyHostReachable cannot see a
-              # SNAT regression, so revisit this before adding nodes.
-              timeout 10 kubectl patch svc {{ $fn }}-gateway-istio -n {{ .Release.Namespace }} \
-                --type merge -p '{"spec":{"externalIPs":["{{ .Values.gateway.loadBalancerIP }}"],"externalTrafficPolicy":"Cluster"}}'
-              echo "Done."
----
+# Istio's gateway customisation (the Gateway's infrastructure.parametersRef): its "service" key merged into the Service it
+# generates. externalIPs: the LAN address (gateway.loadBalancerIP) the hosts' records point at; externalTrafficPolicy
+# Cluster - Local made a pod reaching the gateway's address through the node fail (the gateway's own pod elsewhere)
 apiVersion: v1
-kind: ServiceAccount
+kind: ConfigMap
 metadata:
-  name: {{ $fn }}-gateway-patch
+  name: {{ $fn }}-gateway-options
   namespace: {{ .Release.Namespace }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: {{ $fn }}-gateway-patch
-  namespace: {{ .Release.Namespace }}
-rules:
-  - apiGroups: [""]
-    resources: ["services"]
-    verbs: ["get", "patch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: {{ $fn }}-gateway-patch
-  namespace: {{ .Release.Namespace }}
-subjects:
-  - kind: ServiceAccount
-    name: {{ $fn }}-gateway-patch
-    namespace: {{ .Release.Namespace }}
-roleRef:
-  kind: Role
-  name: {{ $fn }}-gateway-patch
-  apiGroup: rbac.authorization.k8s.io
+data:
+  service: |
+    spec:
+      externalIPs:
+        - {{ .Values.gateway.loadBalancerIP | quote }}
+      externalTrafficPolicy: Cluster
 {{- end }}
