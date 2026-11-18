@@ -26,7 +26,7 @@ gateway:
 # Both backends can be on simultaneously during cutover.
 clickhouse:
   enabled: false
-  image: clickhouse/clickhouse-server:26.8.34.13-alpine
+  image: clickhouse/clickhouse-server:26.8.39.19-alpine
   password: ""
   existingSecret: ""
   resources:
@@ -141,7 +141,7 @@ tempo:
 # Alertmanager
 alertmanager:
   enabled: false
-  image: prom/alertmanager:v0.34.1
+  image: prom/alertmanager:v0.34.2
   alertEmailTo: ""
   alertEmailFrom: "alerts@pmon.dev"
   kagentInvestigate:
@@ -177,7 +177,7 @@ kubeStateMetrics:
 # daily restore check does). Off by default; enabled in prod.
 pushgateway:
   enabled: false
-  image: quay.io/prometheus/pushgateway:v1.11.4
+  image: quay.io/prometheus/pushgateway:v1.11.5
   storage: 16Mi
   storageClass: local-path
   resources:
@@ -187,7 +187,7 @@ pushgateway:
 # Grafana
 grafana:
   enabled: false
-  image: grafana/grafana:13.2.3  # production's own (see mimir.image)
+  image: grafana/grafana:13.2.6  # production's own (see mimir.image)
   # GF_PLUGINS_PREINSTALL_AUTO_UPDATE (a value removed: Grafana's own default). Grafana 13 on this chart's read-only
   # root filesystem needs false (grafana-deployment.yaml says why) - production's value too
   pluginsPreinstallAutoUpdate: false
