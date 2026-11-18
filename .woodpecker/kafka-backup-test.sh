@@ -45,6 +45,8 @@ r=$(run b "$RESTORE" "$T/a/out/$d")
 check "a restore: every message back, each keyed one on its partition and in its order, headers as they were" \
   "$r $(cmp -s "$T/a/k/chat.messages/$P1.log" "$T/b/k/chat.messages/$P1.log" && echo same-p0) $(cmp -s "$T/a/k/user.events/0.log" "$T/b/k/user.events/0.log" && echo same-ue) $(tail -1 "$T/out")" \
   "rc=0 same-p0 same-ue restored 4 messages from $d"
+check "  no Kafka tool called with a deprecated option (Kafka 4.3 prints their notices on stdout), dump or restore" \
+  "$(cat "$T/a/calls" "$T/b/calls" | grep -c -E -- '--(consumer|producer)-property |--property ' || true)" 0
 check "  synchronous sends; the dumped group moved to the topic's end after" \
   "$(grep -c 'kafka-console-producer.sh .*--sync' "$T/b/calls") $(grep -c 'kafka-consumer-groups.sh .*--group user-sync --topic user.events --reset-offsets --to-latest --execute' "$T/b/calls")" \
   "4 1"
@@ -80,14 +82,18 @@ A; r=$(DROP_PART=chat.messages:$P0 run a "$DUMP"); d=$(ls "$T/a/out" | head -1)
 check "a dump refused: a partition missing from the offsets read (no leader)" \
   "$r $(grep -c 'chat.messages: the earliest offsets name partitions' "$T/out") $(test -f "$T/a/out/$d/DONE" && echo done || echo no-done)" "rc=1 1 no-done"
 A; r=$(SHORT=1 run a "$DUMP")
-check "a dump refused: a read short of its offsets' count" "$r $(grep -c 'messages read, its offsets say' "$T/out")" "rc=1 1"
+check "a dump refused: a read short of its offsets' count (every line a message: none named)" "$r $(grep -c 'messages read, its offsets say [0-9]*$' "$T/out")" "rc=1 1"
+A; r=$(START_SHIFT=1 run a "$DUMP")
+check "a dump refused: retention moved a log's start past its offset after the offsets read - an error (auto.offset.reset=none), no silent jump" \
+  "$r $(grep -c 'the read failed' "$T/out") $(grep -c 'OffsetOutOfRangeException' "$T/out")" "rc=1 1 1"
 # Kafka 4.3's console consumer prints a deprecated option's notice on stdout, among the messages (copy run 6, 2026-11-18:
 # the dump refused "1001 messages read, its offsets say 1000"): the dump as it was refused, the line named
 A; sed 's/--command-property auto\.offset\.reset=none/--consumer-property auto.offset.reset=none/' "$DUMP" > "$T/dump-deprecated.sh"
+check "  (the old spelling put back into a copy of the dump: the sed matched its read's line)" \
+  "$(cmp -s "$DUMP" "$T/dump-deprecated.sh" && echo 'unchanged - the dump no longer reads with --command-property auto.offset.reset=none' || echo changed)" changed
 r=$(run a "$T/dump-deprecated.sh")
 check "a dump refused: a tool's notice on stdout among the messages (the deprecated --consumer-property), the line named" \
-  "$r $(grep -c 'messages read, its offsets say [0-9]*; not a message: Option --consumer-property is deprecated' "$T/out") $(cmp -s "$DUMP" "$T/dump-deprecated.sh" && echo unchanged || echo changed)" \
-  "rc=1 1 changed"
+  "$r $(grep -c 'messages read, its offsets say [0-9]*; not a message: Option --consumer-property is deprecated' "$T/out")" "rc=1 1"
 A; printf 'NO_HEADERS\tu9\t{"x":"a\rb"}\n' >> "$T/a/k/chat.messages/$P0.log"; r=$(run a "$DUMP")
 check "a dump refused: a carriage return in a message" "$r $(grep -c 'a carriage return' "$T/out")" "rc=1 1"
 A; printf 'NO_HEADERS\tu9\t{"x":"\377"}\n' >> "$T/a/k/chat.messages/$P0.log"; r=$(run a "$DUMP")
