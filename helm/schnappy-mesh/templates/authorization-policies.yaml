@@ -97,16 +97,22 @@ spec:
         - operation:
             ports: ["9092", "9093"]
 ---
-# Strimzi's Kafka brokers - the services that use Kafka, the broker's own identity (its advertised address loops back
-# through its sidecar) and Kafka's backup Job (schnappy-data's kafka-backup.yaml), on the clients' listener 9092 alone
-# (9090/9091/9093/8443 bypass the sidecar). Until it, any workload in the mesh reached Kafka (2026-11-18). Selected by
-# cluster and role, not strimzi.io/name: that is <cluster>-<node pool>, and a pool renamed or split would have left
-# the brokers with no policy. A SCRAM listener (schnappy-data's kafka.scram.enabled: 9094) would need its port here.
+# Strimzi's Kafka brokers - the services that use Kafka, the broker's own identity (its tools reach the bootstrap Service
+# through its sidecar: the copy's data check, the restore check) and Kafka's backup Job (schnappy-data's kafka-backup.yaml),
+# on the clients' listener 9092 alone (9090/9091/9093/8443 bypass the sidecar). Until it, any workload in the mesh
+# reached Kafka (2026-11-18). Selected by cluster and role, not strimzi.io/name: that is <cluster>-<node pool>, and a pool
+# renamed or split would have left the brokers with no policy. A SCRAM listener (schnappy-data's kafka.scram.enabled:
+# 9094) would need its port here; ClickHouse's events consumer (schnappy-observability's clickhouse.events, off) its
+# principal. DRY RUN first: Envoy judges new connections only and Kafka's clients hold theirs for hours, so a client
+# missing here would fail late and silently (no consumer-lag alert) - the broker sidecar's rbac shadow_denied counts
+# what it would refuse; enforced (the annotation removed) once a day's traffic, the 02:30 backup among it, shows none.
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: {{ $fn }}-strimzi-kafka
   namespace: {{ $ns }}
+  annotations:
+    istio.io/dry-run: "true"
 spec:
   selector:
     matchLabels:

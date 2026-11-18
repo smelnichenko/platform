@@ -459,6 +459,8 @@ got=$(echo "$sk" | grep -oE '^ +- [^ ]+$' | grep -v -- '- from:\|- operation:\|-
 echo "$sk" | grep -qE 'notPrincipals|namespaces:|ipBlocks|requestPrincipals' && fail "the strimzi-kafka AuthorizationPolicy admits by more than principals"
 [ "$(echo "$sk" | grep -c '^    - from:$')" = 1 ] || fail "the strimzi-kafka AuthorizationPolicy must have one rule"
 [ "$(echo "$sk" | grep -c 'ports: \["9092"\]')" = 1 ] || fail "the strimzi-kafka AuthorizationPolicy must allow 9092 alone"
+# in dry run until a day's traffic shows no client it would refuse (its comment): enforcing it is a decision, not a drift
+echo "$sk" | grep -q 'istio.io/dry-run: "true"$' || fail "the strimzi-kafka AuthorizationPolicy is enforced - its dry run (shadow_denied read over a day) comes first"
 ap t-schnappy-admin-http | grep -q 'sa/t-schnappy-masi$' || fail "admin-http does not admit masi (user provisioning)"
 mh=$(ap t-schnappy-masi-http)
 echo "$mh" | grep -q 'schnappy-infra-gateway-istio$' || fail "masi-http does not admit the gateway"
