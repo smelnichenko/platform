@@ -446,10 +446,18 @@ ap t-schnappy-kafka | grep -q 'sa/t-schnappy-masi$' || fail "masi principal miss
 # Strimzi's broker: its own policy selecting it (the one above selects a label no Strimzi pod has), the same clients and
 # Kafka's backup Job, on 9092 alone
 sk=$(ap t-schnappy-strimzi-kafka)
-echo "$sk" | grep -q 'strimzi.io/name: t-schnappy-kafka$' || fail "the strimzi-kafka AuthorizationPolicy does not select Strimzi's broker"
-for who in monitor admin chat chess centrifugo masi kafka-backup; do
-  echo "$sk" | grep -q "sa/t-schnappy-$who\$" || fail "$who principal missing from the strimzi-kafka AuthorizationPolicy"
-done
+echo "$sk" | grep -q 'strimzi.io/cluster: t-schnappy$' && echo "$sk" | grep -q 'strimzi.io/broker-role: "true"$' \
+  || fail "the strimzi-kafka AuthorizationPolicy does not select Strimzi's brokers by cluster and role"
+echo "$sk" | grep -q 'strimzi.io/name:' && fail "the strimzi-kafka AuthorizationPolicy selects by strimzi.io/name (<cluster>-<pool>: a pool renamed leaves the brokers unselected)"
+# exactly these principals, in its own namespace, one ALLOW rule: a principal more (a '*', another namespace's), a rule
+# more or DENY would reopen Kafka (or close it) with every name above still present
+sk_ns=$(echo "$sk" | awk '$1 == "namespace:" { print $2; exit }')
+[ "$(echo "$sk" | awk '$1 == "action:" { print $2 }')" = ALLOW ] || fail "the strimzi-kafka AuthorizationPolicy must be ALLOW"
+want=$(for who in monitor admin chat chess centrifugo kafka masi kafka-backup; do echo "cluster.local/ns/$sk_ns/sa/t-schnappy-$who"; done | sort)
+got=$(echo "$sk" | grep -oE '^ +- [^ ]+$' | grep -v -- '- from:\|- operation:\|- source:' | sed 's/^ *- //' | grep -vE '^(from|to|source|operation):' | sort)
+[ "$got" = "$want" ] || fail "the strimzi-kafka AuthorizationPolicy must admit exactly the Kafka clients, the broker and the backup Job in its namespace: $(echo $got)"
+echo "$sk" | grep -qE 'notPrincipals|namespaces:|ipBlocks|requestPrincipals' && fail "the strimzi-kafka AuthorizationPolicy admits by more than principals"
+[ "$(echo "$sk" | grep -c '^    - from:$')" = 1 ] || fail "the strimzi-kafka AuthorizationPolicy must have one rule"
 [ "$(echo "$sk" | grep -c 'ports: \["9092"\]')" = 1 ] || fail "the strimzi-kafka AuthorizationPolicy must allow 9092 alone"
 ap t-schnappy-admin-http | grep -q 'sa/t-schnappy-masi$' || fail "admin-http does not admit masi (user provisioning)"
 mh=$(ap t-schnappy-masi-http)

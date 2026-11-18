@@ -90,8 +90,8 @@ spec:
     9200:
       mode: PERMISSIVE
 ---
-# Kafka accepts plaintext on port 9092 for setup jobs without sidecars
-# (Kafka image has no curl/wget for sidecar quitquitquit)
+# Kafka before Strimzi - selects app.kubernetes.io/component=kafka, which no pod carries any more: inert (Strimzi's
+# brokers take the namespace's mode). Its removal waits for its object's deletion on the cluster (no prune)
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:

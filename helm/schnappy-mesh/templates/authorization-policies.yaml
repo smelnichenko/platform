@@ -70,7 +70,8 @@ spec:
         - operation:
             ports: ["9200"]
 ---
-# Kafka — only app services on port 9092/9093
+# Kafka before Strimzi - selects app.kubernetes.io/component=kafka, which no pod carries any more (Strimzi's below is
+# the one in force). Inert; its removal waits for its objects' deletion on the cluster (the mesh app does not prune)
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -96,10 +97,11 @@ spec:
         - operation:
             ports: ["9092", "9093"]
 ---
-# Strimzi's Kafka broker - the same allow-list on its clients' listener (9092; its 9090/9091 replication and control
-# listeners bypass the sidecar). The policy above selects app.kubernetes.io/component=kafka, which no Strimzi pod carries:
-# until this one, any workload in the mesh reached Kafka (2026-11-18). Kafka's backup Job (schnappy-data's
-# kafka-backup.yaml) by its own service account.
+# Strimzi's Kafka brokers - the services that use Kafka, the broker's own identity (its advertised address loops back
+# through its sidecar) and Kafka's backup Job (schnappy-data's kafka-backup.yaml), on the clients' listener 9092 alone
+# (9090/9091/9093/8443 bypass the sidecar). Until it, any workload in the mesh reached Kafka (2026-11-18). Selected by
+# cluster and role, not strimzi.io/name: that is <cluster>-<node pool>, and a pool renamed or split would have left
+# the brokers with no policy. A SCRAM listener (schnappy-data's kafka.scram.enabled: 9094) would need its port here.
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -108,7 +110,8 @@ metadata:
 spec:
   selector:
     matchLabels:
-      strimzi.io/name: {{ $fn }}-kafka
+      strimzi.io/cluster: {{ $fn }}
+      strimzi.io/broker-role: "true"
   action: ALLOW
   rules:
     - from:
