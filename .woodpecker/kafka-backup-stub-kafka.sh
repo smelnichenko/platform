@@ -123,7 +123,13 @@ cat > "$W/bin/kafka-configs.sh" << 'S'
 for d in "$K"/*/; do b=$(basename "$d"); [ "$b" = members ] && continue
   echo "All configs for topic $b are:"
   echo "  cleanup.policy=delete sensitive=false synonyms={DEFAULT_CONFIG:log.cleanup.policy=delete}"
-  [ "${NO_RETENTION:-}" = "$b" ] || echo "  retention.ms=$(cat "$K/$b/retention" 2> /dev/null || echo 604800000) sensitive=false synonyms={}"
+  # as Kafka 4.x prints them: local.retention.ms (tiered storage's, -2) before retention.ms - never read as it
+  echo "  local.retention.ms=-2 sensitive=false synonyms={DEFAULT_CONFIG:log.local.retention.ms=-2}"
+  if [ "${NO_RETENTION:-}" != "$b" ]; then
+    if [ -f "$K/$b/retention" ]; then echo "  retention.ms=$(cat "$K/$b/retention") sensitive=false synonyms={DYNAMIC_TOPIC_CONFIG:retention.ms=$(cat "$K/$b/retention")}"
+    else echo "  retention.ms=604800000 sensitive=false synonyms={DEFAULT_CONFIG:log.retention.hours=168}"; fi
+  fi
+  echo "  retention.bytes=-1 sensitive=false synonyms={DEFAULT_CONFIG:log.retention.bytes=-1}"
 done
 S
 chmod +x "$W/bin"/kafka-*.sh

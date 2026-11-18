@@ -54,6 +54,12 @@ check "  its checkpoints: the dump's time - the retention + 1..6 days" \
 check "  a topic's own retention (2 days): its checkpoint asked apart (1 day back) - one read of every topic per checkpoint, 6 + 1" \
   "$(sed -n 's/^retention://p' "$T/a/out/$dk/topics/user.events.kept") $(grep -c 'kafka-get-offsets.sh .*--exclude-internal-topics --time' "$T/a/calls")" \
   "$((2 * DAY)) 7"
+check "  local.retention.ms (-2, printed first by Kafka 4) never read as the retention" "$(grep -c '^chat.messages -2$' "$T/a/out/$dk/retention.txt") $(find "$T/a/out/$dk" -maxdepth 1 -name 'at.*' | wc -l)" "0 0"
+A; echo -1 > "$T/a/k/user.events/retention"; echo $((30 * DAY)) > "$T/a/k/chat.messages/retention"
+r=$(run a "$DUMP"); dk=$(ls "$T/a/out" | head -1)
+check "  retention -1 (for ever): its record, no checkpoint asked; 30 days: two weeks of checkpoints at most (14 reads)" \
+  "$r $(sed -n 's/^retention://p' "$T/a/out/$dk/topics/user.events.kept") $(grep -c 'kafka-get-offsets.sh .*--exclude-internal-topics --time' "$T/a/calls")" \
+  "rc=0 -1 14"
 A; r=$(NO_RETENTION=user.events run a "$DUMP"); dk=$(ls "$T/a/out" | head -1)
 check "  a topic's retention not read: refused, no DONE" "$r $(grep -c 'no retention read for: user.events' "$T/out") $([ -f "$T/a/out/$dk/DONE" ] && echo done || echo none)" "rc=1 1 none"
 # the first world's dump again, alone in its out directory (two dumps in one second share a name)
@@ -65,6 +71,9 @@ check "a restore: every message back, each keyed one on its partition and in its
   "$r $(cmp -s "$T/a/k/chat.messages/$P1.log" "$T/b/k/chat.messages/$P1.log" && echo same-p0) $(cmp -s "$T/a/k/user.events/0.log" "$T/b/k/user.events/0.log" && echo same-ue) $(tail -1 "$T/out")" \
   "rc=0 same-p0 same-ue restored 4 messages from $d"
 check "  the topics restored said before it (ops' BASELINE names these alone)" "$(tail -2 "$T/out" | head -1)" "topics chat.messages user.events "
+world tt; topic tt chat.messages 2; topic tt user.events 1
+r=$(TOPICS=chat.messages run tt "$RESTORE" "$T/a/out/$d")
+check "  TOPICS named: the topics line names those alone - a BASELINE of one topic never covers another" "$r $(tail -2 "$T/out" | head -1)" "rc=0 topics chat.messages"
 check "  no dump or restore call with --consumer-property, --producer-property, --property, --consumer.config or --producer.config (the old spellings: Kafka 4.3 prints the deprecations it knows on stdout)" \
   "$(cat "$T/a/calls" "$T/b/calls" | grep -c -E -- '--(consumer|producer)-property |--property |--(consumer|producer)\.config ' || true)" 0
 check "  synchronous sends, none held by the producer's linger (1 s each by default); the dumped group moved to the topic's end after" \
@@ -149,27 +158,36 @@ mkdir -p "$T/rbin"
 cat > "$T/rbin/rclone" << 'STUB'
 #!/bin/sh
 p() { echo "$T/store/${1#store:}"; }
+# FAIL_LSF: every listing fails; FAIL_ON "<call> <path>" one read alone (lsf-dirs, lsf-files, cat, copy)
+last=$(eval echo "\${$#}")
+case "$1 $*" in lsf*--dirs-only*) key="lsf-dirs $last" ;; lsf*) key="lsf-files $last" ;; *) key="$1 $2" ;; esac
+[ "${FAIL_ON:-}" != "$key" ] || { echo "stub: $key failed" >&2; exit 1; }
 case "$1" in
   lsf)
-    path=$(eval echo "\${$#}"); [ -n "${FAIL_LSF:-}" ] && { echo "stub: listing failed" >&2; exit 1; }
-    d=$(p "$path"); [ -d "$d" ] || exit 0
+    [ -z "${FAIL_LSF:-}" ] || { echo "stub: listing failed" >&2; exit 1; }
+    d=$(p "$last"); [ -d "$d" ] || exit 0
     case "$*" in
       *--dirs-only*) for e in "$d"/*/; do [ -d "$e" ] && basename "$e" | sed 's#$#/#'; done ;;
       *--files-only*) for e in "$d"/*; do [ -f "$e" ] && basename "$e"; done ;;
     esac ;;
   cat) cat "$(p "$2")" ;;
-  copy) src=$(p "$2"); dst=$3; mkdir -p "$dst/topics"; [ -d "$src" ] || { echo "stub: no $2" >&2; exit 3; }
+  copy) src=$(p "$2"); dst=$3; [ -d "$src" ] || { echo "stub: no $2" >&2; exit 3; }
     [ -z "${FAIL_COPY:-}" ] || { echo "stub: copy failed" >&2; exit 1; }
-    echo "copy $2" >> "$T/rclone-calls"
-    for f in topics.txt topics-describe.txt; do [ ! -f "$src/$f" ] || cp "$src/$f" "$dst/"; done
-    for f in "$src"/topics/*.latest "$src"/topics/*.earliest "$src"/topics/*.kept; do [ ! -f "$f" ] || cp "$f" "$dst/topics/"; done ;;
+    echo "copy $*" >> "$T/rclone-calls"
+    # the --include patterns as rclone reads them (none: every file); a pattern's * never crosses a /
+    shift 3; inc=""; while [ $# -gt 0 ]; do [ "$1" != --include ] || { inc="$inc $2"; shift; }; shift; done
+    (cd "$src" && find . -type f | sed 's#^\./##') | while read -r f; do
+      ok=""; [ -n "$inc" ] || ok=1
+      set -f; for g in $inc; do case "$f" in */*) [ "${g#*/}" != "$g" ] || continue ;; esac; case "$f" in $g) ok=1 ;; esac; done; set +f
+      [ -z "$ok" ] || { mkdir -p "$dst/$(dirname "$f")"; cp "$src/$f" "$dst/$f"; }
+    done ;;
   *) echo "stub: unexpected $*" >&2; exit 2 ;;
 esac
 exit 0
 STUB
 chmod +x "$T/rbin/rclone"
 GUARD=helm/schnappy-data/files/kafka-backup-guard.sh
-guard() { if T="$T" PATH="$T/rbin:$PATH" STORE=store:b FAIL_LSF=${FAIL_LSF:-} sh "$GUARD" "$1" > "$T/out" 2>&1; then echo rc=0; else echo rc=$?; fi; }
+guard() { if T="$T" PATH="$T/rbin:$PATH" STORE=store:b FAIL_LSF=${FAIL_LSF:-} FAIL_ON=${FAIL_ON:-} sh "$GUARD" "$1" > "$T/out" 2>&1; then echo rc=0; else echo rc=$?; fi; }
 store() { rm -rf "${T:?}/store"; mkdir -p "$T/store/b"; }
 put() {  # put <dump dir> <name>: the dump in the store under that name, complete
   cp -r "$1" "$T/store/b/$2"
@@ -243,6 +261,32 @@ check "  retention -1 (kept for ever): the earliest past the reference's (5): re
 kept_ref "$((at - 2 * DAY))" "$((2 * DAY))" "$((at - 3 * DAY)):$P1:7"
 check "  the reference's retention, not today's: 2 days then, the reference 2 days old - older than it lets judge (7 days would)" \
   "$(guard "$new") $(grep -c 'older than its retention lets judge' "$T/out")" "rc=0 1"
+# covered by a BASELINE, its reference made since it: judged - its retention too
+kept_ref "$ra" "$R" "$((ra - R + DAY)):$P1:5" "$((ra - R + 2 * DAY)):$P1:6"; early 7
+printf '20261031T000000Z\nwhy a restore\ntopic chat.messages\n' > "$T/store/b/BASELINE"
+check "  covered by a BASELINE older than the reference: judged, its retention too - refused" \
+  "$(guard "$new") $(grep -c "chat.messages\[$P1\] begins at 7" "$T/out")" "rc=1 1"
+rm "$T/store/b/BASELINE"; early 5
+# one store read failing alone: refused, never "nothing to compare" or a reference passed over
+printf '20261031T000000Z\nall\n' > "$T/store/b/BASELINE"
+check "a store read failing alone - the BASELINE's: refused" "$(FAIL_ON='cat store:b/BASELINE' guard "$new") $(grep -c 'reading store:b/BASELINE failed' "$T/out")" "rc=1 1"
+rm "$T/store/b/BASELINE"
+check "  the store's dumps listed: refused (never 'no complete dump before this one')" "$(FAIL_ON='lsf-dirs store:b/' guard "$new") $(grep -c 'no complete dump before' "$T/out")" "rc=1 0"
+check "  the reference's files listed: refused (never passed over for an older one)" \
+  "$(FAIL_ON='lsf-files store:b/20261101T023000Z/' guard "$new") $(grep -c 'listing store:b/20261101T023000Z failed' "$T/out")" "rc=1 1"
+# a partition gone; a TopicId the new dump's description lacks; the reference's offsets missing
+store; put "$new" 20261101T023000Z; mkdir -p "$T/n2"; cp -r "$new" "$T/n2/"; n2="$T/n2/$(basename "$new")"
+sed -i "/^chat.messages:$P1:/d" "$n2/topics/chat.messages.latest"
+check "a partition the reference held gone from the new dump: refused, named" "$(guard "$n2") $(grep -c "chat.messages\[$P1\] gone" "$T/out")" "rc=1 1"
+rm -rf "$T/n2"; mkdir -p "$T/n2"; cp -r "$new" "$T/n2/"; sed -i 's/TopicId: x//' "$n2/topics-describe.txt"
+check "  the new dump's TopicId not read: refused" "$(guard "$n2") $(grep -c 'no TopicId for' "$T/out")" "rc=1 1"
+rm -rf "$T/n2"; rm "$T/store/b/20261101T023000Z/topics/user.events.earliest"
+check "  the reference's offsets for a topic missing: refused, the retire task named" "$(guard "$new") $(grep -c 'holds no offsets for user.events' "$T/out")" "rc=1 1"
+# a BASELINE covers whole names: user.events.dlt covered never excuses user.events (a name inside another)
+store; put "$new" 20261101T023000Z; sed -i 's/TopicId: x/TopicId: old/' "$T/store/b/20261101T023000Z/topics-describe.txt"
+printf '20261105T000000Z\nwhy x\ntopic user.events.dlt\ntopic chat.messages\n' > "$T/store/b/BASELINE"
+check "  a BASELINE of user.events.dlt: user.events still judged (whole names) - refused, chat.messages excused" \
+  "$(guard "$new") $(grep -c 'user.events made again' "$T/out") $(grep -c 'chat.messages made again' "$T/out")" "rc=1 1 0"
 # a damaged reference: what a BASELINE excused is never read; else refused, the way out named
 store; put "$new" 20261101T023000Z; rm "$T/store/b/20261101T023000Z/topics.txt"; printf '20261105T000000Z\nwhy x\nall\n' > "$T/store/b/BASELINE"
 : > "$T/rclone-calls"
@@ -284,6 +328,11 @@ guard_line=$(cj | grep -n 'sh /scripts/guard.sh "/dump/$d"' | cut -d: -f1)
 check "  the guard (Kafka holding everything the store's newest dump held) before the upload; the scratch bounded" \
   "$([ -n "$guard_line" ] && [ -n "$cp_line" ] && [ "$guard_line" -lt "$cp_line" ] && echo before || echo not-before) $(printf '%s\n' "$out" | grep -c '^  guard.sh: |$') $(cj | grep -A2 '^            - name: tmp$' | grep -c 'sizeLimit: 256Mi')" \
   "before 1 1"
+up() { cj | awk '/^            - name: upload$/ { u = 1 } u && /^            - name: / && !/upload$/ { u = 0 } u'; }
+check "  the upload (where the guard runs: mktemp on a read-only root) mounts its scratch at /tmp; the guard's failure never swallowed" \
+  "$(up | grep -c '{ name: tmp, mountPath: /tmp }') $(up | grep -c 'readOnlyRootFilesystem: true') $(up | grep 'guard.sh' | grep -c -e '|| true' -e '; true')" "1 1 0"
+check "  every container of the backup's pod mounts /tmp (the dump's tools log there, LOG_DIR; the upload's rclone and guard)" \
+  "$(cj | grep -c '{ name: tmp, mountPath: /tmp }') $(cj | grep -c 'readOnlyRootFilesystem: true')" "2 2"
 check "refused: no endpoint form, no store addresses, no Vault, keep under 2" \
   "$(kb --set strimzi.backup.endpoint=x --set 'strimzi.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*backup.endpoint') $(kb --set strimzi.backup.endpoint=http://s:9000 | grep -c 'execution error.*storeIps') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set vault.secretsEnabled=false | grep -c 'execution error.*vault') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set strimzi.backup.keep=1 | grep -c 'execution error.*keep')" \
   "1 1 1 1"

@@ -478,6 +478,17 @@ tests:
       - eval_time: 1h55m
         alertname: KafkaBackupRestoreLockStale
         exp_alerts: []
+      # over 2 h from 2h05m (5 min samples), pending its 10 min: not yet at 2h10m, firing at 2h15m
+      - eval_time: 2h10m
+        alertname: KafkaBackupRestoreLockStale
+        exp_alerts: []
+      - eval_time: 2h15m
+        alertname: KafkaBackupRestoreLockStale
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: stale, configmap: stale-kafka-backup-restoring }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/KafkaBackupRestoreLockStale"
+              summary: "Kafka: its restore lock stale/stale-kafka-backup-restoring is over 2 h old - a restore's run died; every nightly dump refuses while it stays"
       - eval_time: 4h
         alertname: KafkaBackupRestoreLockStale
         exp_alerts:
