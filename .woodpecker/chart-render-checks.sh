@@ -443,6 +443,14 @@ done
 ap() { echo "$mesh" | awk -v n="$1" '/^---/ { on = 0 } $0 == "  name: " n { on = 1 } on'; }
 ap t-schnappy-postgres | grep -q 'sa/t-schnappy-masi$' || fail "masi principal missing from the postgres AuthorizationPolicy"
 ap t-schnappy-kafka | grep -q 'sa/t-schnappy-masi$' || fail "masi principal missing from the kafka AuthorizationPolicy"
+# Strimzi's broker: its own policy selecting it (the one above selects a label no Strimzi pod has), the same clients and
+# Kafka's backup Job, on 9092 alone
+sk=$(ap t-schnappy-strimzi-kafka)
+echo "$sk" | grep -q 'strimzi.io/name: t-schnappy-kafka$' || fail "the strimzi-kafka AuthorizationPolicy does not select Strimzi's broker"
+for who in monitor admin chat chess centrifugo masi kafka-backup; do
+  echo "$sk" | grep -q "sa/t-schnappy-$who\$" || fail "$who principal missing from the strimzi-kafka AuthorizationPolicy"
+done
+[ "$(echo "$sk" | grep -c 'ports: \["9092"\]')" = 1 ] || fail "the strimzi-kafka AuthorizationPolicy must allow 9092 alone"
 ap t-schnappy-admin-http | grep -q 'sa/t-schnappy-masi$' || fail "admin-http does not admit masi (user provisioning)"
 mh=$(ap t-schnappy-masi-http)
 echo "$mh" | grep -q 'schnappy-infra-gateway-istio$' || fail "masi-http does not admit the gateway"

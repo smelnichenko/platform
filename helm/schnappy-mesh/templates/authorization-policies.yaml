@@ -96,6 +96,36 @@ spec:
         - operation:
             ports: ["9092", "9093"]
 ---
+# Strimzi's Kafka broker - the same allow-list on its clients' listener (9092; its 9090/9091 replication and control
+# listeners bypass the sidecar). The policy above selects app.kubernetes.io/component=kafka, which no Strimzi pod carries:
+# until this one, any workload in the mesh reached Kafka (2026-11-18). Kafka's backup Job (schnappy-data's
+# kafka-backup.yaml) by its own service account.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $fn }}-strimzi-kafka
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      strimzi.io/name: {{ $fn }}-kafka
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-centrifugo
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kafka
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-masi
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kafka-backup
+      to:
+        - operation:
+            ports: ["9092"]
+---
 # ScyllaDB — only monitor + chat on port 9042/7000
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
