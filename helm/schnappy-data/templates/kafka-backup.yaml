@@ -57,6 +57,8 @@ data:
 {{ .Files.Get "files/kafka-backup-dump.sh" | indent 4 }}
   prune.sh: |
 {{ .Files.Get "files/backup-prune.sh" | indent 4 }}
+  guard.sh: |
+{{ .Files.Get "files/kafka-backup-guard.sh" | indent 4 }}
   # ops' kafka-restore.yml runs it in a Job of its own (the dump fetched from the store first)
   restore.sh: |
 {{ .Files.Get "files/kafka-backup-restore.sh" | indent 4 }}
@@ -91,7 +93,7 @@ spec:
             sidecar.istio.io/nativeSidecar: "true"
             # the Pi store reached directly, past the proxy
             traffic.sidecar.istio.io/excludeOutboundIPRanges: {{ $b.storeIps | join "/32," }}/32
-            checksum/scripts: {{ print (.Files.Get "files/kafka-backup-dump.sh") (.Files.Get "files/backup-prune.sh") | sha256sum }}
+            checksum/scripts: {{ print (.Files.Get "files/kafka-backup-dump.sh") (.Files.Get "files/backup-prune.sh") (.Files.Get "files/kafka-backup-guard.sh") | sha256sum }}
         spec:
           restartPolicy: Never
           serviceAccountName: {{ $name }}
@@ -140,6 +142,8 @@ spec:
                   d=$(ls /dump)
                   [ -f "/dump/$d/DONE" ] || { echo "the dump $d has no DONE: not uploaded"; exit 1; }
                   rclone mkdir "$STORE"
+                  # Kafka still holding everything the newest dump in the store held - else nothing uploaded or pruned
+                  sh /scripts/guard.sh "/dump/$d"
                   rclone copy "/dump/$d" "$STORE/$d" --exclude DONE
                   rclone copyto "/dump/$d/DONE" "$STORE/$d/DONE"
                   echo "kafka backup $d: uploaded ($(cat "/dump/$d/DONE"))"
@@ -151,8 +155,6 @@ spec:
                 # the dumps at the bucket's root, complete with DONE
                 - { name: PREFIX, value: "" }
                 - { name: MARKER, value: DONE }
-                # DONE's 4th field, its messages: the newest dump holding any never pruned (a Kafka emptied dumps 0)
-                - { name: NONEMPTY, value: "4" }
                 - { name: RCLONE_CONFIG_STORE_TYPE, value: s3 }
                 - { name: RCLONE_CONFIG_STORE_PROVIDER, value: Other }
                 - { name: RCLONE_CONFIG_STORE_ENDPOINT, value: {{ $b.endpoint | quote }} }

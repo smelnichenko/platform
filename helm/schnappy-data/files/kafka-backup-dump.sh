@@ -7,7 +7,9 @@
 # header key holds one; NO_HEADERS for none). DONE written last. Refused, no DONE (a dump that would not restore as it was
 # is no dump):
 #   - a restore running (RESTORING, the restoring ConfigMap's key the CronJob mounts optionally: ops'
-#     tasks/kafka-restore.yml makes it for the restore's span) - a dump of a Kafka half restored is no dump of it
+#     tasks/kafka-restore.yml makes it for the restore's span) - at the start, and again before DONE (once kubelet has
+#     refreshed the volume; the restore itself refuses to start while a dump runs) - a dump of a Kafka half restored is
+#     no dump of it
 #   - no topic at all (a Kafka that lost its data would otherwise prune every good dump away within a week)
 #   - a partition missing from the offsets read (every partition 0..PartitionCount-1, from the topic's description)
 #   - a read not of its offsets' count (one message per line: a value holding a newline breaks it; a tool's notice on
@@ -76,5 +78,7 @@ while read -r t; do
     total=$((total + n))
   done < "$out/topics/$t.earliest"
 done < "$out/topics.txt"
+# a restore begun while this read (its ConfigMap mounted since): this dump read a Kafka being filled - no DONE
+[ ! -e "$RESTORING" ] || fail "a restore began while dumping (since $(cat "$RESTORING")) - no DONE"
 echo "$ts $(wc -l < "$out/topics.txt") topics $total messages" > "$out/DONE"
 cat "$out/DONE"

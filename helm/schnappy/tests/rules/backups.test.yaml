@@ -464,6 +464,28 @@ tests:
         alertname: ClickHouseBackupsUnwatched
         exp_alerts: []
 
+  # Kafka's restore lock: "stale" made at 0 (its run died), "fresh" made at 3 h, another ConfigMap made at 0 - only the
+  # stale lock's alert, after 2 h and its 10 min
+  - interval: 5m
+    input_series:
+      - series: 'kube_configmap_created{namespace="stale", configmap="stale-kafka-backup-restoring", instance="ksm", pod="ksm-1"}'
+        values: '0x60'
+      - series: 'kube_configmap_created{namespace="fresh", configmap="fresh-kafka-backup-restoring", instance="ksm", pod="ksm-1"}'
+        values: '_x36 10800x24'
+      - series: 'kube_configmap_created{namespace="schnappy-production", configmap="schnappy-production-kafka-backup", instance="ksm", pod="ksm-1"}'
+        values: '0x60'
+    alert_rule_test:
+      - eval_time: 1h55m
+        alertname: KafkaBackupRestoreLockStale
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: KafkaBackupRestoreLockStale
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: stale, configmap: stale-kafka-backup-restoring }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/KafkaBackupRestoreLockStale"
+              summary: "Kafka: its restore lock stale/stale-kafka-backup-restoring is over 2 h old - a restore's run died; every nightly dump refuses while it stays"
+
   # Kafka's dump CronJob: "ok" succeeded at 0 and at 24 h, "stale" at 0 only, "never" never; ClickHouse's never - not
   # Kafka's alert
   - interval: 5m

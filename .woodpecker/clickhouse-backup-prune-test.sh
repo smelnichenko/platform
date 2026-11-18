@@ -16,6 +16,7 @@ echo "rclone $*" >> "$W/calls"
 case "$1" in
   mkdir) mkdir -p "$(p "$2")" ;;
   purge) rm -rf "$(p "$2")" ;;
+  deletefile) rm -f "$(p "$2")" ;;
   cat)
     if [ -n "${FAIL_CAT:-}" ]; then case "$2" in *"$FAIL_CAT"*) echo "stub: reading $2 failed" >&2; exit 1 ;; esac; fi
     cat "$(p "$2")" || exit 3 ;;
@@ -141,29 +142,21 @@ check "refused: no Vault, an endpoint not the store's form, no store addresses, 
   "$(chr --set clickhouse.backup.endpoint=http://s:9000 --set 'clickhouse.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*needs vault.secretsEnabled') $(chr --set vault.secretsEnabled=true --set clickhouse.backup.endpoint=s:9000/x --set 'clickhouse.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*backup.endpoint') $(chr --set vault.secretsEnabled=true --set clickhouse.backup.endpoint=http://s:9000 | grep -c 'execution error.*storeIps') $(chr --set vault.secretsEnabled=true --set clickhouse.backup.endpoint=http://s:9000 --set 'clickhouse.backup.storeIps={1.2.3.4}' --set clickhouse.backup.keep=1 | grep -c 'execution error.*keep')" \
   "1 1 1 1"
 
-# NONEMPTY (the Kafka dumps': DONE's 4th field their messages) - the newest dump holding any never removed
-kdump() { mkdir -p "$W/store/b/$1"; echo "$1 2 topics $2 messages" > "$W/store/b/$1/DONE"; }
+# PIN: a restore's source dump never removed, complete or not; a removed backup's marker deleted before its files
+kdump() { mkdir -p "$W/store/b/$1"; echo "$1 2 topics 5 messages" > "$W/store/b/$1/DONE"; }
 kleft() { ls "$W/store/b" 2> /dev/null | tr '\n' ' ' | sed 's/ $//'; }
 fresh
-kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 0; kdump "$t144" 0; kdump "$t120" 0
-r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE run)
-check "NONEMPTY, keep 2, the newest three empty: the newest dump holding messages kept past KEEP, the older and an empty one removed" \
-  "$r $(kleft)" "rc=0 $t192 $t144 $t120"
-check "  said why it kept it" "$(grep -c "keeping $t192 (complete, older than the newest 2 - but the newest holding anything" "$W/out")" 1
-fresh
-kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 3; kdump "$t144" 1; kdump "$t120" 2
-r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE run)
-check "NONEMPTY, keep 2, every dump holding messages: the newest two kept, nothing more" "$r $(kleft)" "rc=0 $t144 $t120"
-fresh
-kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 0; mkdir -p "$W/store/b/$t144"; echo "no count here" > "$W/store/b/$t144/DONE"
-r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE run)
-check "NONEMPTY: a DONE without a count at field 4 - red, nothing removed" "$r $(grep -c purge "$W/calls" || true) $(grep -c 'holds no count at field 4' "$W/out")" "rc=1 0 1"
-fresh
-kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 0; kdump "$t144" 0
-r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE FAIL_CAT="$t168" run)
-check "NONEMPTY: one DONE unreadable - red, nothing removed" "$r $(grep -c purge "$W/calls" || true) $(grep -c "reading $t168/DONE failed" "$W/out")" "rc=1 0 1"
-fresh
-kdump "$t216" 5; kdump "$t192" 0; kdump "$t168" 0; kdump "$t144" 0
+kdump "$t216"; kdump "$t192"; kdump "$t168"; kdump "$t144"; : > "$W/store/b/$t192/PINNED"
 r=$(KEEP=2 PREFIX= MARKER=DONE run)
-check "without NONEMPTY (ClickHouse's): the newest two whatever they hold, no DONE read" "$r $(kleft) $(grep -c '^rclone cat' "$W/calls" || true)" "rc=0 $t168 $t144 0"
+check "keep 2, the second oldest pinned (a restore's source): kept past KEEP, the others older removed" "$r $(kleft)" "rc=0 $t192 $t168 $t144"
+check "  said why" "$(grep -c "keeping $t192 (complete, older than the newest 2 - pinned" "$W/out")" 1
+fresh
+kdump "$t120"; mkdir -p "$W/store/b/$t72"; : > "$W/store/b/$t72/PINNED"
+r=$(KEEP=2 PREFIX= MARKER=DONE run)
+check "an incomplete dump a day old, pinned: kept" "$r $(kleft)" "rc=0 $t120 $t72"
+fresh
+kdump "$t216"; kdump "$t192"; kdump "$t168"
+r=$(KEEP=2 PREFIX= MARKER=DONE run)
+check "a removed dump: its DONE deleted first, then its files (a purge cut short leaves it incomplete)" \
+  "$r $(grep -E "^rclone (deletefile|purge) store:b/$t216" "$W/calls" | cut -d' ' -f2 | tr '\n' ' ')" "rc=0 deletefile purge "
 [ "$fails" -eq 0 ] && echo "clickhouse backup prune test: OK" || { echo "clickhouse backup prune test: $fails FAILED"; exit 1; }

@@ -7,7 +7,9 @@
 # messages are history, already processed once. Each partition's messages go in their order (a keyed message on its
 # partition again - the same key, the same count), synchronously; each topic's end offsets must have grown by exactly the
 # dump's count. The console producer cannot take "no headers" in a line with a headers field: a run of header-less
-# messages (NO_HEADERS) goes through a producer parsing none. TOPICS (space-separated) restores those alone.
+# messages (NO_HEADERS) goes through a producer parsing none. TOPICS (space-separated) restores those alone. The dump is
+# checked against itself before anything is produced: each partition's file holds exactly the messages its offsets say
+# (latest - earliest, as it was read), and the whole dump DONE's count - a dump damaged in the store restores nothing.
 set -euo pipefail
 K=${KAFKA_BIN:-/opt/kafka/bin}
 BS=${BOOTSTRAP:?}
@@ -28,7 +30,28 @@ held() {  # held <topic>: the messages it holds (latest - earliest, over its par
   l=$(sum_end "$1")
   echo $((l - e))
 }
-dumped() { cat "$dump/topics/$1".*.messages 2> /dev/null | wc -l; }
+dumped() {  # dumped <topic>: its messages in the dump, partition by partition as it read them (a glob - <topic>.* - would
+  # count a child topic's files too: chat.messages.DLT's under chat.messages)
+  local n=0 p f
+  while IFS=: read -r _ p _; do
+    f="$dump/topics/$1.$p.messages"
+    [ ! -f "$f" ] || n=$((n + $(wc -l < "$f")))
+  done < "$dump/topics/$1.earliest"
+  echo "$n"
+}
+# the dump against itself: each partition's messages as its offsets counted them, the whole as DONE counted it
+for t in $all; do
+  while IFS=: read -r _ p first; do
+    last=$(awk -F: -v p="$p" '$2 == p { print $3 }' "$dump/topics/$t.latest")
+    [ -n "$last" ] || fail "$t[$p]: no latest offset in the dump - damaged, not restored"
+    f="$dump/topics/$t.$p.messages"; got=0
+    [ ! -f "$f" ] || got=$(wc -l < "$f")
+    [ "$got" -eq $((last - first)) ] || fail "$t[$p]: the dump holds $got messages, its offsets say $((last - first)) - damaged, not restored"
+  done < "$dump/topics/$t.earliest"
+done
+want=$(awk 'NR == 1 { print $4 }' "$dump/DONE"); sum=0
+for t in $all; do sum=$((sum + $(dumped "$t"))); done
+[ "$sum" = "$want" ] || fail "the dump's files hold $sum messages, its DONE says ${want:-none} - damaged, not restored"
 # every topic first: there, its partitions as dumped, empty (or done); no group live on it
 todo=""
 for t in $topics; do

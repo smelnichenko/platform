@@ -109,6 +109,68 @@ check "a dump refused: no topic at all (a Kafka that lost its data)" "$r $(grep 
 A; echo 20261118T020000Z > "$T/restoring"; r=$(RESTORING="$T/restoring" run a "$DUMP")
 check "a dump refused: a restore running (its ConfigMap's since) - Kafka not even listed, no DONE" \
   "$r $(grep -c 'a restore running since 20261118T020000Z' "$T/out") $(cat "$T/a/calls" 2> /dev/null | grep -c 'kafka-topics.sh' || true) $(ls "$T"/a/out/*/DONE 2> /dev/null | wc -l | tr -d ' ')" "rc=1 1 0 0"
+A; echo 20261118T030000Z > /dev/null; r=$(MAKE_RESTORING="$T/restoring-late" RESTORING="$T/restoring-late" run a "$DUMP")
+check "a dump refused: a restore begun while it read (the ConfigMap appearing) - no DONE" \
+  "$r $(grep -c 'a restore began while dumping' "$T/out") $(ls "$T"/a/out/*/DONE 2> /dev/null | wc -l | tr -d ' ')" "rc=1 1 0"
+rm -f "$T/restoring-late"
+# the restore checks the dump against itself first: a partition's file cut short, a DONE disagreeing - nothing produced
+A; r=$(run a "$DUMP"); d=$(ls "$T/a/out" | head -1)
+mkdir -p "$T/y"; rm -rf "${T:?}/y/$d"; cp -r "$T/a/out/$d" "$T/y/"; sed -i '$d' "$T/y/$d/topics/chat.messages.$P1.messages"
+world b; topic b chat.messages 2; topic b user.events 1
+r=$(run b "$RESTORE" "$T/y/$d")
+check "a restore refused: a partition's file short of its offsets' count - damaged, nothing produced" \
+  "$r $(grep -c "chat.messages\[$P1\]: the dump holds 2 messages, its offsets say 3 - damaged" "$T/out") $(cat "$T/b/calls" 2> /dev/null | grep -c 'kafka-console-producer' || true)" "rc=1 1 0"
+rm -rf "${T:?}/y/$d"; cp -r "$T/a/out/$d" "$T/y/"; sed -i 's/ 4 messages$/ 5 messages/' "$T/y/$d/DONE"
+world b; topic b chat.messages 2; topic b user.events 1
+r=$(run b "$RESTORE" "$T/y/$d")
+check "a restore refused: DONE counting other than the files hold" "$r $(grep -c 'its DONE says 5 - damaged' "$T/out")" "rc=1 1"
+# the guard before the upload (files/kafka-backup-guard.sh) against a stub rclone over a store of directories
+mkdir -p "$T/rbin"
+cat > "$T/rbin/rclone" << 'STUB'
+#!/bin/sh
+p() { echo "$T/store/${1#store:}"; }
+case "$1" in
+  lsf)
+    path=$(eval echo "\${$#}"); [ -n "${FAIL_LSF:-}" ] && { echo "stub: listing failed" >&2; exit 1; }
+    d=$(p "$path"); [ -d "$d" ] || exit 0
+    case "$*" in
+      *--dirs-only*) for e in "$d"/*/; do [ -d "$e" ] && basename "$e" | sed 's#$#/#'; done ;;
+      *--files-only*) for e in "$d"/*; do [ -f "$e" ] && basename "$e"; done ;;
+    esac ;;
+  cat) cat "$(p "$2")" ;;
+  copy) src=$(p "$2"); dst=$3; mkdir -p "$dst/topics"
+    for f in topics.txt topics-describe.txt; do [ ! -f "$src/$f" ] || cp "$src/$f" "$dst/"; done
+    for f in "$src"/topics/*.latest; do [ ! -f "$f" ] || cp "$f" "$dst/topics/"; done ;;
+  *) echo "stub: unexpected $*" >&2; exit 2 ;;
+esac
+exit 0
+STUB
+chmod +x "$T/rbin/rclone"
+GUARD=helm/schnappy-data/files/kafka-backup-guard.sh
+guard() { if T="$T" PATH="$T/rbin:$PATH" STORE=store:b FAIL_LSF=${FAIL_LSF:-} sh "$GUARD" "$1" > "$T/out" 2>&1; then echo rc=0; else echo rc=$?; fi; }
+store() { rm -rf "${T:?}/store"; mkdir -p "$T/store/b"; }
+put() {  # put <dump dir> <name>: the dump in the store under that name, complete
+  cp -r "$1" "$T/store/b/$2"
+}
+A; run a "$DUMP" > /dev/null; d=$(ls "$T/a/out" | head -1); new="$T/a/out/$d"
+store
+check "the guard, no dump in the store yet: nothing to compare, passed" "$(guard "$new") $(grep -c 'no complete dump' "$T/out")" "rc=0 1"
+put "$new" 20261101T023000Z
+check "  the newest complete dump the same: passed" "$(guard "$new") $(grep -c 'holds everything the dump 20261101T023000Z held' "$T/out")" "rc=0 1"
+mkdir -p "$T/store/b/20261102T023000Z"
+check "  a newer incomplete one passed over, the complete one compared" "$(guard "$new") $(grep -c 'dump 20261101T023000Z held' "$T/out")" "rc=0 1"
+store; put "$new" 20261101T023000Z; echo "gone.topic" >> "$T/store/b/20261101T023000Z/topics.txt"; echo "gone.topic:0:9" > "$T/store/b/20261101T023000Z/topics/gone.topic.latest"
+check "  a topic the store's dump held gone: refused" "$(guard "$new") $(grep -c 'gone.topic gone - not uploaded' "$T/out")" "rc=1 1"
+store; put "$new" 20261101T023000Z; sed -i 's/TopicId: x/TopicId: old/' "$T/store/b/20261101T023000Z/topics-describe.txt"
+check "  a topic made again (its TopicId changed): refused" "$(guard "$new") $(grep -c 'made again (TopicId old -> x)' "$T/out")" "rc=1 1"
+store; put "$new" 20261101T023000Z; sed -i "s/^chat.messages:$P1:\([0-9]*\)/chat.messages:$P1:99/" "$T/store/b/20261101T023000Z/topics/chat.messages.latest"
+check "  a partition's latest offset back: refused, named" "$(guard "$new") $(grep -c "chat.messages\[$P1\] at 8, was 99" "$T/out")" "rc=1 1"
+echo 20261105T000000Z > "$T/store/b/BASELINE"
+check "  the same, the dump older than the BASELINE (a restore since): no comparison, passed" "$(guard "$new") $(grep -c 'since the baseline 20261105T000000Z' "$T/out")" "rc=0 1"
+echo nonsense > "$T/store/b/BASELINE"
+check "  a BASELINE without a timestamp: refused" "$(guard "$new")" "rc=1"
+store; put "$new" 20261101T023000Z
+check "  the store's listing failing: refused, never 'nothing to compare'" "$(FAIL_LSF=1 guard "$new") $(grep -c 'listing store:b failed' "$T/out")" "rc=1 1"
 # the CronJob as rendered
 kb() { helm template t helm/schnappy-data/ --namespace schnappy-production --set postgres.password=test --set strimzi.enabled=true \
   --set strimzi.backup.enabled=true --set vault.secretsEnabled=true --set alerts.enabled=true "$@" 2>&1 || true; }
@@ -137,8 +199,10 @@ check "  its pods' egress to the store's three addresses on 9000; KafkaBackupsUn
 check "  the dump refuses while a restore runs: the restoring ConfigMap optional, read-only at /restoring, RESTORING its key" \
   "$(cj | grep -A3 '^            - name: restoring$' | tr -d ' ' | tr '\n' ';') $(cj | grep -c '{ name: restoring, mountPath: /restoring, readOnly: true }') $(cj | grep -c '{ name: RESTORING, value: /restoring/since }')" \
   "-name:restoring;configMap:;name:t-schnappy-kafka-backup-restoring;optional:true; 1 1"
-check "  the prune keeps the newest dump holding messages (NONEMPTY: DONE's 4th field); the scratch bounded" \
-  "$(cj | grep -c '{ name: NONEMPTY, value: \"4\" }') $(cj | grep -A2 '^            - name: tmp$' | grep -c 'sizeLimit: 256Mi')" "1 1"
+guard_line=$(cj | grep -n 'sh /scripts/guard.sh "/dump/$d"' | cut -d: -f1)
+check "  the guard (Kafka holding everything the store's newest dump held) before the upload; the scratch bounded" \
+  "$([ -n "$guard_line" ] && [ -n "$cp_line" ] && [ "$guard_line" -lt "$cp_line" ] && echo before || echo not-before) $(printf '%s\n' "$out" | grep -c '^  guard.sh: |$') $(cj | grep -A2 '^            - name: tmp$' | grep -c 'sizeLimit: 256Mi')" \
+  "before 1 1"
 check "refused: no endpoint form, no store addresses, no Vault, keep under 2" \
   "$(kb --set strimzi.backup.endpoint=x --set 'strimzi.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*backup.endpoint') $(kb --set strimzi.backup.endpoint=http://s:9000 | grep -c 'execution error.*storeIps') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set vault.secretsEnabled=false | grep -c 'execution error.*vault') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set strimzi.backup.keep=1 | grep -c 'execution error.*keep')" \
   "1 1 1 1"

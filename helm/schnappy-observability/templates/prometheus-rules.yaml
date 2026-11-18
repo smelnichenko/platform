@@ -483,6 +483,18 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/KafkaBackupNeverSucceeded"
             summary: "Kafka: its backup job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }} has never succeeded"
+        # a restore's lock (ops' tasks/kafka-restore.yml makes <namespace>-kafka-backup-restoring for the restore's span)
+        # two hours old: a restore whose run died before its always step - every nightly dump refuses while it stays
+        - alert: KafkaBackupRestoreLockStale
+          expr: >-
+            time() - max without (instance, pod) (kube_configmap_created{configmap=~".+-kafka-backup-restoring"})
+            > 2 * 3600
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KafkaBackupRestoreLockStale"
+            summary: "Kafka: its restore lock {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.configmap {{ "}}" }} is over 2 h old - a restore's run died; every nightly dump refuses while it stays"
         {{- if eq (.Values.clickhouse.backup.enabled | toString) "true" }}
         # backups on, but no backup CronJob listed by kube-state-metrics: deleted or renamed, both alerts above go quiet
         - alert: ClickHouseBackupsUnwatched

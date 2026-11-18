@@ -11,7 +11,9 @@ Kafka's topics did not land in the Pi store (bucket `kafka-backups`).
 ## How bad
 
 The topics' messages since the newest complete dump have no copy (the topics keep 7 days; the services' own data is
-in Postgres and ScyllaDB). The prune never removes the newest complete dumps, so an older one is still there.
+in Postgres and ScyllaDB). The prune never removes the newest complete dumps, so an older one is still there; a dump a
+restore came from carries `PINNED` and is never pruned until removed by hand once Kafka is whole
+(`rclone deletefile <store>/<dump>/PINNED`).
 
 ## First steps
 
@@ -31,6 +33,9 @@ kubectl -n $NS logs job/<the same job> -c upload --tail=30
 | `dump`: a timeout or connection reset to `...-kafka-bootstrap:9092` | Kafka down, or the job's pod without its native sidecar (Kafka's 9092 takes mTLS only: the pod's `sidecar.istio.io/nativeSidecar` annotation) |
 | `dump`: `partitions '...', its N partitions are '...'` | a partition without a leader when the offsets were read - Kafka unhealthy |
 | `dump`: `a carriage return` / `not valid UTF-8` / `fewer than three fields` | a message the line format cannot carry - a producer writing other than Spring's JSON |
+| `dump`: `a restore running since <ts>` / `a restore began while dumping` | a restore's lock (`<namespace>-kafka-backup-restoring`): a restore running, or one whose run died (KafkaBackupRestoreLockStale - its runbook) |
+| `upload`: `Kafka lost data since the dump <name>: ...` | the guard: a topic gone, one made again (its TopicId changed) or a partition's offset back since that dump - Kafka lost data; nothing uploaded or pruned, so that dump and older stay. Restore from it (ops' `tasks/kafka-restore.yml`); a topic removed on purpose: `task deploy:kafka-backup-baseline` (the guard compares nothing older) |
+| `upload`: `holds no topics.txt` / `reading ... failed` / `BASELINE holds no timestamp` | the store's newest dump damaged, the store unreachable, or its BASELINE file not the restore's |
 | `upload`: connection refused / timeout to the store | the Pi store (versitygw, the VIP :9000) down, or the job's NetworkPolicy |
 | `upload`: `AccessDenied` | the store keys (`schnappy-production-kafka-backup-store`, from Vault's backup-store) wrong or rotated |
 | no job at all | the CronJob suspended, or missed its start by more than an hour |

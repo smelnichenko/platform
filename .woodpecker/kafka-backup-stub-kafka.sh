@@ -3,12 +3,14 @@
 #   k/<topic>/parts             its partition count
 #   k/<topic>/<p>.log           its messages, one per line, as the dump writes them (headers TAB key TAB value)
 #   k/<topic>/<p>.start         its earliest offset (0 when absent)
+#   k/<topic>/id                its TopicId (x when absent)
 #   k/groups                    "<group> <topic> <partition> <offset>" lines
 #   k/members/<group>           its member count (0 when absent)
 # Knobs (environment): DROP_PART=<topic>:<p> leaves a partition out of get-offsets' answer (as Kafka's tool does for one it
 # cannot list); SHORT=<n> makes a read <n> messages short; LOSE=1 makes the producer drop its last line (unacknowledged);
 # START_SHIFT=<n> moves each log's start <n> on for the consumer alone (retention between the offsets read and the read);
 # EXTRA_LINE=<text> adds a line that is no message after a read's first.
+# MAKE_RESTORING=<file> makes a read create that file (a restore's ConfigMap appearing while the dump reads).
 # Every call is logged to $1/calls. The consumer's deprecated --consumer-property prints its notice on stdout, as Kafka
 # 4.3.1's does.
 set -eu
@@ -30,7 +32,7 @@ case "$mode" in
   list) for d in "$K"/*/; do b=$(basename "$d"); [ "$b" = members ] || echo "$b"; done ;;
   describe)
     for d in "$K"/*/; do b=$(basename "$d"); [ "$b" = members ] && continue; [ -z "$t" ] || [ "$b" = "$t" ] || continue
-      printf 'Topic: %s\tTopicId: x\tPartitionCount: %s\tReplicationFactor: 1\tConfigs:\n' "$b" "$(parts "$b")"
+      printf 'Topic: %s\tTopicId: %s\tPartitionCount: %s\tReplicationFactor: 1\tConfigs:\n' "$b" "$(cat "$K/$b/id" 2> /dev/null || echo x)" "$(parts "$b")"
       p=0; while [ "$p" -lt "$(parts "$b")" ]; do printf '\tTopic: %s\tPartition: %s\tLeader: 1\n' "$b" "$p"; p=$((p + 1)); done
     done
     [ -z "$t" ] || [ -d "$K/$t" ] || { echo "Error: topic $t not found" >&2; exit 1; } ;;
@@ -72,6 +74,7 @@ fi
 from=$((o - $(start "$t" "$p") + 1))
 # EXTRA_LINE=<text>: a line after the first message that is none (a value's fragment, split at a raw newline)
 # its closing line on stderr, as Kafka's: "Processed a total of <n> messages"
+[ -z "${MAKE_RESTORING:-}" ] || echo 20261118T030000Z > "$MAKE_RESTORING"
 r=$(mktemp)
 sed -n "${from},\$p" "$K/$t/$p.log" | head -n $((n - ${SHORT:-0})) \
   | { if IFS= read -r l; then printf '%s\n' "$l"; [ -z "${EXTRA_LINE:-}" ] || printf '%s\n' "$EXTRA_LINE"; fi; cat; } > "$r"
