@@ -7,7 +7,8 @@
 #   k/members/<group>           its member count (0 when absent)
 # Knobs (environment): DROP_PART=<topic>:<p> leaves a partition out of get-offsets' answer (as Kafka's tool does for one it
 # cannot list); SHORT=<n> makes a read <n> messages short; LOSE=1 makes the producer drop its last line (unacknowledged);
-# START_SHIFT=<n> moves each log's start <n> on for the consumer alone (retention between the offsets read and the read).
+# START_SHIFT=<n> moves each log's start <n> on for the consumer alone (retention between the offsets read and the read);
+# EXTRA_LINE=<text> adds a line that is no message after a read's first.
 # Every call is logged to $1/calls. The consumer's deprecated --consumer-property prints its notice on stdout, as Kafka
 # 4.3.1's does.
 set -eu
@@ -57,15 +58,21 @@ while [ $# -gt 0 ]; do case "$1" in --topic) t=$2; shift ;; --partition) p=$2; s
   --consumer-property) echo "Option --consumer-property is deprecated and will be removed in a future version. Use --command-property instead."
     case "$2" in auto.offset.reset=*) reset=${2#auto.offset.reset=} ;; esac; shift ;;
   esac; shift; done
-# an offset outside the log (START_SHIFT: retention moved its start since get-offsets read it): with
-# auto.offset.reset=none an error (measured: OffsetOutOfRangeException); without, reset to the log's end - nothing read
+# an offset outside the log (START_SHIFT: retention moved its start since get-offsets read it), by the reset policy:
+# none - an error (measured: OffsetOutOfRangeException); earliest - from the log's start, what is left; latest (the
+# console consumer's default without --from-beginning) - the log's end, nothing read
 lo=$(( $(start "$t" "$p") + ${START_SHIFT:-0} )); hi=$(( $(start "$t" "$p") + $(lines "$t" "$p") ))
 if [ "$o" -lt "$lo" ] || [ "$o" -gt "$hi" ]; then
-  [ "$reset" = none ] || exit 0
-  echo "org.apache.kafka.clients.consumer.OffsetOutOfRangeException: offset $o out of range for $t-$p" >&2; exit 1
+  case "$reset" in
+    none) echo "org.apache.kafka.clients.consumer.OffsetOutOfRangeException: offset $o out of range for $t-$p" >&2; exit 1 ;;
+    earliest) o=$lo ;;
+    *) exit 0 ;;
+  esac
 fi
 from=$((o - $(start "$t" "$p") + 1))
-sed -n "${from},\$p" "$K/$t/$p.log" | head -n $((n - ${SHORT:-0}))
+# EXTRA_LINE=<text>: a line after the first message that is none (a value's fragment, split at a raw newline)
+sed -n "${from},\$p" "$K/$t/$p.log" | head -n $((n - ${SHORT:-0})) \
+  | { if IFS= read -r l; then printf '%s\n' "$l"; [ -z "${EXTRA_LINE:-}" ] || printf '%s\n' "$EXTRA_LINE"; fi; cat; }
 S
 cat > "$W/bin/kafka-console-producer.sh" << 'S'
 #!/bin/sh
