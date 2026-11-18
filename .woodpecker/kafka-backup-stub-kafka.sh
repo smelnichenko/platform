@@ -7,7 +7,7 @@
 #   k/members/<group>           its member count (0 when absent)
 # Knobs (environment): DROP_PART=<topic>:<p> leaves a partition out of get-offsets' answer (as Kafka's tool does for one it
 # cannot list); SHORT=<n> makes a read <n> messages short; LOSE=1 makes the producer drop its last line (unacknowledged).
-# Every call is logged to $1/calls.
+# Every call is logged to $1/calls. A deprecated option's notice goes to stdout, as Kafka 4.3.1's tools print it.
 set -eu
 W=$1
 mkdir -p "$W/bin" "$W/k/members"
@@ -48,7 +48,10 @@ cat > "$W/bin/kafka-console-consumer.sh" << 'S'
 #!/bin/sh
 . "$W/bin/common.sh"; log "$@"
 t=""; p=""; o=""; n=""
-while [ $# -gt 0 ]; do case "$1" in --topic) t=$2; shift ;; --partition) p=$2; shift ;; --offset) o=$2; shift ;; --max-messages) n=$2; shift ;; esac; shift; done
+# Kafka 4.3.1's notice for the deprecated spelling, on stdout before the messages (as measured)
+while [ $# -gt 0 ]; do case "$1" in --topic) t=$2; shift ;; --partition) p=$2; shift ;; --offset) o=$2; shift ;; --max-messages) n=$2; shift ;;
+  --consumer-property) echo "Option --consumer-property is deprecated and will be removed in a future version. Use --command-property instead."; shift ;;
+  esac; shift; done
 from=$((o - $(start "$t" "$p") + 1))
 sed -n "${from},\$p" "$K/$t/$p.log" | head -n $((n - ${SHORT:-0}))
 S
@@ -56,7 +59,9 @@ cat > "$W/bin/kafka-console-producer.sh" << 'S'
 #!/bin/sh
 . "$W/bin/common.sh"; log "$@"
 t=""; h=true
-while [ $# -gt 0 ]; do case "$1" in --topic) t=$2; shift ;; --reader-property) case "$2" in parse.headers=*) h=${2#parse.headers=} ;; esac; shift ;; esac; shift; done
+while [ $# -gt 0 ]; do case "$1" in --topic) t=$2; shift ;; --reader-property) case "$2" in parse.headers=*) h=${2#parse.headers=} ;; esac; shift ;;
+  --producer-property) echo "Warning: --producer-property is deprecated and will be removed in a future version. Use --command-property instead."; shift ;;
+  esac; shift; done
 in=$(cat); [ "${LOSE:-}" = 1 ] && in=$(printf '%s\n' "$in" | sed '$d')
 printf '%s\n' "$in" | while IFS= read -r l; do
   [ -n "$l" ] || continue

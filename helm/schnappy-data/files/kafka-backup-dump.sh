@@ -8,11 +8,13 @@
 # is no dump):
 #   - no topic at all (a Kafka that lost its data would otherwise prune every good dump away within a week)
 #   - a partition missing from the offsets read (every partition 0..PartitionCount-1, from the topic's description)
-#   - a read short of its offsets' count (one message per line: a value holding a newline breaks it)
+#   - a read not of its offsets' count (one message per line: a value holding a newline breaks it; a tool's notice on
+#     stdout adds a line - Kafka 4.3's console consumer prints one there for a deprecated option)
 #   - a carriage return, a line not valid UTF-8, or one with fewer than three fields (the producer's line reader would
 #     split, mangle or misparse it)
 # The read never jumps: auto.offset.reset=none - retention moving the log start past the first offset is an error, not
-# a silent reset to the log's end.
+# a silent reset to the log's end. Given as --command-property (Kafka 4.3: --consumer-property is deprecated, and its
+# notice goes to stdout - among the messages).
 set -euo pipefail
 K=${KAFKA_BIN:-/opt/kafka/bin}
 BS=${BOOTSTRAP:?}
@@ -48,14 +50,14 @@ while read -r t; do
     [ "$n" -gt 0 ] || continue
     m="$out/topics/$t.$p.messages"
     "$K/kafka-console-consumer.sh" --bootstrap-server "$BS" --topic "$t" --partition "$p" --offset "$first" \
-      --max-messages "$n" --timeout-ms 60000 --consumer-property auto.offset.reset=none \
+      --max-messages "$n" --timeout-ms 60000 --command-property auto.offset.reset=none \
       --formatter-property print.headers=true --formatter-property print.key=true \
       --formatter-property key.separator=$'\t' --formatter-property headers.separator=$'\x1e' \
       --formatter-property null.literal=__NULL__ \
       > "$m" 2> "$out/topics/$t.$p.log" \
       || { cat "$out/topics/$t.$p.log"; fail "$t[$p]: the read failed"; }
     got=$(wc -l < "$m")
-    [ "$got" -eq "$n" ] || fail "$t[$p]: $got messages read, its offsets say $n"
+    [ "$got" -eq "$n" ] || fail "$t[$p]: $got messages read, its offsets say $n$(awk -F '\t' 'NF < 3 { printf "; not a message: %.160s", $0; exit }' "$m")"
     ! grep -q $'\r' "$m" || fail "$t[$p]: a carriage return in a message - the producer's line reader would split it"
     iconv -f UTF-8 -t UTF-8 < "$m" | cmp -s - "$m" || fail "$t[$p]: a message not valid UTF-8 - it would not come back as it was"
     short=$(awk -F '\t' 'NF < 3' "$m" | wc -l)

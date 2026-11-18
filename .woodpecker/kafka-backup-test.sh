@@ -37,7 +37,7 @@ A() {
 }
 A; r=$(run a "$DUMP"); d=$(ls "$T/a/out" 2> /dev/null | head -1)
 check "a dump: each partition from its earliest offset (5) for its count, the empty one skipped, DONE with the totals" \
-  "$r $(grep -c "kafka-console-consumer.sh .*--partition $P1 --offset 5 --max-messages 3 .*auto.offset.reset=none" "$T/a/calls") $(grep -c "kafka-console-consumer.sh .*--topic chat.messages --partition $P0 " "$T/a/calls" || true) $(cut -d' ' -f2- "$T/a/out/$d/DONE")" \
+  "$r $(grep -c "kafka-console-consumer.sh .*--partition $P1 --offset 5 --max-messages 3 .*--command-property auto.offset.reset=none" "$T/a/calls") $(grep -c "kafka-console-consumer.sh .*--topic chat.messages --partition $P0 " "$T/a/calls" || true) $(cut -d' ' -f2- "$T/a/out/$d/DONE")" \
   "rc=0 1 0 2 topics 4 messages"
 # the restore into a fresh world with the same topics, empty: the round trip
 world b; topic b chat.messages 2; topic b user.events 1
@@ -81,6 +81,13 @@ check "a dump refused: a partition missing from the offsets read (no leader)" \
   "$r $(grep -c 'chat.messages: the earliest offsets name partitions' "$T/out") $(test -f "$T/a/out/$d/DONE" && echo done || echo no-done)" "rc=1 1 no-done"
 A; r=$(SHORT=1 run a "$DUMP")
 check "a dump refused: a read short of its offsets' count" "$r $(grep -c 'messages read, its offsets say' "$T/out")" "rc=1 1"
+# Kafka 4.3's console consumer prints a deprecated option's notice on stdout, among the messages (copy run 6, 2026-11-18:
+# the dump refused "1001 messages read, its offsets say 1000"): the dump as it was refused, the line named
+A; sed 's/--command-property auto\.offset\.reset=none/--consumer-property auto.offset.reset=none/' "$DUMP" > "$T/dump-deprecated.sh"
+r=$(run a "$T/dump-deprecated.sh")
+check "a dump refused: a tool's notice on stdout among the messages (the deprecated --consumer-property), the line named" \
+  "$r $(grep -c 'messages read, its offsets say [0-9]*; not a message: Option --consumer-property is deprecated' "$T/out") $(cmp -s "$DUMP" "$T/dump-deprecated.sh" && echo unchanged || echo changed)" \
+  "rc=1 1 changed"
 A; printf 'NO_HEADERS\tu9\t{"x":"a\rb"}\n' >> "$T/a/k/chat.messages/$P0.log"; r=$(run a "$DUMP")
 check "a dump refused: a carriage return in a message" "$r $(grep -c 'a carriage return' "$T/out")" "rc=1 1"
 A; printf 'NO_HEADERS\tu9\t{"x":"\377"}\n' >> "$T/a/k/chat.messages/$P0.log"; r=$(run a "$DUMP")
