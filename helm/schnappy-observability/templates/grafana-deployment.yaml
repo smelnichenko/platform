@@ -24,7 +24,7 @@ spec:
         # ClickHouse (STRICT mTLS in schnappy-infra). Without an
         # istio-proxy sidecar, plain HTTP gets RST'd at the CH
         # sidecar, breaking the ClickHouse-Logs datasource.
-        backup.velero.io/backup-volumes: data
+        backup.velero.io/backup-volumes: storage
         checksum/datasources: {{ include (print $.Template.BasePath "/grafana-datasources-configmap.yaml") . | sha256sum }}
         checksum/dashboards: {{ include (print $.Template.BasePath "/grafana-dashboards-configmap.yaml") . | sha256sum }}
     spec:

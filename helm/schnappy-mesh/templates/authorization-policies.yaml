@@ -5,18 +5,26 @@
 # CloudNativePG's PostgreSQL instances, selected by cluster: CNPG labels its pods cnpg.io/cluster (and
 # app.kubernetes.io/component=database - never the "postgres" this selected until 2026-11-18, when it held no pod and
 # 5432 had no identity check, the NetworkPolicy alone). 5432: the app services, the instances themselves (a replica
-# streams from the primary through both sidecars) and the init-users Job. 8000: the instance manager's status port -
-# the CNPG operator (cnpg-system, no sidecar) calls it in plaintext (the cnpg-postgres PeerAuthentication makes it
-# PERMISSIVE), so any source; the NetworkPolicy keeps it to cnpg-system and the instances. Metrics leave through 15020
-# (merged), which the sidecar does not capture. DRY RUN first, as strimzi-kafka: Envoy judges new connections only, and
-# a client missing here would fail when its pool reconnects - the instance sidecars' rbac shadow_denied counts them
+# streams from the primary through both sidecars) and the init-users Job. 8000: the instance manager's status port,
+# called in plaintext with no identity - by the CNPG operator (cnpg-system, no sidecar) and by the primary's liveness
+# isolation check, which pings its peers' 8000 every probe (every 10 s; it decides the primary's restart when the API
+# server is unreachable) - so any source, the cnpg-postgres PeerAuthentication making it PERMISSIVE and the
+# NetworkPolicy keeping it to cnpg-system and the instances. Narrowing it to principals would restart a primary in an API
+# server outage. Metrics leave through 15020 (merged), which the sidecar does not capture.
+# Applying this policy, and enforcing it, are each a filter-chain update of every instance's inbound listener: Envoy
+# drains the old chains and closes their connections after its drain time (45 s) - every pooled connection and the
+# replica's WAL receiver reconnect once, a statement in flight fails. From that reconnect on the policy decides (dry
+# run: the instance sidecars' rbac shadow_denied counts what it would refuse). Dry run per environment
+# (authorizationPolicies.dryRun.postgres): schnappy-test enforced first, production after.
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: {{ $fn }}-postgres
   namespace: {{ $ns }}
+  {{- if .Values.authorizationPolicies.dryRun.postgres }}
   annotations:
     istio.io/dry-run: "true"
+  {{- end }}
 spec:
   selector:
     matchLabels:
@@ -90,16 +98,19 @@ spec:
 # reached Kafka (2026-11-18). Selected by cluster and role, not strimzi.io/name: that is <cluster>-<node pool>, and a pool
 # renamed or split would have left the brokers with no policy. A SCRAM listener (schnappy-data's kafka.scram.enabled:
 # 9094) would need its port here; ClickHouse's events consumer (schnappy-observability's clickhouse.events, off) its
-# principal. DRY RUN first: Envoy judges new connections only and Kafka's clients hold theirs for hours, so a client
-# missing here would fail late and silently (no consumer-lag alert) - the broker sidecar's rbac shadow_denied counts
-# what it would refuse; enforced (the annotation removed) once a day's traffic, the 02:30 backup among it, shows none.
+# principal. DRY RUN first (authorizationPolicies.dryRun.strimziKafka, per environment): applying it drained the
+# broker's connections once (its clients reconnected at 04:32 today), and from that reconnect the broker sidecar's rbac
+# shadow_denied counts what it would refuse; enforced - schnappy-test first - once a day's traffic, the 02:30 backup
+# among it, shows none (Prometheus's increase over 24 h: a pod's own counters restart with it).
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: {{ $fn }}-strimzi-kafka
   namespace: {{ $ns }}
+  {{- if .Values.authorizationPolicies.dryRun.strimziKafka }}
   annotations:
     istio.io/dry-run: "true"
+  {{- end }}
 spec:
   selector:
     matchLabels:

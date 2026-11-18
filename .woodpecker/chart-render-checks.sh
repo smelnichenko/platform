@@ -448,7 +448,7 @@ ap() { echo "$mesh" | awk -v n="$1" '/^---/ { on = 0 } $0 == "  name: " n { on =
 # is a policy found; any other failure is the check's own
 sel=.ci-out/sel
 helm template t helm/schnappy-mesh/ --set gateway.enabled=true --set 'gatewayLanOnly.allowedCidrs={10.0.0.0/8}' \
-  --set peerAuthentication.observability=true > $sel-mesh.yaml || fail "the mesh (everything on) did not render"
+  --set 'gatewayLanOnly.hosts={a.example}' --set jwt.enabled=true > $sel-mesh.yaml || fail "the mesh (everything on) did not render"
 helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set vault.secretsEnabled=true --set admin.enabled=true \
   --set chatService.enabled=true --set chessService.enabled=true --set masiService.enabled=true \
   --set masiService.browser.enabled=true --set masiService.browser.existingSecret=s > $sel-app.yaml \
@@ -474,43 +474,69 @@ python3 .woodpecker/mesh-selectors.py $sel-mesh.yaml $sel-app.yaml $sel-data.yam
   $sel-auth.yaml || rc=$?
 [ "$rc" != 3 ] || fail "a mesh policy selects nothing that enforces it (above)"
 [ "$rc" = 0 ] || fail "mesh-selectors.py itself failed (rc=$rc)"
-# Each environment's PeerAuthentication exceptions: the observability stack's (Alertmanager 9093, s3gw 9000) only where
-# it runs (peerAuthentication.observability - schnappy-infra), CNPG's 8000 only where its sidecar-carrying cluster runs
-# (peerAuthentication.cnpgPostgres - not schnappy-infra)
+# Every backup.velero.io/backup-volumes annotation names volumes its pod has (velero-volumes.py: Velero's file-system
+# backup is opt-in, a name the pod lacks skipped without a word - Grafana's said data for its storage volume, the Kafka
+# broker's data-0 for its data volume, 2026-11-18). Exit 3 is an annotation found; any other failure the check's own
+rc=0
+python3 .woodpecker/velero-volumes.py $sel-app.yaml $sel-data.yaml $sel-rt.yaml $sel-obs.yaml $sel-sq.yaml $sel-auth.yaml || rc=$?
+[ "$rc" != 3 ] || fail "a backup-volumes annotation names a volume its pod lacks (above)"
+[ "$rc" = 0 ] || fail "velero-volumes.py itself failed (rc=$rc)"
+# the init-users Job's proxy a native sidecar (it stops with the Job): no quitquitquit call whose failure the Job ignored
+iu=$(awk '/^# Source: schnappy-data\/templates\/cnpg-init-users.yaml/ { on = 1 } /^---/ { on = 0 } on' $sel-data.yaml)
+echo "$iu" | grep -q 'sidecar.istio.io/nativeSidecar: "true"$' || fail "the init-users Job's proxy is no native sidecar"
+echo "$iu" | grep -q '15020/quitquitquit' && fail "the init-users Job calls quitquitquit (its native sidecar stops with it)"
+# Each environment's PeerAuthentication exceptions: the observability stack's (Alertmanager 9093, s3gw 9000) on unless
+# an environment without that stack says false (production, test) - dropped in schnappy-infra it would be silent alerts
+# (2026-04-20); CNPG's 8000 on unless its CNPG clusters run without a sidecar (schnappy-infra says false)
 pa() { helm template t helm/schnappy-mesh/ --show-only templates/peer-authentication.yaml "$@" | awk '$1 == "name:" { print $2 }' | sort | tr '\n' ' '; }
-[ "$(pa)" = "t-schnappy t-schnappy-cnpg-postgres " ] || fail "the default PeerAuthentications: $(pa)"
-[ "$(pa --set peerAuthentication.observability=true --set peerAuthentication.cnpgPostgres=false)" = "t-schnappy t-schnappy-alertmanager t-schnappy-s3gw " ] \
-  || fail "schnappy-infra's PeerAuthentications: $(pa --set peerAuthentication.observability=true --set peerAuthentication.cnpgPostgres=false)"
+[ "$(pa)" = "t-schnappy t-schnappy-alertmanager t-schnappy-cnpg-postgres t-schnappy-s3gw " ] || fail "the default PeerAuthentications: $(pa)"
+[ "$(pa --set peerAuthentication.cnpgPostgres=false)" = "t-schnappy t-schnappy-alertmanager t-schnappy-s3gw " ] \
+  || fail "schnappy-infra's PeerAuthentications: $(pa --set peerAuthentication.cnpgPostgres=false)"
+[ "$(pa --set peerAuthentication.observability=false)" = "t-schnappy t-schnappy-cnpg-postgres " ] \
+  || fail "production's and test's PeerAuthentications: $(pa --set peerAuthentication.observability=false)"
+# the dry runs per environment: on by default, each policy's own switch turns its annotation off and nothing else
+dry() { helm template t helm/schnappy-mesh/ --show-only templates/authorization-policies.yaml "$@" \
+  | awk '$1 == "name:" { n = $2 } /istio.io\/dry-run: "true"/ { print n }' | sort | tr '\n' ' '; }
+[ "$(dry)" = "t-schnappy-postgres t-schnappy-strimzi-kafka " ] || fail "the policies in dry run by default: $(dry)"
+[ "$(dry --set authorizationPolicies.dryRun.postgres=false)" = "t-schnappy-strimzi-kafka " ] || fail "postgres enforced: $(dry --set authorizationPolicies.dryRun.postgres=false)"
+[ "$(dry --set authorizationPolicies.dryRun.strimziKafka=false)" = "t-schnappy-postgres " ] || fail "strimzi-kafka enforced: $(dry --set authorizationPolicies.dryRun.strimziKafka=false)"
 # PostgreSQL's policy exactly: the CNPG cluster the data chart makes, ALLOW, 5432 for the app services, the instances
 # (replication) and the init-users Job's own ServiceAccount (read from its Job), 8000 (the operator's plaintext status
 # calls) from any source, in dry run until its shadow_denied has read 0 for a day. One more name or rule, a DENY or
 # the cluster renamed and it fails
-python3 - $sel-mesh.yaml $sel-data.yaml <<'PY_POSTGRES_AP' || fail "the postgres AuthorizationPolicy is not exactly the one above (the assertion above)"
+python3 - $sel-mesh.yaml $sel-data.yaml <<'PY_POSTGRES_AP' || fail "the postgres AuthorizationPolicy is not exactly the one above (said above)"
 import sys, yaml
+def need(ok, why):  # an explicit exit: an assert would be stripped under PYTHONOPTIMIZE
+    if not ok:
+        sys.exit(why)
 mesh, data = ([d for d in yaml.safe_load_all(open(p)) if isinstance(d, dict)] for p in sys.argv[1:3])
 aps = [d for d in mesh if d.get("kind") == "AuthorizationPolicy" and d["metadata"]["name"] == "t-schnappy-postgres"]
-assert len(aps) == 1, "one postgres AuthorizationPolicy: %d" % len(aps)
-ap, = aps
+need(len(aps) == 1, "one postgres AuthorizationPolicy: %d" % len(aps))
+ap = aps[0]
 ns, spec = ap["metadata"]["namespace"], ap["spec"]
 clusters = [d["metadata"]["name"] for d in data if d.get("kind") == "Cluster" and d.get("apiVersion", "").startswith("postgresql.cnpg.io/")]
-assert clusters == ["t-schnappy-postgres"], "the data chart's CNPG clusters: %s" % clusters
-assert spec.get("selector") == {"matchLabels": {"cnpg.io/cluster": clusters[0]}}, spec.get("selector")
-assert spec.get("action") == "ALLOW", spec.get("action")
-assert (ap["metadata"].get("annotations") or {}).get("istio.io/dry-run") == "true", "enforced before its dry run"
-jobs = [d for d in data if d.get("kind") == "Job" and d["metadata"]["name"] == "t-schnappy-postgres-init-users"]
-assert len(jobs) == 1, "one init-users Job: %d" % len(jobs)
+need(clusters == ["t-schnappy-postgres"], "the data chart's CNPG clusters: %s" % clusters)
+cl = clusters[0]
+need(spec.get("selector") == {"matchLabels": {"cnpg.io/cluster": cl}}, "its selector: %s" % spec.get("selector"))
+need(spec.get("action") == "ALLOW", "its action: %s" % spec.get("action"))
+need((ap["metadata"].get("annotations") or {}).get("istio.io/dry-run") == "true", "enforced by default - each environment turns its own dry run off")
+jobs = [d for d in data if d.get("kind") == "Job" and d["metadata"]["name"] == cl + "-init-users"]
+need(len(jobs) == 1, "one init-users Job: %d" % len(jobs))
 init_sa = jobs[0]["spec"]["template"]["spec"].get("serviceAccountName")
-assert init_sa and init_sa != "default", "the init-users Job runs as %r" % init_sa
-want = sorted(["cluster.local/ns/%s/sa/t-schnappy-%s" % (ns, w) for w in ("monitor", "admin", "chat", "chess", "masi", "postgres")]
-              + ["cluster.local/ns/%s/sa/%s" % (ns, init_sa)])
+need(bool(init_sa) and init_sa != "default", "the init-users Job runs as %r" % init_sa)
+need(any(d.get("kind") == "ServiceAccount" and d["metadata"]["name"] == init_sa for d in data),
+     "the init-users ServiceAccount %s not rendered by the data chart" % init_sa)
+# CNPG's instances run as a ServiceAccount named as their cluster
+want = sorted(["cluster.local/ns/%s/sa/t-schnappy-%s" % (ns, w) for w in ("monitor", "admin", "chat", "chess", "masi")]
+              + ["cluster.local/ns/%s/sa/%s" % (ns, cl), "cluster.local/ns/%s/sa/%s" % (ns, init_sa)])
 rules = spec.get("rules") or []
-assert len(rules) == 2, "two rules: %d" % len(rules)
+need(len(rules) == 2, "two rules: %d" % len(rules))
 first, second = rules
-assert set(first) == {"from", "to"} and len(first["from"]) == 1 and set(first["from"][0]) == {"source"}, first
-assert set(first["from"][0]["source"]) == {"principals"}, "5432 admits by more than principals: %s" % first["from"][0]["source"]
-assert sorted(first["from"][0]["source"]["principals"]) == want, first["from"][0]["source"]["principals"]
-assert first["to"] == [{"operation": {"ports": ["5432"]}}], first["to"]
-assert second == {"to": [{"operation": {"ports": ["8000"]}}]}, second
+need(set(first) == {"from", "to"} and len(first["from"]) == 1 and set(first["from"][0]) == {"source"}, "the 5432 rule: %s" % first)
+need(set(first["from"][0]["source"]) == {"principals"}, "5432 admits by more than principals: %s" % first["from"][0]["source"])
+need(sorted(first["from"][0]["source"]["principals"]) == want, "5432's principals: %s" % first["from"][0]["source"]["principals"])
+need(first["to"] == [{"operation": {"ports": ["5432"]}}], "the 5432 rule's ports: %s" % first["to"])
+need(second == {"to": [{"operation": {"ports": ["8000"]}}]}, "the 8000 rule (any source: the operator, the liveness pinger): %s" % second)
 PY_POSTGRES_AP
 # Strimzi's broker: its own policy, the Kafka clients (masi among them) and Kafka's backup Job, on 9092 alone
 sk=$(ap t-schnappy-strimzi-kafka)

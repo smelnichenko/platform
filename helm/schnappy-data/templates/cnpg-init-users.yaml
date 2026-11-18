@@ -45,6 +45,10 @@ spec:
         app.kubernetes.io/name: postgres-init-users
         velero.io/exclude-from-backup: "true"
         app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        # the proxy an init container of its own that runs first and stops with the Job (as kafka-backup's): no
+        # quitquitquit call at the script's end, whose failure the Job had to ignore
+        sidecar.istio.io/nativeSidecar: "true"
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ include "schnappy.postgres.serviceName" . }}-init-users
@@ -122,7 +126,6 @@ spec:
               {{- end }}
 
               echo "Per-service users and databases configured."
-              wget -T 5 -qO- --post-data= http://localhost:15020/quitquitquit || true
       volumes:
         - name: tmp
           emptyDir: {}

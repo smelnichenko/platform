@@ -29,7 +29,8 @@ spec:
       priorityClassName: data-critical
       metadata:
         annotations:
-          backup.velero.io/backup-volumes: data-0
+          # the broker pod's volume is "data" (persistent-claim storage; data-<id> is JBOD's naming) - data-0 named none
+          backup.velero.io/backup-volumes: data
           traffic.sidecar.istio.io/excludeInboundPorts: "9090,9091,9093,8443"
 ---
 apiVersion: kafka.strimzi.io/v1

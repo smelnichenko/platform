@@ -8,8 +8,10 @@ peerAuthentication:
   enabled: true
   mode: STRICT
   # the observability stack's plaintext ports - Alertmanager's 9093 (the sidecar-less Prometheus posts alerts) and s3gw's
-  # 9000 (the sidecar-less Mimir and Tempo speak S3) - only where that stack runs (schnappy-infra)
-  observability: false
+  # 9000 (the sidecar-less Mimir and Tempo speak S3) - where that stack runs (schnappy-infra). On unless an environment
+  # without it says false (production, test): one dropped there is an inert exception, one dropped in schnappy-infra
+  # would be silent alerts again (2026-04-20)
+  observability: true
   # CNPG's instance manager port 8000 (the operator calls it in plaintext) - where the namespace's CNPG cluster
   # <fullname>-postgres runs with sidecars (production, test; schnappy-infra's CNPG clusters run without one)
   cnpgPostgres: true
@@ -17,6 +19,12 @@ peerAuthentication:
 # AuthorizationPolicies (enforced by sidecar proxy)
 authorizationPolicies:
   enabled: true
+  # istio.io/dry-run on the policies still proving their client lists: the sidecars count what they would refuse
+  # (rbac shadow_denied), nothing is refused. Each environment turns its own off - schnappy-test first, a day of
+  # Prometheus's shadow_denied increase at 0 before production
+  dryRun:
+    postgres: true
+    strimziKafka: true
 
 # Istio ingress gateway
 gateway:
