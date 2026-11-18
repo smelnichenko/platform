@@ -1,0 +1,80 @@
+# promtool unit tests: the pod alerts see an init container - Istio's native sidecar is one, and kube-state-metrics
+# reports it as kube_pod_init_container_* (never kube_pod_container_*). PodRestartingFrequently, ContainerOOMKilled and
+# PodCrashLoopBackOff (schnappy) and KubePodCrashLooping (schnappy-observability) read only the app containers' series:
+# a proxy OOM-killed or crash-looping would have alerted nothing once the mesh's sidecars went native.
+rule_files:
+  - rendered-rules.yaml
+  - rendered-infra-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      # an app pod's native sidecar restarting every minute from minute 11
+      - series: 'kube_pod_init_container_status_restarts_total{namespace="schnappy-production", pod="chat-7c9", container="istio-proxy", uid="u1"}'
+        values: '0x10 1+1x50'
+      # a Job pod's (the Kafka backup's) the same: PodRestartingFrequently leaves Jobs out, KubePodCrashLooping does not
+      - series: 'kube_pod_init_container_status_restarts_total{namespace="schnappy-production", pod="kafka-backup-1-x", container="istio-proxy", uid="u2"}'
+        values: '0x10 1+1x50'
+      - series: 'kube_pod_owner{namespace="schnappy-production", pod="kafka-backup-1-x", uid="u2", owner_kind="Job", owner_name="kafka-backup-1", owner_is_controller="true"}'
+        values: '1x60'
+      # an init container that ran once and completed: never an alert
+      - series: 'kube_pod_init_container_status_restarts_total{namespace="schnappy-production", pod="monitor-1", container="wait-for-db", uid="u3"}'
+        values: '0x60'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodRestartingFrequently
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: PodRestartingFrequently
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, pod: chat-7c9, container: istio-proxy, uid: u1 }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/PodRestartingFrequently"
+              summary: "Pod chat-7c9 restarting frequently"
+      - eval_time: 45m
+        alertname: KubePodCrashLooping
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, pod: chat-7c9, container: istio-proxy, uid: u1 }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/KubePodCrashLooping"
+              summary: "Pod schnappy-production/chat-7c9 crash-looping"
+              description: "Container istio-proxy restarted >5 times in the last hour."
+          - exp_labels: { severity: warning, namespace: schnappy-production, pod: kafka-backup-1-x, container: istio-proxy, uid: u2 }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/KubePodCrashLooping"
+              summary: "Pod schnappy-production/kafka-backup-1-x crash-looping"
+              description: "Container istio-proxy restarted >5 times in the last hour."
+
+  - interval: 1m
+    input_series:
+      # the native sidecar OOM-killed (its last termination), then crash-looping
+      - series: 'kube_pod_init_container_status_last_terminated_reason{namespace="schnappy-production", pod="chat-7c9", container="istio-proxy", uid="u1", reason="OOMKilled"}'
+        values: '_x5 1x30'
+      - series: 'kube_pod_init_container_status_waiting_reason{namespace="schnappy-production", pod="chat-7c9", container="istio-proxy", uid="u1", reason="CrashLoopBackOff"}'
+        values: '_x5 1x30'
+      # an init container's last termination Completed: no OOM alert
+      - series: 'kube_pod_init_container_status_last_terminated_reason{namespace="schnappy-production", pod="monitor-1", container="wait-for-db", uid="u3", reason="Completed"}'
+        values: '1x35'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ContainerOOMKilled
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: ContainerOOMKilled
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production, pod: chat-7c9, container: istio-proxy, uid: u1, reason: OOMKilled }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/ContainerOOMKilled"
+              summary: "Container istio-proxy in chat-7c9 was OOM killed"
+      - eval_time: 8m
+        alertname: PodCrashLoopBackOff
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: PodCrashLoopBackOff
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production, pod: chat-7c9, container: istio-proxy, uid: u1, reason: CrashLoopBackOff }
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/PodCrashLoopBackOff"
+              summary: "Pod chat-7c9 in CrashLoopBackOff"

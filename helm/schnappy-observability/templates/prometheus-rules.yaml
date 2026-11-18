@@ -202,8 +202,10 @@ spec:
           # kube_pod_container_status_waiting_reason is emitted only while a container
           # is waiting; detect crash-loops via restart rate instead — a container
           # restarting more than 5 times in an hour — independent of catching that
-          # transient waiting-reason series at scrape time.
-          expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
+          # transient waiting-reason series at scrape time. The init containers too: Istio's native sidecar is one.
+          expr: |
+            increase(kube_pod_container_status_restarts_total[1h]) > 5
+            or increase(kube_pod_init_container_status_restarts_total[1h]) > 5
           for: 15m
           labels:
             severity: warning

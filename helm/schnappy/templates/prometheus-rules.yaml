@@ -13,9 +13,14 @@ spec:
   groups:
     - name: {{ $ns }}-infrastructure
       rules:
+        # each pod rule reads the init containers too: Istio's native sidecar is one (kube-state-metrics'
+        # kube_pod_init_container_*), and an init container restarting or crash-looping holds its pod back
         - alert: PodRestartingFrequently
           expr: |
-            increase(kube_pod_container_status_restarts_total{namespace="{{ $ns }}"}[1h]) > 3
+            (
+              increase(kube_pod_container_status_restarts_total{namespace="{{ $ns }}"}[1h]) > 3
+              or increase(kube_pod_init_container_status_restarts_total{namespace="{{ $ns }}"}[1h]) > 3
+            )
             unless on(pod, namespace) kube_pod_owner{namespace="{{ $ns }}", owner_kind="Job"}
           for: 5m
           labels:
@@ -25,7 +30,9 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/PodRestartingFrequently"
             summary: "Pod {{"{{"}} $labels.pod {{"}}"}} restarting frequently"
         - alert: ContainerOOMKilled
-          expr: kube_pod_container_status_last_terminated_reason{namespace="{{ $ns }}", reason="OOMKilled"} == 1
+          expr: |
+            kube_pod_container_status_last_terminated_reason{namespace="{{ $ns }}", reason="OOMKilled"} == 1
+            or kube_pod_init_container_status_last_terminated_reason{namespace="{{ $ns }}", reason="OOMKilled"} == 1
           labels:
             severity: critical
             namespace: {{ $ns }}
@@ -33,7 +40,9 @@ spec:
             runbook_url: "https://runbooks.pmon.dev/ContainerOOMKilled"
             summary: "Container {{"{{"}} $labels.container {{"}}"}} in {{"{{"}} $labels.pod {{"}}"}} was OOM killed"
         - alert: PodCrashLoopBackOff
-          expr: kube_pod_container_status_waiting_reason{namespace="{{ $ns }}", reason="CrashLoopBackOff"} == 1
+          expr: |
+            kube_pod_container_status_waiting_reason{namespace="{{ $ns }}", reason="CrashLoopBackOff"} == 1
+            or kube_pod_init_container_status_waiting_reason{namespace="{{ $ns }}", reason="CrashLoopBackOff"} == 1
           for: 5m
           labels:
             severity: critical
