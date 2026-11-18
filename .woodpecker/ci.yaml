@@ -63,9 +63,9 @@ steps:
   # ClickHouse started on the chart's config in the chart's image: a config it refuses fails here, not at production's
   # restart; every system log it keeps has a TTL (the script says why)
   - name: clickhouse-config-start
-    image: clickhouse/clickhouse-server:26.8.34.13-alpine
+    image: clickhouse/clickhouse-server:26.8.39.19-alpine
     environment:
-      CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.34.13-alpine
+      CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.39.19-alpine
     commands:
       - sh .woodpecker/clickhouse-config-start.sh
 
@@ -98,7 +98,7 @@ steps:
     commands:
       - sh .woodpecker/alertmanager-render.sh
   - name: alertmanager-check
-    image: prom/alertmanager:v0.34.1
+    image: prom/alertmanager:v0.34.2
     depends_on: [alertmanager-render]
     commands:
       - sh .woodpecker/alertmanager-check.sh
