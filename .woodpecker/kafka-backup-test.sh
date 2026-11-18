@@ -82,7 +82,8 @@ A; r=$(DROP_PART=chat.messages:$P0 run a "$DUMP"); d=$(ls "$T/a/out" | head -1)
 check "a dump refused: a partition missing from the offsets read (no leader)" \
   "$r $(grep -c 'chat.messages: the earliest offsets name partitions' "$T/out") $(test -f "$T/a/out/$d/DONE" && echo done || echo no-done)" "rc=1 1 no-done"
 A; r=$(SHORT=1 run a "$DUMP")
-check "a dump refused: a read short of its offsets' count (every line a message: none named)" "$r $(grep -c 'messages read, its offsets say [0-9]*$' "$T/out")" "rc=1 1"
+check "a dump refused: a read short of its offsets' count (every line a message: none named), the consumer's stderr shown" \
+  "$r $(grep -c 'messages read, its offsets say [0-9]*$' "$T/out") $(grep -c '^Processed a total of 2 messages$' "$T/out")" "rc=1 1 1"
 A; r=$(START_SHIFT=1 run a "$DUMP")
 check "a dump refused: retention moved a log's start past its offset after the offsets read - an error (auto.offset.reset=none), no silent jump" \
   "$r $(grep -c 'the read failed' "$T/out") $(grep -c 'OffsetOutOfRangeException' "$T/out")" "rc=1 1 1"
@@ -133,6 +134,9 @@ check "  its pods' egress to the store's three addresses on 9000; KafkaBackupsUn
 check "refused: no endpoint form, no store addresses, no Vault, keep under 2" \
   "$(kb --set strimzi.backup.endpoint=x --set 'strimzi.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*backup.endpoint') $(kb --set strimzi.backup.endpoint=http://s:9000 | grep -c 'execution error.*storeIps') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set vault.secretsEnabled=false | grep -c 'execution error.*vault') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set strimzi.backup.keep=1 | grep -c 'execution error.*keep')" \
   "1 1 1 1"
+check "refused: tools at another version than the cluster's (a mirror's path with its tag, or a digest after it, taken)" \
+  "$(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set strimzi.kafkaVersion=4.3.1 --set strimzi.backup.toolsImage=apache/kafka:4.2.0 | grep -c 'execution error.*toolsImage') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set strimzi.kafkaVersion=4.3.1 --set strimzi.backup.toolsImage=mirror.local/apache/kafka:4.3.1 | grep -c 'image: mirror.local/apache/kafka:4.3.1$') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set strimzi.kafkaVersion=4.3.1 --set strimzi.backup.toolsImage=apache/kafka:4.3.1@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef | grep -c 'image: apache/kafka:4.3.1@sha256:')" \
+  "1 1 1"
 check "off by default: no Kafka backup at all" \
   "$(helm template t helm/schnappy-data/ --set postgres.password=test --set strimzi.enabled=true | grep -c 'kafka-backup')" 0
 [ "$fails" -eq 0 ] && echo "kafka backup test: OK" || { echo "kafka backup test: $fails FAILED"; exit 1; }

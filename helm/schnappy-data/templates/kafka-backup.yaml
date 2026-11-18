@@ -5,6 +5,8 @@
 {{- if not $b.storeIps }}{{ fail "strimzi.backup.storeIps: the store's addresses (its VIP and the Pis behind it)" }}{{ end }}
 {{- if lt (int $b.keep) 2 }}{{ fail "strimzi.backup.keep: 2 or more" }}{{ end }}
 {{- if not .Values.vault.secretsEnabled }}{{ fail "strimzi.backup needs vault.secretsEnabled: the store's keys come from Vault" }}{{ end }}
+{{- /* the dump's tools at the cluster's own version: their options and their stdout are what the dump was proven on */}}
+{{- if and $b.toolsImage (not (hasSuffix (printf ":%s" (toString .Values.strimzi.kafkaVersion)) (regexReplaceAll "@sha256:[0-9a-f]+$" (toString $b.toolsImage) ""))) }}{{ fail (printf "strimzi.backup.toolsImage: Kafka's tools at strimzi.kafkaVersion (%s) - a mirror's path may differ, its tag may not" (toString .Values.strimzi.kafkaVersion)) }}{{ end }}
 # Kafka's topics backed up to the Pi store once a day: a dump (files/kafka-backup-dump.sh, in Kafka's own client tools at
 # the cluster's version) of every topic's messages - each partition read from its earliest offset, exactly as many as
 # its offsets say, headers, keys and values - with the topics' descriptions and the consumer groups' offsets; then the

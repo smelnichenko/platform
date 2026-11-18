@@ -71,8 +71,11 @@ if [ "$o" -lt "$lo" ] || [ "$o" -gt "$hi" ]; then
 fi
 from=$((o - $(start "$t" "$p") + 1))
 # EXTRA_LINE=<text>: a line after the first message that is none (a value's fragment, split at a raw newline)
+# its closing line on stderr, as Kafka's: "Processed a total of <n> messages"
+r=$(mktemp)
 sed -n "${from},\$p" "$K/$t/$p.log" | head -n $((n - ${SHORT:-0})) \
-  | { if IFS= read -r l; then printf '%s\n' "$l"; [ -z "${EXTRA_LINE:-}" ] || printf '%s\n' "$EXTRA_LINE"; fi; cat; }
+  | { if IFS= read -r l; then printf '%s\n' "$l"; [ -z "${EXTRA_LINE:-}" ] || printf '%s\n' "$EXTRA_LINE"; fi; cat; } > "$r"
+cat "$r"; echo "Processed a total of $(wc -l < "$r" | tr -d ' ') messages" >&2; rm -f "$r"
 S
 cat > "$W/bin/kafka-console-producer.sh" << 'S'
 #!/bin/sh

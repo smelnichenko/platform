@@ -177,7 +177,8 @@ strimzi:
   kafkaVersion: 4.3.1
   # Kafka's topics dumped to the Pi store once a day (templates/kafka-backup.yaml): every partition's messages, the
   # topics' descriptions, the consumer groups' offsets; the newest `keep` complete dumps kept. The dump runs Kafka's own
-  # client tools at kafkaVersion (apache/kafka - toolsImage overrides); the store's keys from Vault's backup-store (an
+  # client tools at kafkaVersion (apache/kafka - toolsImage overrides the image, never its version: a tag other than
+  # kafkaVersion refused); the store's keys from Vault's backup-store (an
   # ExternalSecret of its own)
   backup:
     enabled: false

@@ -58,11 +58,12 @@ while read -r t; do
       || { cat "$out/topics/$t.$p.log"; fail "$t[$p]: the read failed"; }
     got=$(wc -l < "$m")
     # the first line not a message named by its number and length - its text only when it is a Kafka tool's own notice
-    # (a value's fragment, split at a raw newline, is a user's message: never into the logs)
-    [ "$got" -eq "$n" ] || fail "$t[$p]: $got messages read, its offsets say $n$(awk -F '\t' 'NF < 3 {
+    # (a value's fragment, split at a raw newline, is a user's message: never into the logs); the consumer's own stderr
+    # shown (a timeout or an error it exits 0 on - no message text in it)
+    [ "$got" -eq "$n" ] || { cat "$out/topics/$t.$p.log"; fail "$t[$p]: $got messages read, its offsets say $n$(awk -F '\t' 'NF < 3 {
       printf "; not a message: line %d (%d characters)", NR, length($0)
       if ($0 ~ /^(Option |Warning: )--[a-z.-]+ is deprecated/) printf ": %.160s", $0
-      exit }' "$m")"
+      exit }' "$m")"; }
     ! grep -q $'\r' "$m" || fail "$t[$p]: a carriage return in a message - the producer's line reader would split it"
     iconv -f UTF-8 -t UTF-8 < "$m" | cmp -s - "$m" || fail "$t[$p]: a message not valid UTF-8 - it would not come back as it was"
     short=$(awk -F '\t' 'NF < 3' "$m" | wc -l)
