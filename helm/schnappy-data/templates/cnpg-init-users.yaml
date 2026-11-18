@@ -2,6 +2,17 @@
 {{- /* every psql call's bound: its connect and its statement (the pod's PGCONNECT_TIMEOUT and statement_timeout) */}}
 {{- $connect := 5 }}
 {{- $statement := 60 }}
+# its own identity: the mesh's postgres AuthorizationPolicy admits it by name on 5432 (the namespace's default
+# ServiceAccount, which any pod without one runs as, is not admitted). Created here with the Job, as kafka-backup's,
+# in sync wave 0 - before the hook's wave 10
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "schnappy.postgres.serviceName" . }}-init-users
+  labels:
+    {{- include "schnappy.postgres.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -36,6 +47,7 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: {{ include "schnappy.postgres.serviceName" . }}-init-users
       automountServiceAccountToken: false
       containers:
         - name: init-users

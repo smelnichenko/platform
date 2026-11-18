@@ -8,23 +8,7 @@ spec:
   mtls:
     mode: {{ .Values.peerAuthentication.mode }}
 ---
-# Mimir accepts plaintext on port 9009 for Prometheus remote_write
-# and k6 metrics push from outside the mesh
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: {{ include "schnappy.fullname" . }}-mimir
-  namespace: {{ .Release.Namespace }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: mimir
-  mtls:
-    mode: {{ .Values.peerAuthentication.mode }}
-  portLevelMtls:
-    9009:
-      mode: PERMISSIVE
----
+{{- if .Values.peerAuthentication.observability }}
 # Alertmanager accepts plaintext on port 9093 for Prometheus alert POSTs.
 #
 # Prometheus runs WITHOUT an Istio sidecar by design. Putting it in the
@@ -72,42 +56,8 @@ spec:
   portLevelMtls:
     9000:
       mode: PERMISSIVE
----
-# Elasticsearch accepts plaintext on port 9200 for Fluent Bit log shipping
-# (Fluent Bit DaemonSet has no sidecar — needs host log access)
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: {{ include "schnappy.fullname" . }}-elasticsearch
-  namespace: {{ .Release.Namespace }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: elasticsearch
-  mtls:
-    mode: {{ .Values.peerAuthentication.mode }}
-  portLevelMtls:
-    9200:
-      mode: PERMISSIVE
-{{- if ne (.Values.scyllaOperator.enabled | toString) "true" }}
----
-# ScyllaDB accepts plaintext on port 9042 for CQL binary protocol
-# (only needed when ScyllaDB has an Istio sidecar — operator mode disables it)
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: {{ include "schnappy.fullname" . }}-scylla
-  namespace: {{ .Release.Namespace }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: scylla
-  mtls:
-    mode: {{ .Values.peerAuthentication.mode }}
-  portLevelMtls:
-    9042:
-      mode: PERMISSIVE
 {{- end }}
+{{- if .Values.peerAuthentication.cnpgPostgres }}
 ---
 # CNPG operator (no sidecar) connects to instance manager on port 8000
 apiVersion: security.istio.io/v1
@@ -124,4 +74,5 @@ spec:
   portLevelMtls:
     8000:
       mode: PERMISSIVE
+{{- end }}
 {{- end }}

@@ -441,27 +441,78 @@ for sa in $(echo "$masi" | awk '/serviceAccountName:/ { print $2 }' | sort -u); 
   echo "$mesh" | grep -q "^  name: $sa\$" || fail "service account $sa is referenced by the app chart but not created by the mesh chart"
 done
 ap() { echo "$mesh" | awk -v n="$1" '/^---/ { on = 0 } $0 == "  name: " n { on = 1 } on'; }
-ap t-schnappy-postgres | grep -q 'sa/t-schnappy-masi$' || fail "masi principal missing from the postgres AuthorizationPolicy"
-# Strimzi's broker: its own policy selecting it, the Kafka clients (masi among them) and Kafka's backup Job, on 9092
-# alone. The policy and PeerAuthentication from before Strimzi selected app.kubernetes.io/component=kafka, a label no
-# Strimzi pod carries: no mesh object may select it again, as one that looks in force and selects nothing. Read as
-# YAML - the broker's ServiceAccount carries that label in its metadata and selects nothing. Exit 3 is a hit; any other
-# failure is the check's own
-echo "$mesh" > .ci-out/mesh-render.yaml
+# Every mesh AuthorizationPolicy and PeerAuthentication selects a workload with an Istio proxy (mesh-selectors.py):
+# the workloads are every chart's, rendered with everything on, and the operators' pods (CNPG, Strimzi, Scylla, the
+# gateway). Until 2026-11-18 eight did not: postgres (CNPG labels its pods component=database), Kafka's pair (gone
+# with Strimzi), Scylla's pair and SonarQube's old Postgres (no sidecar), Mimir's (no sidecar), Elasticsearch's. Exit 3
+# is a policy found; any other failure is the check's own
+sel=.ci-out/sel
+helm template t helm/schnappy-mesh/ --set gateway.enabled=true --set 'gatewayLanOnly.allowedCidrs={10.0.0.0/8}' \
+  --set peerAuthentication.observability=true > $sel-mesh.yaml || fail "the mesh (everything on) did not render"
+helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set vault.secretsEnabled=true --set admin.enabled=true \
+  --set chatService.enabled=true --set chessService.enabled=true --set masiService.enabled=true \
+  --set masiService.browser.enabled=true --set masiService.browser.existingSecret=s > $sel-app.yaml \
+  || fail "schnappy (everything on) did not render"
+helm template t helm/schnappy-data/ --set postgres.password=test --set vault.secretsEnabled=true --set cnpg.enabled=true \
+  --set 'postgres.databases[0].name=a' --set 'postgres.databases[0].user=a' --set strimzi.enabled=true \
+  --set opensearch.enabled=true --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
+  --set scyllaOperator.enabled=true --set scyllaOperator.version=x --set scyllaOperator.agentVersion=x > $sel-data.yaml \
+  || fail "schnappy-data (everything on) did not render"
+helm template t helm/schnappy-realtime/ --set centrifugo.externalSecret.enabled=true > $sel-rt.yaml \
+  || fail "schnappy-realtime did not render"
+helm template t helm/schnappy-observability/ --set clickhouse.enabled=true --set clickhouse.password=x \
+  --set fluentbit.enabled=true --set prometheus.enabled=true --set mimir.enabled=true --set tempo.enabled=true \
+  --set alertmanager.enabled=true --set kubeStateMetrics.enabled=true --set pushgateway.enabled=true \
+  --set grafana.enabled=true --set grafana.adminPassword=x --set reports.enabled=true --set smartctl.enabled=true \
+  --set nodeExporter.enabled=true > $sel-obs.yaml || fail "schnappy-observability (everything on) did not render"
+helm template t helm/schnappy-sonarqube/ --set sonarqube.enabled=true --set sonarqube.postgres.password=x > $sel-sq.yaml \
+  || fail "schnappy-sonarqube did not render"
+helm template t helm/schnappy-auth/ --set keycloak.enabled=true --set keycloak.dbPassword=x > $sel-auth.yaml \
+  || fail "schnappy-auth did not render"
 rc=0
-python3 - .ci-out/mesh-render.yaml <<'PY_KAFKA_SELECTOR' || rc=$?
+python3 .woodpecker/mesh-selectors.py $sel-mesh.yaml $sel-app.yaml $sel-data.yaml $sel-rt.yaml $sel-obs.yaml $sel-sq.yaml \
+  $sel-auth.yaml || rc=$?
+[ "$rc" != 3 ] || fail "a mesh policy selects nothing that enforces it (above)"
+[ "$rc" = 0 ] || fail "mesh-selectors.py itself failed (rc=$rc)"
+# Each environment's PeerAuthentication exceptions: the observability stack's (Alertmanager 9093, s3gw 9000) only where
+# it runs (peerAuthentication.observability - schnappy-infra), CNPG's 8000 only where its sidecar-carrying cluster runs
+# (peerAuthentication.cnpgPostgres - not schnappy-infra)
+pa() { helm template t helm/schnappy-mesh/ --show-only templates/peer-authentication.yaml "$@" | awk '$1 == "name:" { print $2 }' | sort | tr '\n' ' '; }
+[ "$(pa)" = "t-schnappy t-schnappy-cnpg-postgres " ] || fail "the default PeerAuthentications: $(pa)"
+[ "$(pa --set peerAuthentication.observability=true --set peerAuthentication.cnpgPostgres=false)" = "t-schnappy t-schnappy-alertmanager t-schnappy-s3gw " ] \
+  || fail "schnappy-infra's PeerAuthentications: $(pa --set peerAuthentication.observability=true --set peerAuthentication.cnpgPostgres=false)"
+# PostgreSQL's policy exactly: the CNPG cluster the data chart makes, ALLOW, 5432 for the app services, the instances
+# (replication) and the init-users Job's own ServiceAccount (read from its Job), 8000 (the operator's plaintext status
+# calls) from any source, in dry run until its shadow_denied has read 0 for a day. One more name or rule, a DENY or
+# the cluster renamed and it fails
+python3 - $sel-mesh.yaml $sel-data.yaml <<'PY_POSTGRES_AP' || fail "the postgres AuthorizationPolicy is not exactly the one above (the assertion above)"
 import sys, yaml
-for d in yaml.safe_load_all(open(sys.argv[1])):
-    spec = (d or {}).get("spec") if isinstance(d, dict) else None
-    if not isinstance(spec, dict):
-        continue
-    for sel in ((spec.get("selector") or {}).get("matchLabels"), (spec.get("workloadSelector") or {}).get("labels")):
-        if isinstance(sel, dict) and sel.get("app.kubernetes.io/component") == "kafka":
-            print(d.get("kind"), (d.get("metadata") or {}).get("name"), file=sys.stderr)
-            sys.exit(3)
-PY_KAFKA_SELECTOR
-[ "$rc" != 3 ] || fail "a mesh object selects app.kubernetes.io/component=kafka - no Strimzi pod carries it (select by strimzi.io/cluster + strimzi.io/broker-role)"
-[ "$rc" = 0 ] || fail "the component=kafka selector check itself failed (rc=$rc)"
+mesh, data = ([d for d in yaml.safe_load_all(open(p)) if isinstance(d, dict)] for p in sys.argv[1:3])
+aps = [d for d in mesh if d.get("kind") == "AuthorizationPolicy" and d["metadata"]["name"] == "t-schnappy-postgres"]
+assert len(aps) == 1, "one postgres AuthorizationPolicy: %d" % len(aps)
+ap, = aps
+ns, spec = ap["metadata"]["namespace"], ap["spec"]
+clusters = [d["metadata"]["name"] for d in data if d.get("kind") == "Cluster" and d.get("apiVersion", "").startswith("postgresql.cnpg.io/")]
+assert clusters == ["t-schnappy-postgres"], "the data chart's CNPG clusters: %s" % clusters
+assert spec.get("selector") == {"matchLabels": {"cnpg.io/cluster": clusters[0]}}, spec.get("selector")
+assert spec.get("action") == "ALLOW", spec.get("action")
+assert (ap["metadata"].get("annotations") or {}).get("istio.io/dry-run") == "true", "enforced before its dry run"
+jobs = [d for d in data if d.get("kind") == "Job" and d["metadata"]["name"] == "t-schnappy-postgres-init-users"]
+assert len(jobs) == 1, "one init-users Job: %d" % len(jobs)
+init_sa = jobs[0]["spec"]["template"]["spec"].get("serviceAccountName")
+assert init_sa and init_sa != "default", "the init-users Job runs as %r" % init_sa
+want = sorted(["cluster.local/ns/%s/sa/t-schnappy-%s" % (ns, w) for w in ("monitor", "admin", "chat", "chess", "masi", "postgres")]
+              + ["cluster.local/ns/%s/sa/%s" % (ns, init_sa)])
+rules = spec.get("rules") or []
+assert len(rules) == 2, "two rules: %d" % len(rules)
+first, second = rules
+assert set(first) == {"from", "to"} and len(first["from"]) == 1 and set(first["from"][0]) == {"source"}, first
+assert set(first["from"][0]["source"]) == {"principals"}, "5432 admits by more than principals: %s" % first["from"][0]["source"]
+assert sorted(first["from"][0]["source"]["principals"]) == want, first["from"][0]["source"]["principals"]
+assert first["to"] == [{"operation": {"ports": ["5432"]}}], first["to"]
+assert second == {"to": [{"operation": {"ports": ["8000"]}}]}, second
+PY_POSTGRES_AP
+# Strimzi's broker: its own policy, the Kafka clients (masi among them) and Kafka's backup Job, on 9092 alone
 sk=$(ap t-schnappy-strimzi-kafka)
 echo "$sk" | grep -q 'strimzi.io/cluster: t-schnappy$' && echo "$sk" | grep -q 'strimzi.io/broker-role: "true"$' \
   || fail "the strimzi-kafka AuthorizationPolicy does not select Strimzi's brokers by cluster and role"

@@ -7,6 +7,12 @@ scyllaOperator:
 peerAuthentication:
   enabled: true
   mode: STRICT
+  # the observability stack's plaintext ports - Alertmanager's 9093 (the sidecar-less Prometheus posts alerts) and s3gw's
+  # 9000 (the sidecar-less Mimir and Tempo speak S3) - only where that stack runs (schnappy-infra)
+  observability: false
+  # CNPG's instance manager port 8000 (the operator calls it in plaintext) - where the namespace's CNPG cluster
+  # <fullname>-postgres runs with sidecars (production, test; schnappy-infra's CNPG clusters run without one)
+  cnpgPostgres: true
 
 # AuthorizationPolicies (enforced by sidecar proxy)
 authorizationPolicies:

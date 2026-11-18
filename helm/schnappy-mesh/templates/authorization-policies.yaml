@@ -2,16 +2,25 @@
 {{- $ns := .Release.Namespace }}
 {{- $fn := include "schnappy.fullname" . }}
 ---
-# PostgreSQL — only app services on port 5432
+# CloudNativePG's PostgreSQL instances, selected by cluster: CNPG labels its pods cnpg.io/cluster (and
+# app.kubernetes.io/component=database - never the "postgres" this selected until 2026-11-18, when it held no pod and
+# 5432 had no identity check, the NetworkPolicy alone). 5432: the app services, the instances themselves (a replica
+# streams from the primary through both sidecars) and the init-users Job. 8000: the instance manager's status port -
+# the CNPG operator (cnpg-system, no sidecar) calls it in plaintext (the cnpg-postgres PeerAuthentication makes it
+# PERMISSIVE), so any source; the NetworkPolicy keeps it to cnpg-system and the instances. Metrics leave through 15020
+# (merged), which the sidecar does not capture. DRY RUN first, as strimzi-kafka: Envoy judges new connections only, and
+# a client missing here would fail when its pool reconnects - the instance sidecars' rbac shadow_denied counts them
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: {{ $fn }}-postgres
   namespace: {{ $ns }}
+  annotations:
+    istio.io/dry-run: "true"
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/component: postgres
+      cnpg.io/cluster: {{ $fn }}-postgres
   action: ALLOW
   rules:
     - from:
@@ -22,9 +31,14 @@ spec:
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
               - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-masi
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-postgres
+              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-postgres-init-users
       to:
         - operation:
             ports: ["5432"]
+    - to:
+        - operation:
+            ports: ["8000"]
 ---
 # Valkey — only app services on port 6379
 apiVersion: security.istio.io/v1
@@ -108,28 +122,6 @@ spec:
         - operation:
             ports: ["9092"]
 ---
-# ScyllaDB — only monitor + chat on port 9042/7000
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: {{ $fn }}-scylla
-  namespace: {{ $ns }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: scylla
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-scylla
-      to:
-        - operation:
-            ports: ["9042", "7000"]
----
 # s3gw (versitygw) intentionally has NO L7 AuthorizationPolicy on :9000.
 # Its S3 clients (the buckets Job, and Mimir/Tempo/Hyperfoil on the infra tier)
 # must run sidecar-less — istio breaks S3 SigV4 — so they carry no principal to
@@ -168,48 +160,6 @@ spec:
       to:
         - operation:
             ports: ["8000"]
----
-# ClickHouse — fluentbit + grafana on HTTP port 8123
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: {{ $fn }}-clickhouse
-  namespace: {{ $ns }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: clickhouse
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-fluentbit
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-grafana
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-clickhouse
-      to:
-        - operation:
-            ports: ["8123", "9000"]
----
-# SonarQube PostgreSQL — only sonarqube on port 5432
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: {{ $fn }}-sonarqube-postgres
-  namespace: {{ $ns }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: sonarqube-postgres
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-sonarqube
-      to:
-        - operation:
-            ports: ["5432"]
 ---
 # /api/internal/** is admin-only on chat. Spring Security permits the
 # path so the cluster principal (mTLS source SA) is the authority;
