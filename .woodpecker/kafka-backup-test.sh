@@ -154,21 +154,37 @@ put() {  # put <dump dir> <name>: the dump in the store under that name, complet
 }
 A; run a "$DUMP" > /dev/null; d=$(ls "$T/a/out" | head -1); new="$T/a/out/$d"
 store
-check "the guard, no dump in the store yet: nothing to compare, passed" "$(guard "$new") $(grep -c 'no complete dump' "$T/out")" "rc=0 1"
+check "the guard, no dump in the store yet: nothing to compare, passed" "$(guard "$new") $(grep -c 'no complete dump before this one' "$T/out")" "rc=0 1"
 put "$new" 20261101T023000Z
-check "  the newest complete dump the same: passed" "$(guard "$new") $(grep -c 'holds everything the dump 20261101T023000Z held' "$T/out")" "rc=0 1"
+check "  the newest complete dump the same: passed, each topic judged against it" \
+  "$(guard "$new") $(grep -c 'chat.messages@20261101T023000Z user.events@20261101T023000Z' "$T/out")" "rc=0 1"
 mkdir -p "$T/store/b/20261102T023000Z"
-check "  a newer incomplete one passed over, the complete one compared" "$(guard "$new") $(grep -c 'dump 20261101T023000Z held' "$T/out")" "rc=0 1"
+check "  a newer incomplete one passed over, the complete one compared" "$(guard "$new") $(grep -c '@20261101T023000Z' "$T/out")" "rc=0 1"
+store; put "$new" 20261101T023000Z; put "$new" 29991231T000000Z; sed -i 's/TopicId: x/TopicId: later/' "$T/store/b/29991231T000000Z/topics-describe.txt"
+check "  a dump begun after this one (made by hand beside the night's) never its reference" "$(guard "$new") $(grep -c '@20261101T023000Z' "$T/out")" "rc=0 1"
 store; put "$new" 20261101T023000Z; echo "gone.topic" >> "$T/store/b/20261101T023000Z/topics.txt"; echo "gone.topic:0:9" > "$T/store/b/20261101T023000Z/topics/gone.topic.latest"
-check "  a topic the store's dump held gone: refused" "$(guard "$new") $(grep -c 'gone.topic gone - not uploaded' "$T/out")" "rc=1 1"
+printf 'Topic: gone.topic\tTopicId: g\tPartitionCount: 1\n' >> "$T/store/b/20261101T023000Z/topics-describe.txt"
+check "  a topic the store's dump held gone: refused" "$(guard "$new") $(grep -c 'gone.topic gone (since 20261101T023000Z) - not uploaded' "$T/out")" "rc=1 1"
 store; put "$new" 20261101T023000Z; sed -i 's/TopicId: x/TopicId: old/' "$T/store/b/20261101T023000Z/topics-describe.txt"
-check "  a topic made again (its TopicId changed): refused" "$(guard "$new") $(grep -c 'made again (TopicId old -> x)' "$T/out")" "rc=1 1"
+check "  a topic made again (its TopicId changed): refused" "$(guard "$new") $(grep -c 'made again (TopicId old -> x' "$T/out")" "rc=1 1"
 store; put "$new" 20261101T023000Z; sed -i "s/^chat.messages:$P1:\([0-9]*\)/chat.messages:$P1:99/" "$T/store/b/20261101T023000Z/topics/chat.messages.latest"
 check "  a partition's latest offset back: refused, named" "$(guard "$new") $(grep -c "chat.messages\[$P1\] at 8, was 99" "$T/out")" "rc=1 1"
-echo 20261105T000000Z > "$T/store/b/BASELINE"
-check "  the same, the dump older than the BASELINE (a restore since): no comparison, passed" "$(guard "$new") $(grep -c 'since the baseline 20261105T000000Z' "$T/out")" "rc=0 1"
+printf '20261105T000000Z\nwhy a restore\nall\n' > "$T/store/b/BASELINE"
+check "  the same, the BASELINE (all) newer than every dump: nothing to compare, passed" "$(guard "$new") $(grep -c 'nothing to compare' "$T/out")" "rc=0 1"
+printf '20261105T000000Z\n' > "$T/store/b/BASELINE"
+check "  a BASELINE of a timestamp alone covers all" "$(guard "$new")" "rc=0"
+printf '20261105T000000Z\nwhy a restore of user.events\ntopic user.events\n' > "$T/store/b/BASELINE"
+check "  a BASELINE covering another topic (user.events restored): chat.messages still judged - refused" \
+  "$(guard "$new") $(grep -c "chat.messages\[$P1\] at 8, was 99" "$T/out")" "rc=1 1"
+printf '20261105T000000Z\nwhy a restore of chat.messages\ntopic chat.messages\n' > "$T/store/b/BASELINE"
+check "  covering the topic itself: not judged against the dump before it; the others still are - passed" \
+  "$(guard "$new") $(grep -c 'user.events@20261101T023000Z' "$T/out") $(grep -c 'chat.messages@' "$T/out")" "rc=0 1 0"
+put "$new" 20261106T023000Z
+check "  a dump since that BASELINE: the covered topic judged against it" "$(guard "$new") $(grep -c 'chat.messages@20261106T023000Z' "$T/out")" "rc=0 1"
 echo nonsense > "$T/store/b/BASELINE"
 check "  a BASELINE without a timestamp: refused" "$(guard "$new")" "rc=1"
+store; put "$new" 20261101T023000Z; sed -i 's/TopicId: x//' "$T/store/b/20261101T023000Z/topics-describe.txt"
+check "  a TopicId not read (the describe format changed): refused, never passed" "$(guard "$new") $(grep -c 'no TopicId for' "$T/out")" "rc=1 1"
 store; put "$new" 20261101T023000Z
 check "  the store's listing failing: refused, never 'nothing to compare'" "$(FAIL_LSF=1 guard "$new") $(grep -c 'listing store:b failed' "$T/out")" "rc=1 1"
 # the CronJob as rendered

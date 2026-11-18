@@ -25,13 +25,19 @@ kubectl -n $NS logs job/<that kafka-restore-... job> -c restore --tail=20
 
 ## Fix
 
+The run died before its last steps: the store's BASELINE (written after a restore succeeds) may not be there - the
+backup's guard then refuses every dump (the restored topics carry new TopicIds).
+
 - A `kafka-restore-*` Job still active: wait for it; the lock is its.
-- None active, the last one succeeded (`restored N messages from <dump>`): remove the lock, then take a dump now
-  (ops: `tasks/kafka-backup.yml`):
-  `kubectl -n $NS delete configmap $NS-kafka-backup-restoring`
-- None active, the last one failed: Kafka is partly restored - the lock is kept on purpose (a dump now would capture
-  the half). Finish the restore (ops' kafka-restore with that dump; it skips the topics already holding theirs), then
-  remove the lock.
+- None active, the last one succeeded (`restored N messages from <dump>`):
+  1. the BASELINE for what it restored (ops):
+     `task deploy:kafka-backup-baseline -- -e kafka_baseline_topics='<the restored topics>' -e kafka_baseline_why='restore from <dump>'`
+  2. the lock removed: `kubectl -n $NS delete configmap $NS-kafka-backup-restoring`
+  3. a dump now (ops: `task check:production:kafka-backup`) - it must pass the guard.
+- None active, the last one failed: Kafka is partly restored. Remove the lock and run the restore again at once
+  (`task deploy:kafka:restore -- -e kafka_dump=<the same dump> -e kafka_topics='...'`) - the guard refuses any dump in
+  between (no BASELINE yet), so nothing half restored is kept. A topic the failed run cut off mid-produce holds some of
+  the dump's messages and is refused: empty it first (delete its KafkaTopic and let Strimzi make it again), then restore.
 
 ## Why it exists
 
