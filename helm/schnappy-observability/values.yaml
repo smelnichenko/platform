@@ -59,7 +59,7 @@ clickhouse:
     storeIps: []
     bucket: clickhouse-backups
     keep: 7
-    rcloneImage: rclone/rclone:1.71.2
+    rcloneImage: rclone/rclone:1.76.0
   # Realtime envelope archive: events database fed by Kafka, gives
   # analytics + replay over the same publication stream Centrifugo
   # fans out. Enable in tandem with the schnappy-realtime chart.

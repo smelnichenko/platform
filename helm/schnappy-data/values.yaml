@@ -187,7 +187,7 @@ strimzi:
     bucket: kafka-backups
     keep: 7
     toolsImage: ""
-    rcloneImage: rclone/rclone:1.71.2
+    rcloneImage: rclone/rclone:1.76.0
 
 # CloudNativePG operator (replaces custom postgres Deployment)
 # ScyllaDB Operator (replaces manual scylla StatefulSet)
