@@ -10,7 +10,10 @@ A failed run of a **CronJob** stops firing once a later run of the same CronJob 
 
 ## Impact
 
-Depends on the Job. The k6-smoke PostSync hook failing means a deploy's smoke test did not pass — treat as a possibly-broken release. The etcd-backup CronJob (kube-system) failing means no fresh etcd snapshot to the Pi backup store (DR gap). **restore-check-age** (kube-system) failing means a Pi has not restored the backups for two of its turns - production's Postgres, ten's etcd snapshot or the Pis' own backup may no longer restore (see below). velero kopia-maintain, sonarqube-setup, hyperfoil are advisory or one-shot. After a node reboot, old Jobs left in Failed phase are cosmetic cruft, not an incident.
+Depends on the Job. The k6-smoke PostSync hook failing means a deploy's smoke test did not pass — treat as a possibly-broken release. The etcd-backup CronJob (kube-system) failing means no fresh etcd snapshot to the Pi backup store (DR gap). **restore-check-age** (kube-system) failing means a Pi has not restored the backups for two of its turns - production's Postgres, ten's etcd snapshot or the Pis' own backup may no longer restore (see below). velero kopia-maintain, sonarqube-setup, hyperfoil are advisory or one-shot. After a node reboot, old Jobs left in Failed phase are cosmetic cruft, not an incident. The **kafka-backup** CronJob
+(schnappy-production) failing is the first word of a refused dump - its upload's last line says why (the guard's `Kafka
+lost data: ...` means Kafka lost messages now, while the services keep writing): KafkaBackupMissed's table, at once, not
+after its 26 h.
 
 ## First steps
 

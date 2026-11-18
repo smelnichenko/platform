@@ -118,4 +118,6 @@ if [ "${RESET_GROUPS:-yes}" != no ]; then
     done
   done
 fi
+# the topics restored (ops' restore writes the store's BASELINE for these alone: a topic not in the dump is still judged)
+echo "topics $topics"
 echo "restored $total messages from $(basename "$dump")"

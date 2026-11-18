@@ -16,9 +16,15 @@
 #     stdout adds a line - Kafka 4.3's console consumer prints one there for a deprecated option)
 #   - a carriage return, a line not valid UTF-8, or one with fewer than three fields (the producer's line reader would
 #     split, mangle or misparse it)
+#   - a topic whose retention is not read (the guard judges the next dumps by it)
 # The read never jumps: auto.offset.reset=none - retention moving the log start past the first offset is an error, not
 # a silent reset to the log's end. Given as --command-property (Kafka 4.3: --consumer-property is deprecated, and its
 # notice goes to stdout - among the messages).
+# Each topic's retention in force (its own or the broker's: kafka-configs --all says the value that holds) goes in
+# topics/<topic>.kept with, per partition, its first offset at or after each checkpoint - the dump's time - retention + k
+# days (k = 1 .. its days - 1, two weeks at most): the next dumps' guard (kafka-backup-guard.sh) judges by them whether
+# Kafka still holds what this retention keeps - a retention cut short, records deleted, a clock stepped forward lose
+# messages while the TopicId and the latest offsets stay. One read of every topic per checkpoint.
 set -euo pipefail
 K=${KAFKA_BIN:-/opt/kafka/bin}
 BS=${BOOTSTRAP:?}
@@ -33,6 +39,37 @@ RESTORING=${RESTORING:-/restoring/since}
 "$K/kafka-topics.sh" --bootstrap-server "$BS" --describe --exclude-internal > "$out/topics-describe.txt"
 "$K/kafka-consumer-groups.sh" --bootstrap-server "$BS" --describe --all-groups --offsets > "$out/groups.txt" 2>&1 \
   || { cat "$out/groups.txt"; fail "the consumer groups' offsets not read"; }
+"$K/kafka-configs.sh" --bootstrap-server "$BS" --describe --entity-type topics --all > "$out/topics-configs.txt" 2>&1 \
+  || { cat "$out/topics-configs.txt"; fail "the topics' configs not read"; }
+now=$(( $(date +%s) * 1000 ))
+day=86400000
+# "<topic> <retention.ms>" for each topic dumped; -1: kept for ever (its earliest offset never moves - no checkpoint)
+awk 'NR == FNR { want[$1] = 1; next }
+     /^All configs for topic [^ ]+ are:$/ { t = $5 }
+     /^  retention\.ms=-?[0-9]+ / && (t in want) { split($1, a, "="); print t, a[2]; t = "" }' \
+  "$out/topics.txt" "$out/topics-configs.txt" | sort > "$out/retention.txt"
+missing=$(awk '{ print $1 }' "$out/retention.txt" | sort | comm -13 - "$out/topics.txt" | tr '\n' ' ')
+[ -z "$missing" ] || fail "no retention read for: $missing- the next dumps' guard could not judge them"
+for r in $(awk '{ print $2 }' "$out/retention.txt" | sort -un); do
+  [ "$r" -gt 0 ] || continue
+  k=1
+  while [ $((k * day)) -lt "$r" ] && [ "$k" -le 14 ]; do
+    "$K/kafka-get-offsets.sh" --bootstrap-server "$BS" --topic '.*' --exclude-internal-topics --time $((now - r + k * day)) \
+      > "$out/at.$r.$k" || fail "the offsets $k days into a retention of $r ms not read"
+    k=$((k + 1))
+  done
+done
+while read -r t r; do
+  {
+    echo "at:$now"
+    echo "retention:$r"
+    for f in "$out"/at."$r".*; do
+      [ -f "$f" ] || continue
+      awk -F: -v t="$t" -v x=$((now - r + ${f##*.} * day)) '$1 == t && $3 ~ /^[0-9]+$/ { print x ":" $2 ":" $3 }' "$f"
+    done
+  } > "$out/topics/$t.kept"
+done < "$out/retention.txt"
+rm -f "$out"/at.*
 total=0
 while read -r t; do
   [ -n "$t" ] || continue

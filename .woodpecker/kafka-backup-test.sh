@@ -39,12 +39,32 @@ A; r=$(run a "$DUMP"); d=$(ls "$T/a/out" 2> /dev/null | head -1)
 check "a dump: each partition from its earliest offset (5) for its count, the empty one skipped, DONE with the totals" \
   "$r $(grep -c "kafka-console-consumer.sh .*--partition $P1 --offset 5 --max-messages 3 .*--command-property auto.offset.reset=none" "$T/a/calls") $(grep -c "kafka-console-consumer.sh .*--topic chat.messages --partition $P0 " "$T/a/calls" || true) $(cut -d' ' -f2- "$T/a/out/$d/DONE")" \
   "rc=0 1 0 2 topics 4 messages"
+# each topic's retention and its checkpoints (topics/<t>.kept): messages 6.5, 3.5 and 0.5 days old, checkpoints 6..1
+# days back - the first message at or after each
+NOW=$(( $(date +%s) * 1000 )); DAY=86400000
+A; printf '%s\n' $((NOW - 6 * DAY - DAY / 2)) $((NOW - 3 * DAY - DAY / 2)) $((NOW - DAY / 2)) > "$T/a/k/chat.messages/$P1.times"
+echo $((2 * DAY)) > "$T/a/k/user.events/retention"
+r=$(run a "$DUMP"); dk=$(ls "$T/a/out" | head -1)
+check "the dump records each topic's retention and, per partition, its first offset at each checkpoint (none - left out)" \
+  "$r $(sed -n 's/^retention://p' "$T/a/out/$dk/topics/chat.messages.kept") $(grep -v '^[ar]' "$T/a/out/$dk/topics/chat.messages.kept" | cut -d: -f2- | sort -t: -k2,2n | tr '\n' ' ')" \
+  "rc=0 604800000 $P1:6 $P1:6 $P1:6 $P1:7 $P1:7 $P1:7 "
+at=$(sed -n 's/^at://p' "$T/a/out/$dk/topics/chat.messages.kept")
+check "  its checkpoints: the dump's time - the retention + 1..6 days" \
+  "$(grep -v '^[ar]' "$T/a/out/$dk/topics/chat.messages.kept" | cut -d: -f1 | sort -un | awk -v a="$at" -v D="$DAY" '{ printf "%d ", ($1 - a + 7 * D) / D }')" "1 2 3 4 5 6 "
+check "  a topic's own retention (2 days): its checkpoint asked apart (1 day back) - one read of every topic per checkpoint, 6 + 1" \
+  "$(sed -n 's/^retention://p' "$T/a/out/$dk/topics/user.events.kept") $(grep -c 'kafka-get-offsets.sh .*--exclude-internal-topics --time' "$T/a/calls")" \
+  "$((2 * DAY)) 7"
+A; r=$(NO_RETENTION=user.events run a "$DUMP"); dk=$(ls "$T/a/out" | head -1)
+check "  a topic's retention not read: refused, no DONE" "$r $(grep -c 'no retention read for: user.events' "$T/out") $([ -f "$T/a/out/$dk/DONE" ] && echo done || echo none)" "rc=1 1 none"
+# the first world's dump again, alone in its out directory (two dumps in one second share a name)
+A; run a "$DUMP" > /dev/null; d=$(ls "$T/a/out" | head -1)
 # the restore into a fresh world with the same topics, empty: the round trip
 world b; topic b chat.messages 2; topic b user.events 1
 r=$(run b "$RESTORE" "$T/a/out/$d")
 check "a restore: every message back, each keyed one on its partition and in its order, headers as they were" \
   "$r $(cmp -s "$T/a/k/chat.messages/$P1.log" "$T/b/k/chat.messages/$P1.log" && echo same-p0) $(cmp -s "$T/a/k/user.events/0.log" "$T/b/k/user.events/0.log" && echo same-ue) $(tail -1 "$T/out")" \
   "rc=0 same-p0 same-ue restored 4 messages from $d"
+check "  the topics restored said before it (ops' BASELINE names these alone)" "$(tail -2 "$T/out" | head -1)" "topics chat.messages user.events "
 check "  no dump or restore call with --consumer-property, --producer-property, --property, --consumer.config or --producer.config (the old spellings: Kafka 4.3 prints the deprecations it knows on stdout)" \
   "$(cat "$T/a/calls" "$T/b/calls" | grep -c -E -- '--(consumer|producer)-property |--property |--(consumer|producer)\.config ' || true)" 0
 check "  synchronous sends, none held by the producer's linger (1 s each by default); the dumped group moved to the topic's end after" \
@@ -138,9 +158,11 @@ case "$1" in
       *--files-only*) for e in "$d"/*; do [ -f "$e" ] && basename "$e"; done ;;
     esac ;;
   cat) cat "$(p "$2")" ;;
-  copy) src=$(p "$2"); dst=$3; mkdir -p "$dst/topics"
+  copy) src=$(p "$2"); dst=$3; mkdir -p "$dst/topics"; [ -d "$src" ] || { echo "stub: no $2" >&2; exit 3; }
+    [ -z "${FAIL_COPY:-}" ] || { echo "stub: copy failed" >&2; exit 1; }
+    echo "copy $2" >> "$T/rclone-calls"
     for f in topics.txt topics-describe.txt; do [ ! -f "$src/$f" ] || cp "$src/$f" "$dst/"; done
-    for f in "$src"/topics/*.latest; do [ ! -f "$f" ] || cp "$f" "$dst/topics/"; done ;;
+    for f in "$src"/topics/*.latest "$src"/topics/*.earliest "$src"/topics/*.kept; do [ ! -f "$f" ] || cp "$f" "$dst/topics/"; done ;;
   *) echo "stub: unexpected $*" >&2; exit 2 ;;
 esac
 exit 0
@@ -187,6 +209,49 @@ store; put "$new" 20261101T023000Z; sed -i 's/TopicId: x//' "$T/store/b/20261101
 check "  a TopicId not read (the describe format changed): refused, never passed" "$(guard "$new") $(grep -c 'no TopicId for' "$T/out")" "rc=1 1"
 store; put "$new" 20261101T023000Z
 check "  the store's listing failing: refused, never 'nothing to compare'" "$(FAIL_LSF=1 guard "$new") $(grep -c 'listing store:b failed' "$T/out")" "rc=1 1"
+# the retention check: the reference's record (topics/<t>.kept) against the new dump's earliest offsets
+kept_ref() {  # kept_ref <at> <retention> [<time>:<p>:<offset> ...]: chat.messages' record in the store's reference
+  local k="$T/store/b/20261101T023000Z/topics/chat.messages.kept" a=$1 r=$2; shift 2
+  { echo "at:$a"; echo "retention:$r"; for x in "$@"; do echo "$x"; done; } > "$k"
+}
+A; printf '%s\n' $((NOW - 3 * DAY)) $((NOW - 2 * DAY)) $((NOW - DAY)) > "$T/a/k/chat.messages/$P1.times"
+run a "$DUMP" > /dev/null; d=$(ls "$T/a/out" | head -1); new="$T/a/out/$d"
+at=$(sed -n 's/^at://p' "$new/topics/chat.messages.kept"); R=$((7 * DAY))
+early() { sed -i "s/^chat.messages:$P1:.*/chat.messages:$P1:$1/" "$new/topics/chat.messages.earliest"; }
+store; put "$new" 20261101T023000Z; ra=$((at - DAY))
+kept_ref "$ra" "$R" "$((ra - R + DAY)):$P1:5" "$((ra - R + 2 * DAY)):$P1:6" "$((ra - R + 3 * DAY)):$P1:7"
+early 6
+check "the guard's retention check: the earliest offset at the bound (the first checkpoint not older than now - its retention) - passed" \
+  "$(guard "$new") $(grep -c 'retention not judged' "$T/out")" "rc=0 0"
+early 7
+check "  past it (messages its retention keeps gone - TopicId and latest offsets as they were): refused, named" \
+  "$(guard "$new") $(grep -c "chat.messages\[$P1\] begins at 7, 20261101T023000Z's retention keeps it from 6" "$T/out")" "rc=1 1"
+kept_ref "$ra" "$R"
+early 8
+check "  no checkpoint holding the partition (no message that young): bounded by its latest - 8 passes, 9 refused" \
+  "$(guard "$new") $(early 9; guard "$new")" "rc=0 rc=1"
+kept_ref "$((at - R))" "$R" "$((at - 2 * R + DAY)):$P1:5"
+check "  a reference older than its retention lets judge: said, not judged" \
+  "$(guard "$new") $(grep -c 'retention not judged for chat.messages (older than its retention lets judge)' "$T/out")" "rc=0 1"
+rm "$T/store/b/20261101T023000Z/topics/chat.messages.kept"
+check "  a reference with no record (a dump before the check): said, not judged" \
+  "$(guard "$new") $(grep -c 'retention not judged for chat.messages (no retention record)' "$T/out")" "rc=0 1"
+kept_ref "$ra" -1
+early 6
+check "  retention -1 (kept for ever): the earliest past the reference's (5): refused" \
+  "$(guard "$new") $(grep -c "begins at 6, 20261101T023000Z's retention keeps it from 5" "$T/out")" "rc=1 1"
+kept_ref "$((at - 2 * DAY))" "$((2 * DAY))" "$((at - 3 * DAY)):$P1:7"
+check "  the reference's retention, not today's: 2 days then, the reference 2 days old - older than it lets judge (7 days would)" \
+  "$(guard "$new") $(grep -c 'older than its retention lets judge' "$T/out")" "rc=0 1"
+# a damaged reference: what a BASELINE excused is never read; else refused, the way out named
+store; put "$new" 20261101T023000Z; rm "$T/store/b/20261101T023000Z/topics.txt"; printf '20261105T000000Z\nwhy x\nall\n' > "$T/store/b/BASELINE"
+: > "$T/rclone-calls"
+check "a damaged reference (no topics.txt) a BASELINE of all covers, it older: passed, never read" \
+  "$(guard "$new") $(grep -c 'nothing to compare' "$T/out") $(grep -c '^copy' "$T/rclone-calls")" "rc=0 1 0"
+rm "$T/store/b/BASELINE"
+check "  no BASELINE: refused, ops' retire task named" "$(guard "$new") $(grep -c 'holds no topics.txt: not uploaded (a damaged dump: ops. task deploy:kafka-backup-retire)' "$T/out")" "rc=1 1"
+store; put "$new" 20261101T023000Z
+check "  its read failing: refused" "$(FAIL_COPY=1 guard "$new") $(grep -c "reading 20261101T023000Z's offsets failed" "$T/out")" "rc=1 1"
 # the CronJob as rendered
 kb() { helm template t helm/schnappy-data/ --namespace schnappy-production --set postgres.password=test --set strimzi.enabled=true \
   --set strimzi.backup.enabled=true --set vault.secretsEnabled=true --set alerts.enabled=true "$@" 2>&1 || true; }

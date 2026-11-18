@@ -4,13 +4,16 @@
 #   k/<topic>/<p>.log           its messages, one per line, as the dump writes them (headers TAB key TAB value)
 #   k/<topic>/<p>.start         its earliest offset (0 when absent)
 #   k/<topic>/id                its TopicId (x when absent)
+#   k/<topic>/<p>.times         each message's timestamp (ms), a line each (absent: none at or after any time asked)
+#   k/<topic>/retention         its retention.ms (604800000 - the broker's 168 h - when absent)
 #   k/groups                    "<group> <topic> <partition> <offset>" lines
 #   k/members/<group>           its member count (0 when absent)
 # Knobs (environment): DROP_PART=<topic>:<p> leaves a partition out of get-offsets' answer (as Kafka's tool does for one it
 # cannot list); SHORT=<n> makes a read <n> messages short; LOSE=1 makes the producer drop its last line (unacknowledged);
 # START_SHIFT=<n> moves each log's start <n> on for the consumer alone (retention between the offsets read and the read);
 # EXTRA_LINE=<text> adds a line that is no message after a read's first.
-# MAKE_RESTORING=<file> makes a read create that file (a restore's ConfigMap appearing while the dump reads).
+# MAKE_RESTORING=<file> makes a read create that file (a restore's ConfigMap appearing while the dump reads);
+# NO_RETENTION=<topic> leaves a topic's retention.ms out of kafka-configs' answer.
 # Every call is logged to $1/calls. The consumer's deprecated --consumer-property prints its notice on stdout, as Kafka
 # 4.3.1's does.
 set -eu
@@ -43,11 +46,21 @@ cat > "$W/bin/kafka-get-offsets.sh" << 'S'
 . "$W/bin/common.sh"; log "$@"
 t=""; time=""
 while [ $# -gt 0 ]; do case "$1" in --topic) t=$2; shift ;; --time) time=$2; shift ;; esac; shift; done
+# --topic '.*': every topic (the regex the dump's checkpoints ask with); else the one named
+if [ "$t" = '.*' ]; then ts=$(for d in "$K"/*/; do b=$(basename "$d"); [ "$b" = members ] || echo "$b"; done); else ts=$t; fi
+for t in $ts; do
 p=0; while [ "$p" -lt "$(parts "$t")" ]; do
   if [ "${DROP_PART:-}" != "$t:$p" ]; then
-    s=$(start "$t" "$p"); if [ "$time" = -2 ]; then echo "$t:$p:$s"; else echo "$t:$p:$((s + $(lines "$t" "$p")))"; fi
+    s=$(start "$t" "$p")
+    case "$time" in
+      -2) echo "$t:$p:$s" ;;
+      -1) echo "$t:$p:$((s + $(lines "$t" "$p")))" ;;
+      # the first message at or after the time; none - the partition left out, as Kafka's tool does
+      *) [ ! -f "$K/$t/$p.times" ] || awk -v x="$time" -v s="$s" -v tp="$t:$p" '$1 + 0 >= x + 0 { print tp ":" s + NR - 1; exit }' "$K/$t/$p.times" ;;
+    esac
   fi
   p=$((p + 1)); done
+done
 S
 cat > "$W/bin/kafka-console-consumer.sh" << 'S'
 #!/bin/sh
@@ -103,5 +116,14 @@ case "$mode" in
   all) echo "GROUP TOPIC PARTITION CURRENT-OFFSET"; cat "$K/groups" 2> /dev/null || true ;;
   state) echo "GROUP COORDINATOR (ID) ASSIGNMENT-STRATEGY STATE #MEMBERS"; echo "$g b:9092 (1) range Empty $(cat "$K/members/$g" 2> /dev/null || echo 0)" ;;
 esac
+S
+cat > "$W/bin/kafka-configs.sh" << 'S'
+#!/bin/sh
+. "$W/bin/common.sh"; log "$@"
+for d in "$K"/*/; do b=$(basename "$d"); [ "$b" = members ] && continue
+  echo "All configs for topic $b are:"
+  echo "  cleanup.policy=delete sensitive=false synonyms={DEFAULT_CONFIG:log.cleanup.policy=delete}"
+  [ "${NO_RETENTION:-}" = "$b" ] || echo "  retention.ms=$(cat "$K/$b/retention" 2> /dev/null || echo 604800000) sensitive=false synonyms={}"
+done
 S
 chmod +x "$W/bin"/kafka-*.sh

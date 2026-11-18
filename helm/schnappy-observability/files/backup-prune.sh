@@ -16,7 +16,7 @@ rc=0
 listing=$(rclone lsf --dirs-only "$STORE/$PREFIX") || rc=$?
 # 3: rclone's "directory not found" - no backup made yet
 [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ] || { echo "listing $STORE/$PREFIX failed (rclone rc=$rc): nothing removed"; exit 1; }
-names=$(printf '%s\n' "$listing" | sed 's#/$##' | grep -E '^[0-9]{8}T[0-9]{6}Z$' | sort || true)
+names=$(printf '%s\n' "$listing" | sed 's#/$##' | grep -E '^[0-9]{8}T[0-9]{6}Z$' | sort)
 complete="" pinned=""
 for n in $names; do
   top=$(rclone lsf --files-only --max-depth 1 "$STORE/$PREFIX$n/")
