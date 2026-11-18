@@ -5,7 +5,12 @@ copy, and a name the pod has no volume of is skipped without a word - Grafana's 
 "storage" (found 2026-11-18). An operator's pods are named by the operator: CNPG's data volume is pgdata, Scylla
 Operator's data, Strimzi's JBOD volumes data-<id> (its pool's storage).
 
-usage: velero-volumes.py <render>...   (exit 3: an annotation names a volume its pod lacks)
+The operators' volume names read from production's pods (2026-11-18): CNPG's instance pgdata, scratch-data, shm;
+Scylla's data, shared; Strimzi's broker data (persistent-claim storage - JBOD's are data-<id>).
+
+usage: velero-volumes.py [--expect <Kind/name>]... <render>...
+  exit 3: an annotation names a volume its pod lacks; 4: an --expect pod carries no annotation in the renders (a render
+  that lost its component - a flag dropped - would otherwise pass by seeing nothing)
 """
 import sys
 
@@ -43,20 +48,30 @@ def pods(doc):
             yield name, ann, {"data-%s" % v.get("id", 0) for v in vols} if vols else {"data"}
 
 
-def main(*paths):
-    bad = []
+def main(*args):
+    expect, paths, it = set(), [], iter(args)
+    for a in it:
+        if a == "--expect":
+            expect.add(next(it))
+        else:
+            paths.append(a)
+    bad, seen = [], set()
     for p in paths:
         with open(p) as f:
             for d in yaml.safe_load_all(f):
                 if not isinstance(d, dict):
                     continue
                 for name, ann, vols in pods(d):
+                    seen.add(name)
                     missing = [v.strip() for v in str(ann).split(",") if v.strip() and v.strip() not in vols]
                     if missing:
                         bad.append("%s: %s names %s - its volumes: %s" % (name, KEY, missing, sorted(v for v in vols if v)))
     for b in bad:
         print(b, file=sys.stderr)
-    return 3 if bad else 0
+    lost = sorted(expect - seen)
+    if lost:
+        print("no annotated pod in the renders for: %s (seen: %s)" % (", ".join(lost), ", ".join(sorted(seen))), file=sys.stderr)
+    return 3 if bad else 4 if lost else 0
 
 
 if __name__ == "__main__":

@@ -10,7 +10,12 @@ with everything on: a policy for a workload that runs only in another namespace 
 while ClickHouse runs in schnappy-infra) passes here - the live audit (pods selected, with a sidecar, per namespace)
 is what catches that.
 
-usage: mesh-selectors.py <mesh render> <workload render>...   (exit 3: a policy selects nothing that enforces it)
+A policy passes when any one pod it matches carries a proxy (one matching a proxied and a proxy-less pod in two
+charts passes). The operators' labels as production's pods carry them (2026-11-18).
+
+usage: mesh-selectors.py <mesh render> <workload render>...
+  exit 3: a policy selects nothing that enforces it; 1: a render empty, or the mesh without one selecting object (a
+  check that reads nothing passes nothing)
 """
 import sys
 
@@ -80,6 +85,13 @@ def selector(d):
 
 
 def main(mesh_path, *workload_paths):
+    for p in (mesh_path,) + workload_paths:
+        if not docs(p):
+            print("%s holds no document - a render that failed or lost everything" % p, file=sys.stderr)
+            return 1
+    if not any(selector(d) for d in docs(mesh_path)):
+        print("%s holds no object that selects workloads" % mesh_path, file=sys.stderr)
+        return 1
     every = [d for p in (mesh_path,) + workload_paths for d in docs(p)]
     for d in every:
         if d.get("kind") == "Kafka":

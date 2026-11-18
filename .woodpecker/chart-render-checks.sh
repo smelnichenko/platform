@@ -477,9 +477,14 @@ python3 .woodpecker/mesh-selectors.py $sel-mesh.yaml $sel-app.yaml $sel-data.yam
 # Every backup.velero.io/backup-volumes annotation names volumes its pod has (velero-volumes.py: Velero's file-system
 # backup is opt-in, a name the pod lacks skipped without a word - Grafana's said data for its storage volume, the Kafka
 # broker's data-0 for its data volume, 2026-11-18). Exit 3 is an annotation found; any other failure the check's own
+# every annotated pod expected in the renders: one lost (a flag dropped) would pass by checking nothing (exit 4)
 rc=0
-python3 .woodpecker/velero-volumes.py $sel-app.yaml $sel-data.yaml $sel-rt.yaml $sel-obs.yaml $sel-sq.yaml $sel-auth.yaml || rc=$?
+python3 .woodpecker/velero-volumes.py --expect Cluster/t-schnappy-postgres --expect ScyllaCluster/t-schnappy-scylla \
+  --expect KafkaNodePool/kafka --expect Deployment/t-schnappy-grafana --expect Deployment/t-schnappy-mimir \
+  --expect Deployment/t-schnappy-tempo --expect Deployment/t-schnappy-alertmanager --expect Deployment/t-schnappy-s3gw \
+  $sel-app.yaml $sel-data.yaml $sel-rt.yaml $sel-obs.yaml $sel-sq.yaml $sel-auth.yaml || rc=$?
 [ "$rc" != 3 ] || fail "a backup-volumes annotation names a volume its pod lacks (above)"
+[ "$rc" != 4 ] || fail "an annotated pod missing from the renders (above) - a render flag dropped"
 [ "$rc" = 0 ] || fail "velero-volumes.py itself failed (rc=$rc)"
 # the init-users Job's proxy a native sidecar (it stops with the Job): no quitquitquit call whose failure the Job ignored
 iu=$(awk '/^# Source: schnappy-data\/templates\/cnpg-init-users.yaml/ { on = 1 } /^---/ { on = 0 } on' $sel-data.yaml)
@@ -494,6 +499,26 @@ pa() { helm template t helm/schnappy-mesh/ --show-only templates/peer-authentica
   || fail "schnappy-infra's PeerAuthentications: $(pa --set peerAuthentication.cnpgPostgres=false)"
 [ "$(pa --set peerAuthentication.observability=false)" = "t-schnappy t-schnappy-cnpg-postgres " ] \
   || fail "production's and test's PeerAuthentications: $(pa --set peerAuthentication.observability=false)"
+# and each exception exactly: its workload, the namespace's mode, its one port PERMISSIVE - CNPG's 8000 is the
+# operator's and the liveness pinger's (plaintext; STRICT, the operator loses its status calls and a primary may restart)
+helm template t helm/schnappy-mesh/ --show-only templates/peer-authentication.yaml > .ci-out/pa.yaml || fail "the PeerAuthentications did not render"
+python3 - .ci-out/pa.yaml <<'PY_PA_PORTS' || fail "a PeerAuthentication exception is not as it must be (said above)"
+import sys, yaml
+pas = {d["metadata"]["name"]: d["spec"] for d in yaml.safe_load_all(open(sys.argv[1])) if isinstance(d, dict)}
+want = {"t-schnappy-cnpg-postgres": ({"cnpg.io/cluster": "t-schnappy-postgres"}, 8000),
+        "t-schnappy-alertmanager": ({"app.kubernetes.io/component": "alertmanager"}, 9093),
+        "t-schnappy-s3gw": ({"app.kubernetes.io/component": "s3gw"}, 9000)}
+for name, (sel, port) in want.items():
+    s = pas.get(name)
+    if s is None:
+        sys.exit("%s not rendered" % name)
+    if s.get("selector") != {"matchLabels": sel}:
+        sys.exit("%s selects %s, not %s" % (name, s.get("selector"), sel))
+    if s.get("mtls") != {"mode": "STRICT"}:
+        sys.exit("%s: its workload's mode %s, not the namespace's STRICT" % (name, s.get("mtls")))
+    if s.get("portLevelMtls") != {port: {"mode": "PERMISSIVE"}}:
+        sys.exit("%s: portLevelMtls %s, not %d PERMISSIVE alone" % (name, s.get("portLevelMtls"), port))
+PY_PA_PORTS
 # the dry runs per environment: on by default, each policy's own switch turns its annotation off and nothing else
 dry() { helm template t helm/schnappy-mesh/ --show-only templates/authorization-policies.yaml "$@" \
   | awk '$1 == "name:" { n = $2 } /istio.io\/dry-run: "true"/ { print n }' | sort | tr '\n' ' '; }

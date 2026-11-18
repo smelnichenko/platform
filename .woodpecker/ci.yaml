@@ -35,6 +35,9 @@ steps:
       - helm lint helm/schnappy-mesh/
       # Lint renders defaults, where the gateway routes and the LAN-only policy are off.
       - sh .woodpecker/chart-render-checks.sh
+      # the render checks' own checkers (mesh-selectors.py, velero-volumes.py) against fixtures: today's charts are right, a
+      # checker broken to pass everything would stay green on them alone
+      - sh .woodpecker/mesh-checkers-test.sh
       # the sonarqube setup hook's script, as rendered, against a stub SonarQube and Vault
       - sh .woodpecker/sonarqube-setup-script-test.sh
       # the Scylla schema, gateway patch and preview cleanup hooks' scripts, as rendered, against stub tools
