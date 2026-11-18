@@ -70,33 +70,6 @@ spec:
         - operation:
             ports: ["9200"]
 ---
-# Kafka before Strimzi - selects app.kubernetes.io/component=kafka, which no pod carries any more (Strimzi's below is
-# the one in force). Inert; its removal waits for its objects' deletion on the cluster (the mesh app does not prune)
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: {{ $fn }}-kafka
-  namespace: {{ $ns }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/component: kafka
-  action: ALLOW
-  rules:
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-monitor
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-admin
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chat
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-chess
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-centrifugo
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-kafka
-              - cluster.local/ns/{{ $ns }}/sa/{{ $fn }}-masi
-      to:
-        - operation:
-            ports: ["9092", "9093"]
----
 # Strimzi's Kafka brokers - the services that use Kafka, the broker's own identity (its tools reach the bootstrap Service
 # through its sidecar: the copy's data check, the restore check) and Kafka's backup Job (schnappy-data's kafka-backup.yaml),
 # on the clients' listener 9092 alone (9090/9091/9093/8443 bypass the sidecar). Until it, any workload in the mesh

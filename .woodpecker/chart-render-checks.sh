@@ -442,9 +442,26 @@ for sa in $(echo "$masi" | awk '/serviceAccountName:/ { print $2 }' | sort -u); 
 done
 ap() { echo "$mesh" | awk -v n="$1" '/^---/ { on = 0 } $0 == "  name: " n { on = 1 } on'; }
 ap t-schnappy-postgres | grep -q 'sa/t-schnappy-masi$' || fail "masi principal missing from the postgres AuthorizationPolicy"
-ap t-schnappy-kafka | grep -q 'sa/t-schnappy-masi$' || fail "masi principal missing from the kafka AuthorizationPolicy"
-# Strimzi's broker: its own policy selecting it (the one above selects a label no Strimzi pod has), the same clients and
-# Kafka's backup Job, on 9092 alone
+# Strimzi's broker: its own policy selecting it, the Kafka clients (masi among them) and Kafka's backup Job, on 9092
+# alone. The policy and PeerAuthentication from before Strimzi selected app.kubernetes.io/component=kafka, a label no
+# Strimzi pod carries: no mesh object may select it again, as one that looks in force and selects nothing. Read as
+# YAML - the broker's ServiceAccount carries that label in its metadata and selects nothing. Exit 3 is a hit; any other
+# failure is the check's own
+echo "$mesh" > .ci-out/mesh-render.yaml
+rc=0
+python3 - .ci-out/mesh-render.yaml <<'PY_KAFKA_SELECTOR' || rc=$?
+import sys, yaml
+for d in yaml.safe_load_all(open(sys.argv[1])):
+    spec = (d or {}).get("spec") if isinstance(d, dict) else None
+    if not isinstance(spec, dict):
+        continue
+    for sel in ((spec.get("selector") or {}).get("matchLabels"), (spec.get("workloadSelector") or {}).get("labels")):
+        if isinstance(sel, dict) and sel.get("app.kubernetes.io/component") == "kafka":
+            print(d.get("kind"), (d.get("metadata") or {}).get("name"), file=sys.stderr)
+            sys.exit(3)
+PY_KAFKA_SELECTOR
+[ "$rc" != 3 ] || fail "a mesh object selects app.kubernetes.io/component=kafka - no Strimzi pod carries it (select by strimzi.io/cluster + strimzi.io/broker-role)"
+[ "$rc" = 0 ] || fail "the component=kafka selector check itself failed (rc=$rc)"
 sk=$(ap t-schnappy-strimzi-kafka)
 echo "$sk" | grep -q 'strimzi.io/cluster: t-schnappy$' && echo "$sk" | grep -q 'strimzi.io/broker-role: "true"$' \
   || fail "the strimzi-kafka AuthorizationPolicy does not select Strimzi's brokers by cluster and role"
