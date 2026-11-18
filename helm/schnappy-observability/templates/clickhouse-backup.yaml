@@ -64,8 +64,9 @@ spec:
             app.kubernetes.io/part-of: schnappy
             velero.io/exclude-from-backup: "true"
           annotations:
-            # the client connects once its sidecar is ready (ClickHouse's ports are mTLS only)
-            proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
+            # the proxy an init container of its own (ClickHouse's ports are mTLS only): ready before the client starts,
+            # stopped with the Job - no quitquitquit call at the script's end, whose failure the Job ignored
+            sidecar.istio.io/nativeSidecar: "true"
         spec:
           restartPolicy: Never
           automountServiceAccountToken: false
@@ -99,7 +100,6 @@ spec:
                   echo "$out"
                   case "$out" in *BACKUP_CREATED*) ;; *) [ "$rc" -ne 0 ] || rc=1 ;; esac
                   echo "clickhouse backup logs/$name: rc=$rc"
-                  wget -T 5 -q -O- --post-data='' http://localhost:15020/quitquitquit || true
                   exit "$rc"
               volumeMounts:
                 - { name: tmp, mountPath: /tmp }

@@ -43,7 +43,16 @@ spec:
 ---
 # Istio's gateway customisation (the Gateway's infrastructure.parametersRef): its "service" key merged into the Service it
 # generates. externalIPs: the LAN address (gateway.loadBalancerIP) the hosts' records point at; externalTrafficPolicy
-# Cluster - Local made a pod reaching the gateway's address through the node fail (the gateway's own pod elsewhere)
+# Cluster, not Local: with Local, Cilium stopped delivering pod -> externalIP traffic (every in-cluster probe of
+# *.pmon.dev lost its connection). gatewayLanOnly relies on the gateway pods running on the node that owns this IP
+# (single node today): with Cluster a second node SNATs an outside client to its own LAN address, inside allowedCidrs,
+# and LanOnlyHostReachable cannot see it - revisit this before adding nodes.
+# Only the keys Istio takes (deployment, service, serviceAccount, horizontalPodAutoscaler, podDisruptionBudget): one
+# more, or this ConfigMap gone, and Istio stops reconciling the gateway - its log alone says so (IstioGatewayProxyBehind
+# fires when its proxies then miss an Istio upgrade).
+# The way back is never a revert of this file whole: Istio and the old patch Job's kubectl-patch both own externalIPs
+# (2026-11-18: kubectl-patch alone before) - once that shared ownership is gone (the Service made again), a Gateway
+# without this reference drops the address, and the old Job's image (bitnami/kubectl:latest) is no longer published
 apiVersion: v1
 kind: ConfigMap
 metadata:

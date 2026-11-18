@@ -555,6 +555,42 @@ for b in bad:
     print(b, file=sys.stderr)
 sys.exit(1 if bad else 0)
 PY_HOOK_TEMPLATES
+# a chart whose sync hooks run in the Sync phase (not PostSync) applies its hook-templates ConfigMap after them (a later
+# wave): a hook that fails stops the sync before it, the app stays OutOfSync - applied first, it read Synced, the hook
+# never run
+python3 - $sel-app.yaml $sel-data.yaml $sel-obs.yaml $sel-sq.yaml <<'PY_HOOK_WAVE' || fail "a hook-templates ConfigMap not after its chart's Sync hooks (said above)"
+import re, sys, yaml
+bad = []
+for p in sys.argv[1:]:
+    docs = [d for d in yaml.safe_load_all(open(p)) if isinstance(d, dict)]
+    wave = lambda d: int(((d.get("metadata") or {}).get("annotations") or {}).get("argocd.argoproj.io/sync-wave", "0"))
+    sync = [wave(d) for d in docs if re.fullmatch(r"(Pre)?Sync", ((d.get("metadata") or {}).get("annotations") or {}).get("argocd.argoproj.io/hook", ""))]
+    cms = [d for d in docs if d.get("kind") == "ConfigMap" and ((d.get("metadata") or {}).get("labels") or {}).get("app.kubernetes.io/component") == "hook-templates"]
+    for c in cms:
+        if sync and wave(c) <= max(sync):
+            bad.append("%s: %s at wave %d, its Sync hooks up to %d" % (p, c["metadata"]["name"], wave(c), max(sync)))
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_HOOK_WAVE
+# and from the sources: a template carrying a sync hook's annotation is listed in its chart's hook-templates.yaml whatever
+# the values (a hook behind a flag off by default, or in a chart rendered above with none of its hooks on)
+python3 - <<'PY_HOOK_SOURCES' || fail "a sync hook's template not in its chart's hook-templates.yaml (said above)"
+import glob, os, re, sys
+bad = []
+for t in sorted(glob.glob("helm/*/templates/*.yaml")):
+    src = open(t).read()
+    m = re.search(r'argocd\.argoproj\.io/hook:\s*"?([A-Za-z,]+)', src)
+    h = re.search(r'helm\.sh/hook"?:\s*"?([a-z,-]+)', src)
+    if not ((m and re.search(r"(Pre|Post)?Sync\b", m.group(1))) or (h and re.search(r"install|upgrade", h.group(1)))):
+        continue
+    ht = os.path.join(os.path.dirname(t), "hook-templates.yaml")
+    if not os.path.exists(ht) or ('"/%s")' % os.path.basename(t)) not in open(ht).read():
+        bad.append("%s: not in %s" % (t, ht))
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_HOOK_SOURCES
 # every sync hook's pod has no sidecar or a native one (it stops with the Job): never a quitquitquit call ending it, whose
 # failure the hook ignored (init-users, sonarqube-setup, clickhouse-init did until 2026-11-18)
 python3 - $sel-app.yaml $sel-data.yaml $sel-obs.yaml $sel-sq.yaml $sel-auth.yaml $sel-rt.yaml $sel-mesh.yaml <<'PY_HOOK_SIDECARS' \
@@ -577,15 +613,23 @@ for b in bad:
     print(b, file=sys.stderr)
 sys.exit(1 if bad else 0)
 PY_HOOK_SIDECARS
-# and a hook changed moves its hash, none other: the data chart copied, its init-users hook changed by a comment
+# nor any other pod: a Job's or CronJob's proxy a native sidecar, no quitquitquit call ending it (clickhouse-backup's and
+# Hyperfoil's ended with "|| true" - the Hyperfoil Job succeeded whatever its run did)
+! grep -rn 'quitquitquit' helm/*/templates/ | grep -v '^\S*:[0-9]*: *#' \
+  || fail "a template still calls quitquitquit (said above): a native sidecar stops with its Job"
+# and a hook changed moves its hash, none other; a comment edited moves none (a k6 comment would run the smoke test
+# against production): the data chart copied, its init-users hook given a comment, then an object
 rm -rf .ci-out/hookchk && mkdir -p .ci-out/hookchk && cp -r helm/schnappy-data .ci-out/hookchk/
 hk() { helm template t "$1" --set postgres.password=test --set cnpg.enabled=true --set 'postgres.databases[0].name=a' \
   --set 'postgres.databases[0].user=a' --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
   --show-only templates/hook-templates.yaml | awk '/^data:/ {d=1; next} d'; }
 hk helm/schnappy-data > .ci-out/hookchk/before
-echo "# a change" >> .ci-out/hookchk/schnappy-data/templates/cnpg-init-users.yaml
+echo "# a comment" >> .ci-out/hookchk/schnappy-data/templates/cnpg-init-users.yaml
+hk .ci-out/hookchk/schnappy-data > .ci-out/hookchk/comment
+cmp -s .ci-out/hookchk/before .ci-out/hookchk/comment || fail "a comment in a hook moved a hash: $(diff .ci-out/hookchk/before .ci-out/hookchk/comment)"
+printf -- '---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: hookchk\n' >> .ci-out/hookchk/schnappy-data/templates/cnpg-init-users.yaml
 hk .ci-out/hookchk/schnappy-data > .ci-out/hookchk/after
-moved=$(diff .ci-out/hookchk/before .ci-out/hookchk/after | grep '^>' || true)
+moved=$(diff .ci-out/hookchk/before .ci-out/hookchk/after | { grep '^>' || [ $? -eq 1 ]; })
 [ "$(echo "$moved" | grep -c .)" = 1 ] && echo "$moved" | grep -q '^> *cnpg-init-users.yaml: "[0-9a-f]\{64\}"$' \
   || fail "a hook changed did not move its own hash alone in hook-templates: $moved"
 # PostgreSQL's policy exactly: the CNPG cluster the data chart makes, ALLOW, 5432 for the app services, the instances

@@ -47,7 +47,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
         # the proxy an init container of its own that runs first and stops with the Job (as kafka-backup's): no
-        # quitquitquit call at the script's end, whose failure the Job had to ignore
+        # quitquitquit call at the script's end, whose failure the Job had to ignore. Native sidecars mesh-wide were
+        # turned off on 2026-04-05 (infra 302ee1d7: "corrupt the Postgres authentication handshake" - no cause
+        # recorded, the evening injection began; every pod native then, Postgres' own proxy too); this Job's alone -
+        # a psql client authenticating through it - is proven on the copy before it ships (copy run 6, 2026-11-18)
         sidecar.istio.io/nativeSidecar: "true"
     spec:
       restartPolicy: OnFailure

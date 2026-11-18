@@ -3,6 +3,15 @@ app's diff - so a hook moved in git ran the old one until something else synced 
 aws-cli 2.37.1 for hours after its bump; its app had not synced for a month). This ConfigMap is in the diff: a hook
 changed moves its hash, the app goes OutOfSync, auto-sync runs it. Every sync hook of this chart is listed (platform
 CI: chart-render-checks) */}}
+{{- /* A hook's rendered template hashed as its objects (each document parsed): a comment edited moves nothing - a k6
+comment would otherwise run the smoke test against production */}}
+{{- define "schnappy.hookHash" -}}
+{{- $docs := list -}}
+{{- range (regexSplit "(?m)^---\\s*$" . -1) -}}
+{{- $docs = append $docs (fromYaml .) -}}
+{{- end -}}
+{{- toJson $docs | sha256sum -}}
+{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,4 +20,4 @@ metadata:
     app.kubernetes.io/part-of: schnappy
     app.kubernetes.io/component: hook-templates
 data:
-  sonarqube-setup-job.yaml: {{ include (print $.Template.BasePath "/sonarqube-setup-job.yaml") . | sha256sum | quote }}
+  sonarqube-setup-job.yaml: {{ include "schnappy.hookHash" (include (print $.Template.BasePath "/sonarqube-setup-job.yaml") .) | quote }}

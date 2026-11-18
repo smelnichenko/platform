@@ -17,6 +17,7 @@ Each page answers: **What fired?**, **How bad?**, **First steps**, **Root-cause 
 - [VeleroBackupPartiallyFailed](VeleroBackupPartiallyFailed.md)
 - [VeleroDown](VeleroDown.md)
 - [PublicEndpointDown](PublicEndpointDown.md)
+- [IstioGatewayProxyBehind](IstioGatewayProxyBehind.md)
 - [LanOnlyHostReachable](LanOnlyHostReachable.md)
 - [PrometheusNotificationsFailing](PrometheusNotificationsFailing.md)
 - [ArgoCDAppDegraded](ArgoCDAppDegraded.md)

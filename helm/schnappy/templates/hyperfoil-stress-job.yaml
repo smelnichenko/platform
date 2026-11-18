@@ -33,6 +33,10 @@ data:
             app.kubernetes.io/component: hyperfoil-stress
             app.kubernetes.io/part-of: schnappy
             velero.io/exclude-from-backup: "true"
+          annotations:
+            # the proxy an init container of its own, stopped with the Job: no quitquitquit call (its "|| true" made the
+            # Job succeed whatever the run did - the run's own exit status now)
+            sidecar.istio.io/nativeSidecar: "true"
         spec:
           serviceAccountName: {{ include "schnappy.fullname" . }}-hyperfoil
           imagePullSecrets:
@@ -46,7 +50,7 @@ data:
           containers:
             - name: hyperfoil
               image: {{ .Values.hyperfoil.image }}
-              command: ['/bin/sh', '-c', '/benchmarks/run.sh; curl -sf -X POST http://localhost:15020/quitquitquit || true']
+              command: ['/benchmarks/run.sh']
               resources:
                 requests: { cpu: 500m, memory: 1Gi }
                 limits: { cpu: 4000m, memory: 2Gi }

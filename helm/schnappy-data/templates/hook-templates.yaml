@@ -3,6 +3,15 @@ app's diff - so a hook moved in git ran the old one until something else synced 
 aws-cli 2.37.1 for hours after its bump; its app had not synced for a month). This ConfigMap is in the diff: a hook
 changed moves its hash, the app goes OutOfSync, auto-sync runs it. Every sync hook of this chart is listed (platform
 CI: chart-render-checks) */}}
+{{- /* A hook's rendered template hashed as its objects (each document parsed): a comment edited moves nothing - a k6
+comment would otherwise run the smoke test against production */}}
+{{- define "schnappy.hookHash" -}}
+{{- $docs := list -}}
+{{- range (regexSplit "(?m)^---\\s*$" . -1) -}}
+{{- $docs = append $docs (fromYaml .) -}}
+{{- end -}}
+{{- toJson $docs | sha256sum -}}
+{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,7 +19,11 @@ metadata:
   labels:
     app.kubernetes.io/part-of: schnappy
     app.kubernetes.io/component: hook-templates
+  annotations:
+    # after the Sync hooks (wave 10): a hook that fails stops the sync before this - the app stays OutOfSync and the
+    # next revision runs it again; applied first, it read Synced with the hook never run (review)
+    argocd.argoproj.io/sync-wave: "11"
 data:
-  cnpg-init-users.yaml: {{ include (print $.Template.BasePath "/cnpg-init-users.yaml") . | sha256sum | quote }}
-  s3gw-buckets-job.yaml: {{ include (print $.Template.BasePath "/s3gw-buckets-job.yaml") . | sha256sum | quote }}
-  scylla-schema-job.yaml: {{ include (print $.Template.BasePath "/scylla-schema-job.yaml") . | sha256sum | quote }}
+  cnpg-init-users.yaml: {{ include "schnappy.hookHash" (include (print $.Template.BasePath "/cnpg-init-users.yaml") .) | quote }}
+  s3gw-buckets-job.yaml: {{ include "schnappy.hookHash" (include (print $.Template.BasePath "/s3gw-buckets-job.yaml") .) | quote }}
+  scylla-schema-job.yaml: {{ include "schnappy.hookHash" (include (print $.Template.BasePath "/scylla-schema-job.yaml") .) | quote }}

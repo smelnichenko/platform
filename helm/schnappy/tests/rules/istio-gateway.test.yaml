@@ -1,0 +1,58 @@
+# promtool unit tests for IstioGatewayProxyBehind (schnappy-observability; rendered by .woodpecker/render-rules.sh).
+# A running gateway pod whose istio-proxy tag is not istiod's fires after 2 h; one on istiod's tag (a digest beside it
+# or not), a Completed pod of the old tag, a pod not of the gateway never do; kube-state-metrics scraped twice (both its
+# pods while it rolls) is one series.
+rule_files:
+  - rendered-infra-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'kube_pod_container_info{namespace="istio-system", pod="istiod-a", container="discovery", image="docker.io/istio/pilot:1.31.4", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_container_info{namespace="istio-system", pod="istiod-a", container="discovery", image="docker.io/istio/pilot:1.31.4", instance="ksm-2"}'
+        values: '1x200'
+      # behind: running, its proxy 1.31.1 (scraped twice)
+      - series: 'kube_pod_container_info{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-old-a", container="istio-proxy", image="docker.io/istio/proxyv2:1.31.1", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_container_info{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-old-a", container="istio-proxy", image="docker.io/istio/proxyv2:1.31.1", instance="ksm-2"}'
+        values: '1x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-old-a", phase="Running", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-old-a", phase="Running", instance="ksm-2"}'
+        values: '1x200'
+      # on istiod's tag, by digest too
+      - series: 'kube_pod_container_info{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-new-b", container="istio-proxy", image="docker.io/istio/proxyv2:1.31.4@sha256:0123456789abcdef", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-new-b", phase="Running", instance="ksm-1"}'
+        values: '1x200'
+      # a Completed pod of the old tag (a node's shutdown leaves them)
+      - series: 'kube_pod_container_info{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-done-c", container="istio-proxy", image="docker.io/istio/proxyv2:1.31.1", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-done-c", phase="Running", instance="ksm-1"}'
+        values: '0x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-done-c", phase="Succeeded", instance="ksm-1"}'
+        values: '1x200'
+      # a sidecar of an app on the old tag: not the gateway's (the mesh restart's business)
+      - series: 'kube_pod_container_info{namespace="schnappy-production", pod="schnappy-production-chat-x", container="istio-proxy", image="docker.io/istio/proxyv2:1.31.1", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-production", pod="schnappy-production-chat-x", phase="Running", instance="ksm-1"}'
+        values: '1x200'
+    alert_rule_test:
+      - eval_time: 110m
+        alertname: IstioGatewayProxyBehind
+        exp_alerts: []
+      - eval_time: 130m
+        alertname: IstioGatewayProxyBehind
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: schnappy-infra
+              pod: schnappy-infra-gateway-istio-old-a
+              tag: 1.31.1
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/IstioGatewayProxyBehind"
+              summary: "Gateway pod schnappy-infra/schnappy-infra-gateway-istio-old-a runs proxy 1.31.1, not istiod's"
+              description: "Istio's gateway controller is not reconciling the gateway (its options ConfigMap missing or refused?) - istiod's log says why."
