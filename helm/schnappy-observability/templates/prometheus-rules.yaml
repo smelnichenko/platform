@@ -279,6 +279,8 @@ spec:
               label_replace(kube_pod_container_info{namespace="istio-system", container="discovery"},
                 "tag", "$2", "image", "(.*/)?[^/:@]+:([^:@/]+)(@sha256:[0-9a-f]+)?")
             )
+            # istiod's own series there: kube-state-metrics not reading it is no gateway behind (its own alerts say so)
+            and on () (count(kube_pod_container_info{namespace="istio-system", container="discovery"}) > 0)
           for: 2h
           labels:
             severity: warning

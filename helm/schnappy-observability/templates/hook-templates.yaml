@@ -20,4 +20,5 @@ metadata:
     app.kubernetes.io/part-of: schnappy
     app.kubernetes.io/component: hook-templates
 data:
-  clickhouse-init-job.yaml: {{ include "schnappy.hookHash" (include (print $.Template.BasePath "/clickhouse-init-job.yaml") .) | quote }}
+  # with the ConfigMap it mounts (its schema SQL, clickhouse-configmap.yaml): a schema changed alone runs it again
+  clickhouse-init-job.yaml: {{ include "schnappy.hookHash" (print (include (print $.Template.BasePath "/clickhouse-init-job.yaml") .) "\n---\n" (include (print $.Template.BasePath "/clickhouse-configmap.yaml") .)) | quote }}

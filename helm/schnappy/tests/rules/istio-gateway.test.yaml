@@ -35,16 +35,19 @@ tests:
         values: '0x200'
       - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-done-c", phase="Succeeded", instance="ksm-1"}'
         values: '1x200'
+      # a container named discovery outside istio-system on the old tag: never taken for istiod
+      - series: 'kube_pod_container_info{namespace="schnappy-production", pod="decoy-x", container="discovery", image="example/discovery:1.31.1", instance="ksm-1"}'
+        values: '1x200'
       # a sidecar of an app on the old tag: not the gateway's (the mesh restart's business)
       - series: 'kube_pod_container_info{namespace="schnappy-production", pod="schnappy-production-chat-x", container="istio-proxy", image="docker.io/istio/proxyv2:1.31.1", instance="ksm-1"}'
         values: '1x200'
       - series: 'kube_pod_status_phase{namespace="schnappy-production", pod="schnappy-production-chat-x", phase="Running", instance="ksm-1"}'
         values: '1x200'
     alert_rule_test:
-      - eval_time: 110m
+      - eval_time: 115m
         alertname: IstioGatewayProxyBehind
         exp_alerts: []
-      - eval_time: 130m
+      - eval_time: 125m
         alertname: IstioGatewayProxyBehind
         exp_alerts:
           - exp_labels:
@@ -56,3 +59,30 @@ tests:
               runbook_url: "https://runbooks.pmon.dev/IstioGatewayProxyBehind"
               summary: "Gateway pod schnappy-infra/schnappy-infra-gateway-istio-old-a runs proxy 1.31.1, not istiod's"
               description: "Istio's gateway controller is not reconciling the gateway (its options ConfigMap missing or refused?) - istiod's log says why."
+
+  # a canary upgrade: istiod on two tags - a gateway on either is on istiod's; istiod's series gone (kube-state-metrics
+  # down): nothing said here
+  - interval: 1m
+    input_series:
+      - series: 'kube_pod_container_info{namespace="istio-system", pod="istiod-a", container="discovery", image="docker.io/istio/pilot:1.31.4", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_container_info{namespace="istio-system", pod="istiod-canary", container="discovery", image="docker.io/istio/pilot:1.32.0", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_container_info{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-c-a", container="istio-proxy", image="docker.io/istio/proxyv2:1.32.0", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-c-a", phase="Running", instance="ksm-1"}'
+        values: '1x200'
+    alert_rule_test:
+      - eval_time: 130m
+        alertname: IstioGatewayProxyBehind
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'kube_pod_container_info{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-n-a", container="istio-proxy", image="docker.io/istio/proxyv2:1.31.1", instance="ksm-1"}'
+        values: '1x200'
+      - series: 'kube_pod_status_phase{namespace="schnappy-infra", pod="schnappy-infra-gateway-istio-n-a", phase="Running", instance="ksm-1"}'
+        values: '1x200'
+    alert_rule_test:
+      - eval_time: 130m
+        alertname: IstioGatewayProxyBehind
+        exp_alerts: []

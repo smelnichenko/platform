@@ -20,4 +20,5 @@ metadata:
     app.kubernetes.io/part-of: schnappy
     app.kubernetes.io/component: hook-templates
 data:
-  k6-postsync-job.yaml: {{ include "schnappy.hookHash" (include (print $.Template.BasePath "/k6-postsync-job.yaml") .) | quote }}
+  # with the ConfigMap it mounts (its script, k6-smoke-configmap.yaml): a script changed alone runs it again
+  k6-postsync-job.yaml: {{ include "schnappy.hookHash" (print (include (print $.Template.BasePath "/k6-postsync-job.yaml") .) "\n---\n" (include (print $.Template.BasePath "/k6-smoke-configmap.yaml") .)) | quote }}

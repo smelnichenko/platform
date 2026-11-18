@@ -578,10 +578,10 @@ PY_HOOK_WAVE
 python3 - <<'PY_HOOK_SOURCES' || fail "a sync hook's template not in its chart's hook-templates.yaml (said above)"
 import glob, os, re, sys
 bad = []
-for t in sorted(glob.glob("helm/*/templates/*.yaml")):
+for t in sorted(glob.glob("helm/*/templates/*.yaml") + glob.glob("helm/*/templates/*.yml")):
     src = open(t).read()
-    m = re.search(r'argocd\.argoproj\.io/hook:\s*"?([A-Za-z,]+)', src)
-    h = re.search(r'helm\.sh/hook"?:\s*"?([a-z,-]+)', src)
+    m = re.search(r'"?argocd\.argoproj\.io/hook"?:\s*"?([A-Za-z,]+)', src)
+    h = re.search(r'"?helm\.sh/hook"?:\s*"?([a-z,-]+)', src)
     if not ((m and re.search(r"(Pre|Post)?Sync\b", m.group(1))) or (h and re.search(r"install|upgrade", h.group(1)))):
         continue
     ht = os.path.join(os.path.dirname(t), "hook-templates.yaml")
@@ -617,21 +617,65 @@ PY_HOOK_SIDECARS
 # Hyperfoil's ended with "|| true" - the Hyperfoil Job succeeded whatever its run did)
 ! grep -rn 'quitquitquit' helm/*/templates/ | grep -v '^\S*:[0-9]*: *#' \
   || fail "a template still calls quitquitquit (said above): a native sidecar stops with its Job"
-# and a hook changed moves its hash, none other; a comment edited moves none (a k6 comment would run the smoke test
-# against production): the data chart copied, its init-users hook given a comment, then an object
-rm -rf .ci-out/hookchk && mkdir -p .ci-out/hookchk && cp -r helm/schnappy-data .ci-out/hookchk/
-hk() { helm template t "$1" --set postgres.password=test --set cnpg.enabled=true --set 'postgres.databases[0].name=a' \
-  --set 'postgres.databases[0].user=a' --set s3gw.enabled=true --set s3gw.existingSecret=s --set s3gw.storage.size=1Gi \
-  --show-only templates/hook-templates.yaml | awk '/^data:/ {d=1; next} d'; }
-hk helm/schnappy-data > .ci-out/hookchk/before
-echo "# a comment" >> .ci-out/hookchk/schnappy-data/templates/cnpg-init-users.yaml
-hk .ci-out/hookchk/schnappy-data > .ci-out/hookchk/comment
-cmp -s .ci-out/hookchk/before .ci-out/hookchk/comment || fail "a comment in a hook moved a hash: $(diff .ci-out/hookchk/before .ci-out/hookchk/comment)"
-printf -- '---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: hookchk\n' >> .ci-out/hookchk/schnappy-data/templates/cnpg-init-users.yaml
-hk .ci-out/hookchk/schnappy-data > .ci-out/hookchk/after
-moved=$(diff .ci-out/hookchk/before .ci-out/hookchk/after | { grep '^>' || [ $? -eq 1 ]; })
-[ "$(echo "$moved" | grep -c .)" = 1 ] && echo "$moved" | grep -q '^> *cnpg-init-users.yaml: "[0-9a-f]\{64\}"$' \
-  || fail "a hook changed did not move its own hash alone in hook-templates: $moved"
+helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set hyperfoil.enabled=true > .ci-out/jobs-hf.yaml \
+  || fail "schnappy with Hyperfoil did not render"
+helm template t helm/schnappy-observability/ --set clickhouse.enabled=true --set clickhouse.password=x --set vault.secretsEnabled=true \
+  --set clickhouse.backup.enabled=true --set clickhouse.backup.endpoint=http://s:9000 --set 'clickhouse.backup.storeIps={1.2.3.4}' \
+  > .ci-out/jobs-chb.yaml || fail "schnappy-observability with ClickHouse's backup did not render"
+helm template t helm/schnappy-data/ --set postgres.password=test --set strimzi.enabled=true --set strimzi.backup.enabled=true \
+  --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set vault.secretsEnabled=true \
+  > .ci-out/jobs-kb.yaml || fail "schnappy-data with Kafka's backup did not render"
+python3 - $sel-app.yaml $sel-data.yaml $sel-obs.yaml $sel-sq.yaml .ci-out/jobs-hf.yaml .ci-out/jobs-chb.yaml .ci-out/jobs-kb.yaml <<'PY_JOB_PODS' \
+  || fail "a Job's or CronJob's pod with a classic sidecar, or Hyperfoil's command changed (said above)"
+import re, sys, yaml
+bad, seen, hf = [], set(), []
+for p in sys.argv[1:]:
+    for d in yaml.safe_load_all(open(p)):
+        if not isinstance(d, dict):
+            continue
+        pods = []
+        if d.get("kind") == "Job":
+            pods.append(d["spec"]["template"])
+        elif d.get("kind") == "CronJob":
+            pods.append(d["spec"]["jobTemplate"]["spec"]["template"])
+        elif d.get("kind") == "ConfigMap":
+            for v in (d.get("data") or {}).values():
+                if isinstance(v, str) and re.search(r"(?m)^kind: Job$", v):
+                    pods.append(yaml.safe_load(v)["spec"]["template"])
+        for t in pods:
+            name = (t.get("metadata") or {}).get("labels", {}).get("app.kubernetes.io/component") or d["metadata"]["name"]
+            a = (t.get("metadata") or {}).get("annotations") or {}
+            if a.get("sidecar.istio.io/nativeSidecar") != "true" and a.get("sidecar.istio.io/inject") != "false":
+                bad.append("%s (%s): a classic sidecar - it never stops with the Job" % (name, d["kind"]))
+            if name.startswith("hyperfoil"):
+                hf += [c.get("command") for c in t["spec"]["containers"]]
+            seen.add(name)
+if hf != [["/benchmarks/run.sh"]] * 2:
+    bad.append("Hyperfoil's commands %s - the run alone, its own exit status (no || true, no quitquitquit)" % hf)
+if not {"hyperfoil-load", "hyperfoil-stress", "clickhouse-backup", "kafka-backup"} <= seen:
+    bad.append("not every Job and CronJob read: %s" % sorted(seen))
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_JOB_PODS
+python3 - <<'PY_JOB_DIGESTS' || fail "a Job's or CronJob's image by tag alone (said above)"
+import glob, re, sys
+bad = []
+for t in sorted(glob.glob("helm/*/templates/*.y*ml")):
+    src = open(t).read()
+    if not re.search(r"(?m)^\s*kind: (Job|CronJob)\s*$", src):
+        continue
+    for m in re.finditer(r"(?m)^\s*image:\s*\"?([^\s\"]+)", src):
+        img = m.group(1)
+        if "{{" not in img and not re.search(r"@sha256:[0-9a-f]{64}$", img):
+            bad.append("%s: %s" % (t, img))
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_JOB_DIGESTS
+# every chart's hooks hashed as they run - their templates and the ConfigMaps they mount; a comment moves none, an object
+# moves its own keys alone (hook-hash-check.py: each chart's copy changed, template by template)
+python3 .woodpecker/hook-hash-check.py .ci-out || fail "the hook-templates hashes (said above)"
 # PostgreSQL's policy exactly: the CNPG cluster the data chart makes, ALLOW, 5432 for the app services, the instances
 # (replication) and the init-users Job's own ServiceAccount (read from its Job), 8000 (the operator's plaintext status
 # calls) from any source, in dry run until its shadow_denied has read 0 for a day. One more name or rule, a DENY or
@@ -843,6 +887,12 @@ if ref != {"group": "", "kind": "ConfigMap", "name": cm["metadata"]["name"]}:
 svc = yaml.safe_load(cm["data"]["service"])
 if svc != {"spec": {"externalIPs": ["192.0.2.7"], "externalTrafficPolicy": "Cluster"}}:
     sys.exit("the gateway's Service options %s - the LAN address and Cluster alone" % svc)
+# Istio reads the options in the Gateway's own namespace; the Service a ClusterIP, the controller's own label
+if cm["metadata"].get("namespace") != gw["metadata"].get("namespace") or not gw["metadata"].get("namespace"):
+    sys.exit("the options ConfigMap in %s, the Gateway in %s - Istio reads it in the Gateway's" % (cm["metadata"].get("namespace"), gw["metadata"].get("namespace")))
+if (gw["metadata"].get("annotations") or {}).get("networking.istio.io/service-type") != "ClusterIP" \
+        or (gw["spec"]["infrastructure"].get("labels") or {}).get("gateway.istio.io/managed") != "istio.io-gateway-controller":
+    sys.exit("the Gateway's Service type (ClusterIP) or its managed label (istio.io-gateway-controller) gone")
 PY_GATEWAY_OPTIONS
 chinit=$(helm template t helm/schnappy-observability/ --set clickhouse.enabled=true \
   --show-only templates/clickhouse-init-job.yaml | awk '/^kind: Job$/ {j=1} /^---/ {j=0} j')
