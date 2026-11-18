@@ -47,8 +47,8 @@ check "a restore: every message back, each keyed one on its partition and in its
   "rc=0 same-p0 same-ue restored 4 messages from $d"
 check "  no Kafka tool called with a deprecated option (Kafka 4.3 prints their notices on stdout), dump or restore" \
   "$(cat "$T/a/calls" "$T/b/calls" | grep -c -E -- '--(consumer|producer)-property |--property ' || true)" 0
-check "  synchronous sends; the dumped group moved to the topic's end after" \
-  "$(grep -c 'kafka-console-producer.sh .*--sync' "$T/b/calls") $(grep -c 'kafka-consumer-groups.sh .*--group user-sync --topic user.events --reset-offsets --to-latest --execute' "$T/b/calls")" \
+check "  synchronous sends, none held by the producer's linger (1 s each by default); the dumped group moved to the topic's end after" \
+  "$(grep -c 'kafka-console-producer.sh .*--sync --command-property linger.ms=0 ' "$T/b/calls") $(grep -c 'kafka-consumer-groups.sh .*--group user-sync --topic user.events --reset-offsets --to-latest --execute' "$T/b/calls")" \
   "4 1"
 r=$(run b "$RESTORE" "$T/a/out/$d")
 check "  run again: each topic holding the dump's messages already - skipped, nothing produced twice" \

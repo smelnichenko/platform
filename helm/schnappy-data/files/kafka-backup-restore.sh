@@ -61,8 +61,10 @@ produce() {  # produce <topic> <file> <headers: yes|no>
   local h=(--reader-property parse.headers=false)
   [ "$3" = no ] || h=(--reader-property parse.headers=true --reader-property headers.delimiter=$'\t'
     --reader-property headers.separator=$'\x1e' --reader-property headers.key.separator=:)
-  "$K/kafka-console-producer.sh" --bootstrap-server "$BS" --topic "$1" --sync --reader-property parse.key=true \
-    --reader-property key.separator=$'\t' --reader-property null.marker=__NULL__ "${h[@]}" < "$2"
+  # --sync: each send waits for its acknowledgement, in order; linger.ms=0 - the console producer's default (1000 ms, its
+  # --timeout) holds every synchronous send a second: 50 messages 51.5 s, with 0 1.4 s (apache/kafka:4.3.1, measured)
+  "$K/kafka-console-producer.sh" --bootstrap-server "$BS" --topic "$1" --sync --command-property linger.ms=0 \
+    --reader-property parse.key=true --reader-property key.separator=$'\t' --reader-property null.marker=__NULL__ "${h[@]}" < "$2"
 }
 total=0
 for t in $todo; do
