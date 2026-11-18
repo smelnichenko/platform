@@ -69,5 +69,5 @@ while read -r t; do
     if [ -z "$o2" ]; then lost="$lost; $t[$p] gone (since $ref)"; elif [ "$o2" -lt "$o" ]; then lost="$lost; $t[$p] at $o2, was $o ($ref)"; fi
   done < "$w/$ref/topics/$t.latest"
 done < "$w/$before/topics.txt"
-[ -z "$lost" ] || fail "Kafka lost data:${lost#;} - not uploaded, nothing pruned (restore it: ops' tasks/kafka-restore.yml; a topic removed on purpose: task deploy:kafka-backup-baseline)"
+[ -z "$lost" ] || fail "Kafka lost data:${lost#;} - not uploaded, nothing pruned (restore it: ops' tasks/kafka-restore.yml; a topic removed on purpose: task deploy:kafka-backup-baseline -- -e kafka_baseline_topics=<topic>)"
 echo "Kafka holds everything its dumps held:${judged:- nothing to compare}"

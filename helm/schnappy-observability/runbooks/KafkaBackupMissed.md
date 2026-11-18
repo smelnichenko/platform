@@ -12,8 +12,8 @@ Kafka's topics did not land in the Pi store (bucket `kafka-backups`).
 
 The topics' messages since the newest complete dump have no copy (the topics keep 7 days; the services' own data is
 in Postgres and ScyllaDB). The prune never removes the newest complete dumps, so an older one is still there; a dump a
-restore came from carries `PINNED` and is never pruned until removed by hand once Kafka is whole
-(`rclone deletefile <store>/<dump>/PINNED`).
+restore came from carries `PINNED` and is never pruned until unpinned once Kafka is whole (ops:
+`task deploy:kafka-backup-unpin -- -e kafka_dump=<dump>`; the `PINNED` file says when and why).
 
 ## First steps
 
