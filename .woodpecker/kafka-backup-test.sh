@@ -21,7 +21,7 @@ topic() {  # topic <world> <name> <partitions> [<p>:<line> ...]
 }
 run() {  # run <world> <script> [args]: its rc (its output in $T/out)
   local w=$1 s=$2; shift 2
-  if env W="$T/$w" KAFKA_BIN="$T/$w/bin" BOOTSTRAP=b:9092 OUT="$T/$w/out" bash "$s" "$@" > "$T/out" 2>&1; then echo rc=0; else echo rc=$?; fi
+  if env W="$T/$w" KAFKA_BIN="$T/$w/bin" BOOTSTRAP=b:9092 OUT="$T/$w/out" RESTORING="${RESTORING:-$T/no-restore}" bash "$s" "$@" > "$T/out" 2>&1; then echo rc=0; else echo rc=$?; fi
 }
 # a world as production's: keyed messages with headers (a JSON type header with commas and colons), header-less ones, a
 # null key; an empty partition; a log start past 0 (retention); a group
@@ -106,6 +106,9 @@ A; printf 'NO_HEADERS\tonly-two-fields\n' >> "$T/a/k/chat.messages/$P0.log"; r=$
 check "a dump refused: a line with fewer than three fields" "$r $(grep -c 'fewer than three fields' "$T/out")" "rc=1 1"
 world e; r=$(run e "$DUMP")
 check "a dump refused: no topic at all (a Kafka that lost its data)" "$r $(grep -c 'no topic in Kafka' "$T/out")" "rc=1 1"
+A; echo 20261118T020000Z > "$T/restoring"; r=$(RESTORING="$T/restoring" run a "$DUMP")
+check "a dump refused: a restore running (its ConfigMap's since) - Kafka not even listed, no DONE" \
+  "$r $(grep -c 'a restore running since 20261118T020000Z' "$T/out") $(cat "$T/a/calls" 2> /dev/null | grep -c 'kafka-topics.sh' || true) $(ls "$T"/a/out/*/DONE 2> /dev/null | wc -l | tr -d ' ')" "rc=1 1 0 0"
 # the CronJob as rendered
 kb() { helm template t helm/schnappy-data/ --namespace schnappy-production --set postgres.password=test --set strimzi.enabled=true \
   --set strimzi.backup.enabled=true --set vault.secretsEnabled=true --set alerts.enabled=true "$@" 2>&1 || true; }
@@ -131,6 +134,11 @@ check "  the store's keys its own ExternalSecret's (Vault's backup-store), never
 check "  its pods' egress to the store's three addresses on 9000; KafkaBackupsUnwatched with it" \
   "$(printf '%s\n' "$out" | awk '/^---/ { n = 0 } /^kind: NetworkPolicy/ { k = 1 } /^kind: / && !/NetworkPolicy/ { k = 0 } k && /^  name: .*-kafka-backup$/ { n = 1 } n && /cidr: 192.168.11.[456]\/32/ { c++ } n && /port: 9000/ { p++ } END { print c + 0, p + 0 }') $(printf '%s\n' "$out" | grep -c 'alert: KafkaBackupsUnwatched')" \
   "3 1 1"
+check "  the dump refuses while a restore runs: the restoring ConfigMap optional, read-only at /restoring, RESTORING its key" \
+  "$(cj | grep -A3 '^            - name: restoring$' | tr -d ' ' | tr '\n' ';') $(cj | grep -c '{ name: restoring, mountPath: /restoring, readOnly: true }') $(cj | grep -c '{ name: RESTORING, value: /restoring/since }')" \
+  "-name:restoring;configMap:;name:t-schnappy-kafka-backup-restoring;optional:true; 1 1"
+check "  the prune keeps the newest dump holding messages (NONEMPTY: DONE's 4th field); the scratch bounded" \
+  "$(cj | grep -c '{ name: NONEMPTY, value: \"4\" }') $(cj | grep -A2 '^            - name: tmp$' | grep -c 'sizeLimit: 256Mi')" "1 1"
 check "refused: no endpoint form, no store addresses, no Vault, keep under 2" \
   "$(kb --set strimzi.backup.endpoint=x --set 'strimzi.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*backup.endpoint') $(kb --set strimzi.backup.endpoint=http://s:9000 | grep -c 'execution error.*storeIps') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set vault.secretsEnabled=false | grep -c 'execution error.*vault') $(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' --set strimzi.backup.keep=1 | grep -c 'execution error.*keep')" \
   "1 1 1 1"

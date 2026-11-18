@@ -16,6 +16,9 @@ echo "rclone $*" >> "$W/calls"
 case "$1" in
   mkdir) mkdir -p "$(p "$2")" ;;
   purge) rm -rf "$(p "$2")" ;;
+  cat)
+    if [ -n "${FAIL_CAT:-}" ]; then case "$2" in *"$FAIL_CAT"*) echo "stub: reading $2 failed" >&2; exit 1 ;; esac; fi
+    cat "$(p "$2")" || exit 3 ;;
   lsf)
     path=$(eval echo "\${$#}")
     if [ -n "${FAIL_LSF:-}" ]; then case "$path" in *"$FAIL_LSF"*) echo "stub: listing $path failed" >&2; exit 1 ;; esac; fi
@@ -34,7 +37,7 @@ check() { if [ "$2" = "$3" ]; then echo "PASS $1"; else echo "FAIL $1: got '$2',
 ts() { date -u -d "@$(($(date +%s) - $1 * 3600))" +%Y%m%dT%H%M%SZ; }
 backup() { mkdir -p "$W/store/b/logs/$1/data"; [ "$2" = complete ] && : > "$W/store/b/logs/$1/.backup"; return 0; }
 fresh() { rm -rf "$W/store" "$W/calls"; mkdir -p "$W/store"; }
-run() { if W="$W" PATH="$W/bin:$PATH" STORE=store:b KEEP=${KEEP:-7} FAIL_LSF=${FAIL_LSF:-} sh "$script" > "$W/out" 2>&1; then echo rc=0; else echo "rc=$?"; fi; }
+run() { if W="$W" PATH="$W/bin:$PATH" STORE=store:b KEEP=${KEEP:-7} FAIL_LSF=${FAIL_LSF:-} FAIL_CAT=${FAIL_CAT:-} sh "$script" > "$W/out" 2>&1; then echo rc=0; else echo "rc=$?"; fi; }
 # each name fixed once (a name made again a second later is another name)
 for h in 1 48 72 96 120 144 168 192 216; do eval "t$h=$(ts $h)"; done
 left() { ls "$W/store/b/logs" 2> /dev/null | tr '\n' ' ' | sed 's/ $//'; }
@@ -87,7 +90,7 @@ out=$(helm template t helm/schnappy-observability/ --namespace schnappy-infra --
   --set vault.secretsEnabled=true --set clickhouse.backup.enabled=true --set clickhouse.backup.endpoint=http://192.168.11.5:9000 \
   --set 'clickhouse.backup.storeIps={192.168.11.4,192.168.11.5,192.168.11.6}')
 check "the prune CronJob renders the script (its listing guard there)" \
-  "$(printf '%s\n' "$out" | grep -c 'nothing removed"; exit 1; }')" 1
+  "$(printf '%s\n' "$out" | grep -c 'failed (rclone rc=$rc): nothing removed"; exit 1; }')" 1
 # the server's side: the named collection's keys from its environment (never a literal key), the config mounted, the
 # store's keys from the backup-store secret, the store past the sidecar, its egress to the store; off by default
 check "the server: backup.xml's keys from the environment, mounted in config.d, the keys from the backup-store secret" \
@@ -137,4 +140,30 @@ chr() { helm template t helm/schnappy-observability/ --namespace schnappy-infra 
 check "refused: no Vault, an endpoint not the store's form, no store addresses, keep under 2" \
   "$(chr --set clickhouse.backup.endpoint=http://s:9000 --set 'clickhouse.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*needs vault.secretsEnabled') $(chr --set vault.secretsEnabled=true --set clickhouse.backup.endpoint=s:9000/x --set 'clickhouse.backup.storeIps={1.2.3.4}' | grep -c 'execution error.*backup.endpoint') $(chr --set vault.secretsEnabled=true --set clickhouse.backup.endpoint=http://s:9000 | grep -c 'execution error.*storeIps') $(chr --set vault.secretsEnabled=true --set clickhouse.backup.endpoint=http://s:9000 --set 'clickhouse.backup.storeIps={1.2.3.4}' --set clickhouse.backup.keep=1 | grep -c 'execution error.*keep')" \
   "1 1 1 1"
+
+# NONEMPTY (the Kafka dumps': DONE's 4th field their messages) - the newest dump holding any never removed
+kdump() { mkdir -p "$W/store/b/$1"; echo "$1 2 topics $2 messages" > "$W/store/b/$1/DONE"; }
+kleft() { ls "$W/store/b" 2> /dev/null | tr '\n' ' ' | sed 's/ $//'; }
+fresh
+kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 0; kdump "$t144" 0; kdump "$t120" 0
+r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE run)
+check "NONEMPTY, keep 2, the newest three empty: the newest dump holding messages kept past KEEP, the older and an empty one removed" \
+  "$r $(kleft)" "rc=0 $t192 $t144 $t120"
+check "  said why it kept it" "$(grep -c "keeping $t192 (complete, older than the newest 2 - but the newest holding anything" "$W/out")" 1
+fresh
+kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 3; kdump "$t144" 1; kdump "$t120" 2
+r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE run)
+check "NONEMPTY, keep 2, every dump holding messages: the newest two kept, nothing more" "$r $(kleft)" "rc=0 $t144 $t120"
+fresh
+kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 0; mkdir -p "$W/store/b/$t144"; echo "no count here" > "$W/store/b/$t144/DONE"
+r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE run)
+check "NONEMPTY: a DONE without a count at field 4 - red, nothing removed" "$r $(grep -c purge "$W/calls" || true) $(grep -c 'holds no count at field 4' "$W/out")" "rc=1 0 1"
+fresh
+kdump "$t216" 5; kdump "$t192" 7; kdump "$t168" 0; kdump "$t144" 0
+r=$(KEEP=2 NONEMPTY=4 PREFIX= MARKER=DONE FAIL_CAT="$t168" run)
+check "NONEMPTY: one DONE unreadable - red, nothing removed" "$r $(grep -c purge "$W/calls" || true) $(grep -c "reading $t168/DONE failed" "$W/out")" "rc=1 0 1"
+fresh
+kdump "$t216" 5; kdump "$t192" 0; kdump "$t168" 0; kdump "$t144" 0
+r=$(KEEP=2 PREFIX= MARKER=DONE run)
+check "without NONEMPTY (ClickHouse's): the newest two whatever they hold, no DONE read" "$r $(kleft) $(grep -c '^rclone cat' "$W/calls" || true)" "rc=0 $t168 $t144 0"
 [ "$fails" -eq 0 ] && echo "clickhouse backup prune test: OK" || { echo "clickhouse backup prune test: $fails FAILED"; exit 1; }

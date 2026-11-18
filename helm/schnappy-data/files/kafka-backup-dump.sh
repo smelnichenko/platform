@@ -6,6 +6,8 @@
 # header holds commas; a header's key and value by the formatter's fixed ':', the producer splitting at the first one - no
 # header key holds one; NO_HEADERS for none). DONE written last. Refused, no DONE (a dump that would not restore as it was
 # is no dump):
+#   - a restore running (RESTORING, the restoring ConfigMap's key the CronJob mounts optionally: ops'
+#     tasks/kafka-restore.yml makes it for the restore's span) - a dump of a Kafka half restored is no dump of it
 #   - no topic at all (a Kafka that lost its data would otherwise prune every good dump away within a week)
 #   - a partition missing from the offsets read (every partition 0..PartitionCount-1, from the topic's description)
 #   - a read not of its offsets' count (one message per line: a value holding a newline breaks it; a tool's notice on
@@ -22,6 +24,8 @@ ts=$(date -u +%Y%m%dT%H%M%SZ)
 out=${OUT:?}/$ts
 mkdir -p "$out/topics"
 fail() { echo "$*"; exit 1; }
+RESTORING=${RESTORING:-/restoring/since}
+[ ! -e "$RESTORING" ] || fail "a restore running since $(cat "$RESTORING") - no dump of a Kafka half restored"
 "$K/kafka-topics.sh" --bootstrap-server "$BS" --list --exclude-internal | sort > "$out/topics.txt"
 [ -s "$out/topics.txt" ] || fail "no topic in Kafka - nothing dumped (a dump of nothing would prune the good ones away)"
 "$K/kafka-topics.sh" --bootstrap-server "$BS" --describe --exclude-internal > "$out/topics-describe.txt"

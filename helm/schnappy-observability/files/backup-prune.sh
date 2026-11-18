@@ -3,8 +3,12 @@ set -eu
 # newest KEEP complete ones kept - a complete one holds MARKER, its writer's last file (ClickHouse's .backup, the Kafka
 # dump's DONE) - every older complete one removed; an incomplete one (failed, or still being written) removed once a day
 # old. Only names as the backup jobs write them (<UTC timestamp>Z). A listing that fails stops the prune before anything
-# is removed: a store blip never makes a complete backup look incomplete. One script for every chart's backups
-# (platform CI: the copies equal).
+# is removed: a store blip never makes a complete backup look incomplete. With NONEMPTY=<field> a complete backup's MARKER
+# holds a count at that whitespace field of its first line (the Kafka dump's DONE: "<ts> <n> topics <m> messages", 4):
+# the newest complete one counting more than 0 is never removed, however many newer ones count 0 - a Kafka that lost
+# its messages but not its topics (the topic operator makes them again) dumps nothing night after night, and the prune
+# would otherwise take every good dump within KEEP days. A MARKER without that count stops the prune. One script for
+# every chart's backups (platform CI: the copies equal).
 PREFIX=${PREFIX-logs/}
 MARKER=${MARKER:-.backup}
 rclone mkdir "$STORE"
@@ -19,6 +23,15 @@ for n in $names; do
   if printf '%s\n' "$top" | grep -qxF "$MARKER"; then complete="$complete $n"; fi
 done
 total=$(echo $complete | wc -w)
+held=""
+if [ -n "${NONEMPTY:-}" ]; then
+  for n in $complete; do  # oldest first: the last one counting more than 0 is the newest such
+    m=$(rclone cat "$STORE/$PREFIX$n/$MARKER") || { echo "reading $PREFIX$n/$MARKER failed: nothing removed"; exit 1; }
+    c=$(printf '%s\n' "$m" | awk -v f="$NONEMPTY" 'NR == 1 { print $f }')
+    case "$c" in ''|*[!0-9]*) echo "$PREFIX$n/$MARKER holds no count at field $NONEMPTY ('$c'): nothing removed"; exit 1 ;; esac
+    [ "$c" -eq 0 ] || held=$n
+  done
+fi
 drop=0
 [ "$total" -le "$KEEP" ] || drop=$((total - KEEP))
 cutoff=$(date -u -d "@$(($(date +%s) - 86400))" +%Y%m%d%H%M%S)
@@ -27,6 +40,10 @@ i=0
 for n in $complete; do
   i=$((i + 1))
   [ "$i" -le "$drop" ] || break
+  if [ "$n" = "$held" ]; then
+    echo "keeping $PREFIX$n (complete, older than the newest $KEEP - but the newest holding anything: the newer ones count 0)"
+    continue
+  fi
   echo "removing $PREFIX$n (complete, older than the newest $KEEP)"
   rclone purge "$STORE/$PREFIX$n"
   removed=$((removed + 1))

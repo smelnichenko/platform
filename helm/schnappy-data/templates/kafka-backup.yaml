@@ -114,10 +114,12 @@ spec:
                 # the tools' own logs (kafka-run-class.sh) under the writable /tmp, not the image's read-only tree
                 - { name: LOG_DIR, value: /tmp }
                 - { name: KAFKA_HEAP_OPTS, value: "-Xmx256m" }
+                - { name: RESTORING, value: /restoring/since }
               volumeMounts:
                 - { name: scripts, mountPath: /scripts, readOnly: true }
                 - { name: dump, mountPath: /dump }
                 - { name: tmp, mountPath: /tmp }
+                - { name: restoring, mountPath: /restoring, readOnly: true }
               resources:
                 requests: { cpu: 50m, memory: 256Mi }
                 limits: { memory: 512Mi }
@@ -149,6 +151,8 @@ spec:
                 # the dumps at the bucket's root, complete with DONE
                 - { name: PREFIX, value: "" }
                 - { name: MARKER, value: DONE }
+                # DONE's 4th field, its messages: the newest dump holding any never pruned (a Kafka emptied dumps 0)
+                - { name: NONEMPTY, value: "4" }
                 - { name: RCLONE_CONFIG_STORE_TYPE, value: s3 }
                 - { name: RCLONE_CONFIG_STORE_PROVIDER, value: Other }
                 - { name: RCLONE_CONFIG_STORE_ENDPOINT, value: {{ $b.endpoint | quote }} }
@@ -178,7 +182,14 @@ spec:
               emptyDir:
                 sizeLimit: 2Gi
             - name: tmp
-              emptyDir: {}
+              emptyDir:
+                sizeLimit: 256Mi
+            # ops' tasks/kafka-restore.yml makes it (key since) for a restore's span, removes it after: the dump refuses
+            # while it is there. Optional - no restore, no ConfigMap
+            - name: restoring
+              configMap:
+                name: {{ $name }}-restoring
+                optional: true
 ---
 # the backup's pods to the Pi store (the namespace's default policy reaches Kafka, not the store)
 apiVersion: networking.k8s.io/v1
