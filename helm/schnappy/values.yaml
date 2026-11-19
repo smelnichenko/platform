@@ -476,7 +476,7 @@ tracing:
 # (The scheduled CronJob variant lives in the schnappy-test chart.)
 smokeTest:
   enabled: true
-  image: grafana/k6:1.7.1
+  image: grafana/k6:1.8.3
   baseUrl: ""                # Defaults to https://<app.ingress.host>
   clientSecretName: ""       # k8s Secret with CLIENT_SECRET key (for authenticated tests)
   # k6 remote-write target; empty disables the output. Plain HTTP by design:

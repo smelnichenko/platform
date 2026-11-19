@@ -187,7 +187,7 @@ pushgateway:
 # Grafana
 grafana:
   enabled: false
-  image: grafana/grafana:13.2.6  # production's own (see mimir.image)
+  image: grafana/grafana:13.3.1  # production's own (see mimir.image)
   # GF_PLUGINS_PREINSTALL_AUTO_UPDATE (a value removed: Grafana's own default). Grafana 13 on this chart's read-only
   # root filesystem needs false (grafana-deployment.yaml says why) - production's value too
   pluginsPreinstallAutoUpdate: false
