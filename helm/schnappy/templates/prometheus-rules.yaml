@@ -188,6 +188,28 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/KafkaListenerFailing"
             summary: "{{"{{"}} $labels.job {{"}}"}}'s Kafka listener fails every try - held on one record"
+        # user events admin owes Kafka (its outbox) not going out: the oldest unsent one past 5 min (a send failing on every
+        # turn - Kafka away, a row it cannot send - the events after it waiting behind it), or the publisher's heartbeat
+        # (each turn's end) older than 2 min or gone (its thread stuck, not running) - the apps that read user.events
+        # not told
+        - alert: UserEventOutboxStuck
+          expr: |
+            max by (namespace, job) (
+              admin_user_events_outbox_oldest_seconds{job="schnappy-admin", namespace="{{ $ns }}"}
+            ) > 300
+            or
+            time() - max by (namespace, job) (
+              admin_user_events_outbox_turn_seconds{job="schnappy-admin", namespace="{{ $ns }}"}
+            ) > 120
+            or
+            absent(admin_user_events_outbox_turn_seconds{job="schnappy-admin", namespace="{{ $ns }}"})
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/UserEventOutboxStuck"
+            summary: "admin's user events are not going out to Kafka (unsent past 5 min, or its publisher stopped)"
 
 {{- if eq (.Values.masiService.enabled | toString) "true" }}
     # masi: the LLM ledger and budgets, source health, the browser pod. The ratios are

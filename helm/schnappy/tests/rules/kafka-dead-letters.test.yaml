@@ -100,3 +100,60 @@ tests:
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/KafkaListenerFailing
               summary: "schnappy-monitor's Kafka listener fails every try - held on one record"
+
+  # admin's outbox: its oldest unsent event aging past 5 min, held 5 min more - fires; sent (the age back to 0) - clears.
+  # The publisher's heartbeat (epoch seconds of its last turn's end) keeps time meanwhile: one turn a minute here
+  - interval: 1m
+    input_series:
+      - series: 'admin_user_events_outbox_oldest_seconds{job="schnappy-admin", namespace="schnappy-production", pod="admin-a"}'
+        values: '0x10 60+60x15 0x10'
+      - series: 'admin_user_events_outbox_turn_seconds{job="schnappy-admin", namespace="schnappy-production", pod="admin-a"}'
+        values: '0+60x37'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: UserEventOutboxStuck
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: UserEventOutboxStuck
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-admin }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/UserEventOutboxStuck
+              summary: "admin's user events are not going out to Kafka (unsent past 5 min, or its publisher stopped)"
+      - eval_time: 32m
+        alertname: UserEventOutboxStuck
+        exp_alerts: []
+
+  # the publisher's thread stuck: its heartbeat stops at minute 10 while the backlog gauge (refreshed on that thread
+  # too) still says 0 - fires once the heartbeat is past 2 min and held 5 min
+  - interval: 1m
+    input_series:
+      - series: 'admin_user_events_outbox_oldest_seconds{job="schnappy-admin", namespace="schnappy-production", pod="admin-a"}'
+        values: '0x30'
+      - series: 'admin_user_events_outbox_turn_seconds{job="schnappy-admin", namespace="schnappy-production", pod="admin-a"}'
+        values: '0+60x10 600x20'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: UserEventOutboxStuck
+        exp_alerts: []
+      - eval_time: 19m
+        alertname: UserEventOutboxStuck
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-admin }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/UserEventOutboxStuck
+              summary: "admin's user events are not going out to Kafka (unsent past 5 min, or its publisher stopped)"
+
+  # no heartbeat at all (the publisher never started): fires after 5 min
+  - interval: 1m
+    input_series:
+      - series: 'up{job="schnappy-admin", namespace="schnappy-production", pod="admin-a"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: UserEventOutboxStuck
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-admin }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/UserEventOutboxStuck
+              summary: "admin's user events are not going out to Kafka (unsent past 5 min, or its publisher stopped)"
