@@ -32,7 +32,9 @@ data:
                 enable: true
       {{- end }}
       datasource:
-        url: jdbc:postgresql://{{ include "schnappy.postgres.serviceName" . }}:5432/{{ .Values.postgres.database }}
+        # socketTimeout (s): a read the network lost fails instead of hanging the thread for ever - a Kafka listener
+        # hung there neither fails nor succeeds, and no alert sees it. Far above any query of the app's.
+        url: jdbc:postgresql://{{ include "schnappy.postgres.serviceName" . }}:5432/{{ .Values.postgres.database }}?socketTimeout=300
         # Credentials injected via environment variables from Secret
         username: ${DB_USERNAME}
         password: ${DB_PASSWORD}
