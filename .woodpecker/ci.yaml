@@ -66,9 +66,9 @@ steps:
   # ClickHouse started on the chart's config in the chart's image: a config it refuses fails here, not at production's
   # restart; every system log it keeps has a TTL (the script says why)
   - name: clickhouse-config-start
-    image: clickhouse/clickhouse-server:26.8.39.19-alpine
+    image: clickhouse/clickhouse-server:26.8.40.7-alpine
     environment:
-      CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.39.19-alpine
+      CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.40.7-alpine
     commands:
       - sh .woodpecker/clickhouse-config-start.sh
 
