@@ -248,7 +248,7 @@ grafana:
 # Hyperfoil report server (Nginx → MinIO proxy)
 reports:
   enabled: false
-  image: nginx:1.28.3-alpine
+  image: nginx:1.31.9-alpine
   ingress:
     enabled: false
     host: reports.local
@@ -262,7 +262,7 @@ reports:
 # can open it from an alert email without logging into Forgejo.
 runbooks:
   enabled: false
-  image: nginx:1.27-alpine
+  image: nginx:1.31-alpine
 
 # smartctl_exporter — drive SMART metrics for NVMe / SATA monitoring.
 # Exporter runs on the host (systemd unit, installed by ops
