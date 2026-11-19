@@ -1,0 +1,67 @@
+# promtool unit tests for KafkaDeadLetters: an app's kafka_dead_letters_total{topic} (ops plan 127 - each record its
+# error handler gave up on and kept on <topic>.DLT). Micrometer makes the series at its first count, so the first dead
+# letter of a pod is a series appearing at 1 - increase() alone reads 0 there.
+rule_files:
+  - rendered-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # monitor-a's first dead letter at minute 9 ('_x9' is nine gaps): a new series, at 1 - fires, for its 30 min only
+  - interval: 1m
+    input_series:
+      - series: 'kafka_dead_letters_total{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", topic="user.events"}'
+        values: '_x9 1x60'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: KafkaDeadLetters
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: KafkaDeadLetters
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-monitor, topic: user.events }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KafkaDeadLetters
+              summary: "schnappy-monitor kept 1 Kafka record(s) of user.events on its .DLT"
+      - eval_time: 38m
+        alertname: KafkaDeadLetters
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-monitor, topic: user.events }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KafkaDeadLetters
+              summary: "schnappy-monitor kept 1 Kafka record(s) of user.events on its .DLT"
+      - eval_time: 45m
+        alertname: KafkaDeadLetters
+        exp_alerts: []
+
+  # an old count, flat (yesterday's dead letters): nothing; two more at minute 40 - fires with 2; a second pod of the
+  # same app counting its first at minute 39 - summed into the same alert, 3
+  - interval: 1m
+    input_series:
+      - series: 'kafka_dead_letters_total{job="schnappy-chat", namespace="schnappy-production", pod="chat-a", topic="chat.messages"}'
+        values: '5x39 7x30'
+      - series: 'kafka_dead_letters_total{job="schnappy-chat", namespace="schnappy-production", pod="chat-b", topic="chat.messages"}'
+        values: '_x39 1x30'
+    alert_rule_test:
+      - eval_time: 38m
+        alertname: KafkaDeadLetters
+        exp_alerts: []
+      - eval_time: 42m
+        alertname: KafkaDeadLetters
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-chat, topic: chat.messages }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KafkaDeadLetters
+              summary: "schnappy-chat kept 3 Kafka record(s) of chat.messages on its .DLT"
+
+  # a job outside the services, or another namespace: not this rule's
+  - interval: 1m
+    input_series:
+      - series: 'kafka_dead_letters_total{job="some-tool", namespace="schnappy-production", pod="t", topic="user.events"}'
+        values: '_x9 1x30'
+      - series: 'kafka_dead_letters_total{job="schnappy-monitor", namespace="schnappy-test", pod="m", topic="user.events"}'
+        values: '_x9 1x30'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: KafkaDeadLetters
+        exp_alerts: []
