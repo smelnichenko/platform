@@ -66,7 +66,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: cleanup
-          image: alpine/k8s:1.35.10@sha256:6b9b607247ab8f0d0bd2d6173a0b842b4d173c652475c9a715eec0c7ef27eac5
+          image: alpine/k8s:1.36.6@sha256:e2d95501b5718673ba67693154fabe6c618dbe1211a32947d6d5cf16285e019b
           env:
             - name: PR_NUMBER
               value: {{ .Values.previewNumber | quote }}
