@@ -143,6 +143,24 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ProcessCPUHigh"
             summary: "Process CPU usage high"
+        # a Kafka record an app gave up on: its error handler retried it with a back-off, then kept it on <topic>.DLT -
+        # never skipped (ops plan 127). The app counts each as the .DLT takes it; the counter's series first appears at
+        # its first count, which increase() cannot see - "or" takes a series 30 min old no more, whole. Fires for 30 min.
+        - alert: KafkaDeadLetters
+          expr: |
+            sum by (namespace, job, topic) (
+              (
+                kafka_dead_letters_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"}
+                - kafka_dead_letters_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"} offset 30m
+              )
+              or kafka_dead_letters_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"}
+            ) > 0
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KafkaDeadLetters"
+            summary: "{{"{{"}} $labels.job {{"}}"}} kept {{"{{"}} $value {{"}}"}} Kafka record(s) of {{"{{"}} $labels.topic {{"}}"}} on its .DLT"
 
 {{- if eq (.Values.masiService.enabled | toString) "true" }}
     # masi: the LLM ledger and budgets, source health, the browser pod. The ratios are
