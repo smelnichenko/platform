@@ -143,7 +143,7 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ProcessCPUHigh"
             summary: "Process CPU usage high"
-        # a Kafka record an app gave up on and kept on <topic>.DLT (ops plan 127): one no wait cures - not JSON, naming
+        # a Kafka record an app gave up on and kept on <topic>.DLT: one no wait cures - not JSON, naming
         # no user, a constraint broken, a failure 15 min of retries did not cure. A store away is waited for, never
         # dead-lettered: KafkaListenerFailing. The apps register the counter at 0 for each listener topic, so its first
         # count is an increase; increase() rides a counter reset and a scrape gap. Fires for 30 min.

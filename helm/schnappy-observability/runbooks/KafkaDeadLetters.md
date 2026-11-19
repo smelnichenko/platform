@@ -4,7 +4,7 @@
 
 ## What fired
 
-An app's Kafka error handler (ops plan 127) gave up on records of `$labels.topic` and kept them on
+An app's Kafka error handler gave up on records of `$labels.topic` and kept them on
 `$labels.topic.DLT`. A dead letter is a record that no wait can fix:
 
 - its value is not JSON, or names a type the app does not trust (`DeserializationException`);
@@ -68,11 +68,15 @@ since arrived for that user, in every app.
   cause is fixed.
 
 When a replay is right, it needs all three of the original's type headers. Spring's JsonDeserializer refuses a map
-without `__ContentTypeId__` and `__KeyTypeId__`. Take them from the DLT record:
+without `__ContentTypeId__` and `__KeyTypeId__`. Take them from the DLT record.
+
+It also needs the original's key: the DLT record keeps it (`print.key=true` above). Admin keys a user event by the
+user's uuid (a registration by its email), so a user's events are on one partition, in order. A replay under any other
+key lands on another partition and can overtake, or be overtaken by, that user's live events:
 
 ```bash
-printf '__TypeId__:java.util.HashMap,__ContentTypeId__:java.lang.Object,__KeyTypeId__:java.lang.Object\tUSER_CREATED\t%s\n' \
-    '<the value: its JSON, one line>' \
+printf '__TypeId__:java.util.HashMap,__ContentTypeId__:java.lang.Object,__KeyTypeId__:java.lang.Object\t%s\t%s\n' \
+    '<the key, as the DLT record shows it: the user uuid>' '<the value: its JSON, one line>' \
   | kubectl -n $NS exec -i $NS-kafka-0 -c kafka -- /opt/kafka/bin/kafka-console-producer.sh \
       --bootstrap-server localhost:9092 --topic user.events \
       --reader-property parse.headers=true --reader-property parse.key=true

@@ -5,7 +5,7 @@
 ## What fired
 
 `$labels.job`'s Kafka listener `$labels.name` has failed on every try for 10 min, with no success between. Its error
-handler (ops plan 127) is holding it on one record. The handler blocks: that consumer's thread waits, and every
+handler is holding it on one record. The handler blocks: that consumer's thread waits, and every
 partition it reads waits with it. Nothing is lost; the records wait in Kafka.
 
 The two ways a listener gets held:
