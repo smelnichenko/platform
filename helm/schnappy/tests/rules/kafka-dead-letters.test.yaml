@@ -1,19 +1,19 @@
-# promtool unit tests for KafkaDeadLetters: an app's kafka_dead_letters_total{topic} (ops plan 127 - each record its
-# error handler gave up on and kept on <topic>.DLT). Micrometer makes the series at its first count, so the first dead
-# letter of a pod is a series appearing at 1 - increase() alone reads 0 there.
+# promtool unit tests for the apps' Kafka error handling (ops plan 127): kafka_dead_letters_total{topic} and
+# kafka_dead_letters_refused_total{topic} - registered at 0 for each listener topic when the app starts - and Spring
+# Kafka's own spring_kafka_listener_seconds_count{name,result}.
 rule_files:
   - rendered-rules.yaml
 
 evaluation_interval: 1m
 
 tests:
-  # monitor-a's first dead letter at minute 9 ('_x9' is nine gaps): a new series, at 1 - fires, for its 30 min only
+  # a dead letter at minute 10 on a counter at 0 since the start: fires, for its 30 min only
   - interval: 1m
     input_series:
       - series: 'kafka_dead_letters_total{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", topic="user.events"}'
-        values: '_x9 1x60'
+        values: '0x9 1x60'
     alert_rule_test:
-      - eval_time: 8m
+      - eval_time: 9m
         alertname: KafkaDeadLetters
         exp_alerts: []
       - eval_time: 12m
@@ -22,46 +22,81 @@ tests:
           - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-monitor, topic: user.events }
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/KafkaDeadLetters
-              summary: "schnappy-monitor kept 1 Kafka record(s) of user.events on its .DLT"
-      - eval_time: 38m
-        alertname: KafkaDeadLetters
-        exp_alerts:
-          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-monitor, topic: user.events }
-            exp_annotations:
-              runbook_url: https://runbooks.pmon.dev/KafkaDeadLetters
-              summary: "schnappy-monitor kept 1 Kafka record(s) of user.events on its .DLT"
+              summary: "schnappy-monitor kept Kafka records of user.events on its .DLT"
       - eval_time: 45m
         alertname: KafkaDeadLetters
         exp_alerts: []
 
-  # an old count, flat (yesterday's dead letters): nothing; two more at minute 40 - fires with 2; a second pod of the
-  # same app counting its first at minute 39 - summed into the same alert, 3
+  # an old count, flat, a scrape gap of 20 min in it: nothing (the count did not move); the app container restarted in
+  # place (the counter back to 0 on the same series, as Istio's merged port keeps the labels) and a dead letter after:
+  # fires; a second pod restarting (5 -> 0) beside it cancels nothing
   - interval: 1m
     input_series:
       - series: 'kafka_dead_letters_total{job="schnappy-chat", namespace="schnappy-production", pod="chat-a", topic="chat.messages"}'
-        values: '5x39 7x30'
+        values: '4x20 _x20 4x20 0x5 1x30'
       - series: 'kafka_dead_letters_total{job="schnappy-chat", namespace="schnappy-production", pod="chat-b", topic="chat.messages"}'
-        values: '_x39 1x30'
+        values: '5x60 0x40'
     alert_rule_test:
-      - eval_time: 38m
+      - eval_time: 58m
         alertname: KafkaDeadLetters
         exp_alerts: []
-      - eval_time: 42m
+      - eval_time: 70m
         alertname: KafkaDeadLetters
         exp_alerts:
           - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-chat, topic: chat.messages }
             exp_annotations:
               runbook_url: https://runbooks.pmon.dev/KafkaDeadLetters
-              summary: "schnappy-chat kept 3 Kafka record(s) of chat.messages on its .DLT"
+              summary: "schnappy-chat kept Kafka records of chat.messages on its .DLT"
 
   # a job outside the services, or another namespace: not this rule's
   - interval: 1m
     input_series:
       - series: 'kafka_dead_letters_total{job="some-tool", namespace="schnappy-production", pod="t", topic="user.events"}'
-        values: '_x9 1x30'
+        values: '0x9 1x30'
       - series: 'kafka_dead_letters_total{job="schnappy-monitor", namespace="schnappy-test", pod="m", topic="user.events"}'
-        values: '_x9 1x30'
+        values: '0x9 1x30'
     alert_rule_test:
       - eval_time: 12m
         alertname: KafkaDeadLetters
         exp_alerts: []
+
+  # the .DLT refusing a dead letter: critical at once
+  - interval: 1m
+    input_series:
+      - series: 'kafka_dead_letters_refused_total{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", topic="user.events"}'
+        values: '0x9 1x30'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: KafkaDeadLettersRefused
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: KafkaDeadLettersRefused
+        exp_alerts:
+          - exp_labels: { severity: critical, namespace: schnappy-production, job: schnappy-monitor, topic: user.events }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KafkaDeadLettersRefused
+              summary: "user.events.DLT refuses schnappy-monitor's dead letters - its listener is held"
+
+  # a listener failing every try from minute 10 (its store away), none succeeding: fires 10 min later; a listener that
+  # fails now and then between its successes: never
+  - interval: 1m
+    input_series:
+      - series: 'spring_kafka_listener_seconds_count{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", name="c#0-0", result="failure"}'
+        values: '0x10 1+2x40'
+      - series: 'spring_kafka_listener_seconds_count{job="schnappy-monitor", namespace="schnappy-production", pod="monitor-a", name="c#0-0", result="success"}'
+        values: '0+1x10 10x40'
+      - series: 'spring_kafka_listener_seconds_count{job="schnappy-chat", namespace="schnappy-production", pod="chat-a", name="c#0-0", result="failure"}'
+        values: '0+1x50'
+      - series: 'spring_kafka_listener_seconds_count{job="schnappy-chat", namespace="schnappy-production", pod="chat-a", name="c#0-0", result="success"}'
+        values: '0+5x50'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KafkaListenerFailing
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: KafkaListenerFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: schnappy-production, job: schnappy-monitor, name: "c#0-0" }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/KafkaListenerFailing
+              summary: "schnappy-monitor's Kafka listener fails every try - held on one record"

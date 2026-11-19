@@ -143,24 +143,51 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/ProcessCPUHigh"
             summary: "Process CPU usage high"
-        # a Kafka record an app gave up on: its error handler retried it with a back-off, then kept it on <topic>.DLT -
-        # never skipped (ops plan 127). The app counts each as the .DLT takes it; the counter's series first appears at
-        # its first count, which increase() cannot see - "or" takes a series 30 min old no more, whole. Fires for 30 min.
+        # a Kafka record an app gave up on and kept on <topic>.DLT (ops plan 127): one no wait cures - not JSON, naming
+        # no user, a constraint broken, a failure 15 min of retries did not cure. A store away is waited for, never
+        # dead-lettered: KafkaListenerFailing. The apps register the counter at 0 for each listener topic, so its first
+        # count is an increase; increase() rides a counter reset and a scrape gap. Fires for 30 min.
         - alert: KafkaDeadLetters
           expr: |
             sum by (namespace, job, topic) (
-              (
-                kafka_dead_letters_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"}
-                - kafka_dead_letters_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"} offset 30m
-              )
-              or kafka_dead_letters_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"}
+              increase(kafka_dead_letters_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"}[30m])
             ) > 0
           labels:
             severity: warning
             namespace: {{ $ns }}
           annotations:
             runbook_url: "https://runbooks.pmon.dev/KafkaDeadLetters"
-            summary: "{{"{{"}} $labels.job {{"}}"}} kept {{"{{"}} $value {{"}}"}} Kafka record(s) of {{"{{"}} $labels.topic {{"}}"}} on its .DLT"
+            summary: "{{"{{"}} $labels.job {{"}}"}} kept Kafka records of {{"{{"}} $labels.topic {{"}}"}} on its .DLT"
+        # the .DLT refused a dead letter (the topic gone, an ACL): the record is retried again, never committed - its
+        # listener held behind it
+        - alert: KafkaDeadLettersRefused
+          expr: |
+            sum by (namespace, job, topic) (
+              increase(kafka_dead_letters_refused_total{job=~"{{ $jobRegex }}", namespace="{{ $ns }}"}[15m])
+            ) > 0
+          labels:
+            severity: critical
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KafkaDeadLettersRefused"
+            summary: "{{"{{"}} $labels.topic {{"}}"}}.DLT refuses {{"{{"}} $labels.job {{"}}"}}'s dead letters - its listener is held"
+        # a Kafka listener failing and never succeeding: its error handler holds it on one record (its store away -
+        # waited for however long -, or a failure on its way to the .DLT), every partition that consumer reads behind it
+        - alert: KafkaListenerFailing
+          expr: |
+            sum by (namespace, job, name) (
+              increase(spring_kafka_listener_seconds_count{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", result="failure"}[5m])
+            ) > 0
+            unless sum by (namespace, job, name) (
+              increase(spring_kafka_listener_seconds_count{job=~"{{ $jobRegex }}", namespace="{{ $ns }}", result="success"}[5m])
+            ) > 0
+          for: 10m
+          labels:
+            severity: warning
+            namespace: {{ $ns }}
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/KafkaListenerFailing"
+            summary: "{{"{{"}} $labels.job {{"}}"}}'s Kafka listener fails every try - held on one record"
 
 {{- if eq (.Values.masiService.enabled | toString) "true" }}
     # masi: the LLM ledger and budgets, source health, the browser pod. The ratios are
