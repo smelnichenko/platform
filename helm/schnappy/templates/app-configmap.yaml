@@ -127,17 +127,6 @@ data:
         enabled: true
         requests-per-minute: 300
         burst-capacity: 50
-
-    spring.kafka:
-      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-      producer:
-        key-serializer: org.apache.kafka.common.serialization.StringSerializer
-        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      consumer:
-        group-id: monitor-chat
-        auto-offset-reset: earliest
-        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-        value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-        properties:
-          spring.json.trusted.packages: io.schnappy.monitor.chat.dto
+    # no spring.kafka here: the image's application.yml carries it (KAFKA_BOOTSTRAP_SERVERS from the deployment) - a
+    # copy read after it (this file wins) named the bare JsonDeserializer over the image's error-handling one
 {{- end }}
