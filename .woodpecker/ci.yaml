@@ -101,7 +101,7 @@ steps:
     commands:
       - sh .woodpecker/alertmanager-render.sh
   - name: alertmanager-check
-    image: prom/alertmanager:v0.34.2
+    image: prom/alertmanager:v0.35.0
     depends_on: [alertmanager-render]
     commands:
       - sh .woodpecker/alertmanager-check.sh

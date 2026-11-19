@@ -141,7 +141,7 @@ tempo:
 # Alertmanager
 alertmanager:
   enabled: false
-  image: prom/alertmanager:v0.34.2
+  image: prom/alertmanager:v0.35.0
   alertEmailTo: ""
   alertEmailFrom: "alerts@pmon.dev"
   kagentInvestigate:
