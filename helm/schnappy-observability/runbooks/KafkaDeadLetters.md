@@ -82,7 +82,8 @@ printf '__TypeId__:java.util.HashMap,__ContentTypeId__:java.lang.Object,__KeyTyp
       --reader-property parse.headers=true --reader-property parse.key=true
 ```
 
-Chat writes a message under a new id on each try, so a chat message replayed twice is stored twice.
+A chat message replayed once others followed it is appended as a second row after the chain's head - the chain stays
+whole, the history shows it twice. One still at the head is not written again.
 
 ## Never delete the DLT or its records
 
