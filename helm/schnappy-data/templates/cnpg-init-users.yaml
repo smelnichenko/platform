@@ -58,7 +58,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: init-users
-          image: postgres:17-alpine@sha256:6f30057d31f5861b66f3545d4821f987aacf1dd920765f0acadea0c58ff975b1
+          image: postgres:18-alpine@sha256:ff64c9e3bdf8e2120107d3559de8db314e8305f7e38c5105903c6295876738ff
           resources:
             requests: { cpu: 25m, memory: 64Mi }
             limits: { cpu: 200m, memory: 128Mi }
