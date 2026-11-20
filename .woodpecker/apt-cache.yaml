@@ -14,8 +14,12 @@ clone:
   - name: git
     image: woodpeckerci/plugin-git
     settings:
+      home: /tmp  # non-root: its credentials file in a home it can write
       partial: false
       depth: 1
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
 
 steps:
   - name: push-image
@@ -35,6 +39,7 @@ steps:
           --insecure-registry=nexus.pmon.dev:8082
     backend_options:
       kubernetes:
+        securityContext: { runAsNonRoot: false, runAsUser: 0, runAsGroup: 0 }  # Kaniko builds as root - root only inside its user namespace
         resources:
           requests: { memory: 512Mi }
         secrets:

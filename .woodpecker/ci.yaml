@@ -16,8 +16,12 @@ clone:
   - name: git
     image: woodpeckerci/plugin-git
     settings:
+      home: /tmp  # non-root: its credentials file in a home it can write
       partial: false
       depth: 100
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
 
 steps:
   - name: helm-lint
@@ -55,6 +59,11 @@ steps:
       - cmp helm/schnappy/files/smoke-test.js helm/schnappy-test/files/smoke-test.js
       # An alert's runbook_url must land on a page, not on the index.
       - sh .woodpecker/runbooks-exist.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
+    environment:
+      HOME: /tmp  # no user of its own in the image: a home it can write
 
   # CNPG's backups as production renders them: a daily schedule in CNPG's six-field cron, a bounded store
   - name: cnpg-backup-render
@@ -62,6 +71,11 @@ steps:
     commands:
       - sh .woodpecker/cnpg-backup-render.sh
       - sh .woodpecker/cnpg-databases-render.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
+    environment:
+      HOME: /tmp  # no user of its own in the image: a home it can write
 
   # ClickHouse started on the chart's config in the chart's image: a config it refuses fails here, not at production's
   # restart; every system log it keeps has a TTL (the script says why)
@@ -71,6 +85,9 @@ steps:
       CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.41.14-alpine
     commands:
       - sh .woodpecker/clickhouse-config-start.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 101, runAsGroup: 101 }  # clickhouse's own user
 
   # masi's allow-list and its documentation (docs/masi-allowed-hosts.md) name the same hosts: a host added or removed on
   # one side only fails here
@@ -78,6 +95,11 @@ steps:
     image: alpine/helm:latest
     commands:
       - sh .woodpecker/allowed-hosts-doc.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
+    environment:
+      HOME: /tmp  # no user of its own in the image: a home it can write
 
   # Alert rules are code: promtool checks the syntax and runs the unit tests under
   # helm/schnappy/tests/rules/ against the rules rendered as production sees them, in the
@@ -87,11 +109,19 @@ steps:
     image: alpine/helm:latest
     commands:
       - sh .woodpecker/render-rules.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
+    environment:
+      HOME: /tmp  # no user of its own in the image: a home it can write
   - name: rules-unit-tests
     image: quay.io/prometheus/prometheus:v3.15.0
     depends_on: [render-rules]
     commands:
       - sh .woodpecker/rules-unit-tests.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 65534, runAsGroup: 65534 }  # nobody, the image's own
 
   # Alertmanager's config in Alertmanager's own image (the one infra's values run: values.yaml's alertmanager.image -
   # move this tag with it): amtool takes it, each alert's route as production's, and the upgrade cycle's notices through
@@ -100,11 +130,19 @@ steps:
     image: alpine/helm:latest
     commands:
       - sh .woodpecker/alertmanager-render.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
+    environment:
+      HOME: /tmp  # no user of its own in the image: a home it can write
   - name: alertmanager-check
     image: prom/alertmanager:v0.34.2
     depends_on: [alertmanager-render]
     commands:
       - sh .woodpecker/alertmanager-check.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 65534, runAsGroup: 65534 }  # nobody, the image's own
 
   # The init-users hook script against a real Postgres: what "Succeeded" must
   # mean (roles, ownership, quoted passwords, idempotent rotation, abort on a
@@ -119,6 +157,9 @@ steps:
     commands:
       - sh .woodpecker/init-users-script-test.sh
     depends_on: [helm-lint]
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 70, runAsGroup: 70 }  # postgres's own user
 
   - name: sonar
     image: git.pmon.dev/schnappy/sonar-scanner:latest
@@ -137,6 +178,7 @@ steps:
     depends_on: [helm-lint]
     backend_options:
       kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }  # node, the image's own
         secrets:
           - name: woodpecker-ci-secrets
             key: sonar_token
@@ -152,3 +194,6 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_PASSWORD: test
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 70, runAsGroup: 70 }  # postgres's own user
