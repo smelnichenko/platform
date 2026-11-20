@@ -35,7 +35,7 @@ spec:
         - name: create-buckets
           # AWS's own CLI, not MinIO's mc: MinIO withdrew the mc images on 2026-09-24 (quay.io 401, docker.io
           # gone). aws-cli, unlike rclone, also sets the bucket policy a public-read bucket needs.
-          image: amazon/aws-cli:2.37.13@sha256:d32864c20087d486f5988c3e70817d67a73f584a47535cada9ad97e0ea1e5196
+          image: amazon/aws-cli:2.41.2@sha256:7a77ccb39e3272191adbf905c50db8c127db88fd79454911a41a6b1c0e419e9b
           resources:
             requests: { cpu: 500m, memory: 64Mi }
             # aws-cli is a Python program: its start-up needs CPU - a node shares it by request when loaded
