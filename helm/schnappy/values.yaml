@@ -251,8 +251,8 @@ masiService:
     # The operator's LinkedIn session cookie (li_at): with it the wildcard reads the company pages themselves.
     linkedinLiAt: ""
   alerts:
-    # The operator's instant e-mail alerts: a pipeline that broke, a registry that found new rows, a new match above
-    # matchScore. Needs mail.enabled above. Off until switched on per environment.
+    # The operator's e-mail alerts, one daily digest: a new match above matchScore - a source's trouble is the masi
+    # Sources page's, never an alert. Needs mail.enabled above. Off until switched on per environment.
     enabled: false
     to: ""
     matchScore: 0.8

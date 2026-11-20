@@ -212,7 +212,8 @@ spec:
             summary: "admin's user events are not going out to Kafka (unsent past 5 min, or its publisher stopped)"
 
 {{- if eq (.Values.masiService.enabled | toString) "true" }}
-    # masi: the LLM ledger and budgets, source health, the browser pod. The ratios are
+    # masi: the LLM ledger and budgets, its sweeps and reports, the browser pod - no alert about one source (its facts
+    # are the Sources page's). The ratios are
     # computed by the app, so each has an absent() cover: a silent gauge is itself a
     # finding, not a green board. Unit tests: helm/schnappy/tests/rules/masi-alerts.test.yaml.
     - name: {{ $ns }}-masi
