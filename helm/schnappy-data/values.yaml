@@ -138,7 +138,7 @@ kafka:
 scylla:
   enabled: true
   # the legacy StatefulSet's; with the operator each environment sets it (its schema Job's cqlsh, the cluster's version)
-  image: scylladb/scylla:6.2
+  image: scylladb/scylla:2026.1.16
   replicas: 1
   args:
     - "--smp=2"

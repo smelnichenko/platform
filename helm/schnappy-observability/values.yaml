@@ -79,7 +79,7 @@ clickhouse:
 # Fluent-bit log shipper.
 fluentbit:
   enabled: false
-  image: cr.fluentbit.io/fluent/fluent-bit:4.2.3.1
+  image: cr.fluentbit.io/fluent/fluent-bit:5.1.5
   resources:
     requests: { memory: "128Mi", cpu: "50m" }
     limits: { memory: "256Mi", cpu: "200m" }
@@ -248,7 +248,7 @@ grafana:
 # Hyperfoil report server (Nginx → MinIO proxy)
 reports:
   enabled: false
-  image: nginx:1.28.3-alpine
+  image: nginx:1.27-alpine
   ingress:
     enabled: false
     host: reports.local
