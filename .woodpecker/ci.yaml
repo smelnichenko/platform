@@ -61,9 +61,9 @@ steps:
       - sh .woodpecker/runbooks-exist.sh
     backend_options:
       kubernetes:
-        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
-    environment:
-      HOME: /tmp  # no user of its own in the image: a home it can write
+        # root until the ci-tools image carries what it installs above (python3, PyYAML, bash) - root inside its own user
+        # namespace only, never ten's
+        securityContext: { runAsNonRoot: false, runAsUser: 0, runAsGroup: 0 }
 
   # CNPG's backups as production renders them: a daily schedule in CNPG's six-field cron, a bounded store
   - name: cnpg-backup-render
