@@ -47,8 +47,7 @@ steps:
       # ClickHouse's backup: the prune's script against a stub rclone (the newest complete ones kept, a listing failing
       # removes nothing), the server's backup config as rendered
       - sh .woodpecker/clickhouse-backup-prune-test.sh
-      # Kafka's backup: its dump against stub Kafka tools (exact counts, a short read red), its CronJob as rendered, the
-      # prune script the same in both charts
+      # Kafka's backup CronJob as rendered (the dump and restore themselves: kafka-backup-scripts, on the CronJob's image)
       - bash .woodpecker/kafka-backup-render-test.sh
       - helm lint helm/schnappy-realtime/
       # smokeTest is off by default; without the flag nothing renders.

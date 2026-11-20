@@ -6,10 +6,20 @@ set -eu
 fails=0
 check() { if [ "$2" = "$3" ]; then echo "PASS $1"; else echo "FAIL $1: got '$2', want '$3'"; fails=$((fails + 1)); fi; }
 v=$(awk '/^strimzi:/ { s = 1 } s && /^  kafkaVersion:/ { print $2; exit }' helm/schnappy-data/values.yaml)
-check "the CI step for the dump and restore runs apache/kafka:$v, the CronJob's image" \
-  "$(grep -c "^    image: apache/kafka:$v\$" .woodpecker/ci.yaml)" 1
+# The step that runs the dump and restore: this chart's kafkaVersion is its image's tag, and it runs them - parsed, so
+# another step on that image, or the step left without its command, never passes for it. (The chart's default only:
+# infra's per-environment values set what ships - when they part from it, this does not see it.)
+step=$(python3 -c '
+import sys, yaml
+s = [x for x in yaml.safe_load(open(".woodpecker/ci.yaml"))["steps"] if x.get("name") == "kafka-backup-scripts"]
+print(len(s), s[0].get("image") if s else "-", "bash .woodpecker/kafka-backup-test.sh" in (s[0].get("commands") or []) if s else "-")')
+check "the step kafka-backup-scripts runs kafka-backup-test.sh on apache/kafka:$v, the CronJob's image" "$step" "1 apache/kafka:$v True"
 kb() { helm template t helm/schnappy-data/ --namespace schnappy-production --set postgres.password=test --set strimzi.enabled=true \
   --set strimzi.backup.enabled=true --set vault.secretsEnabled=true --set alerts.enabled=true "$@" 2>&1 || true; }
+# kb's || true keeps a refused render's message for the checks that look for one; a helm that renders nothing at all
+# must not pass the "absent" checks below unseen
+check "helm renders the chart (the premise of every check below)" \
+  "$(kb --set strimzi.backup.endpoint=http://s:9000 --set 'strimzi.backup.storeIps={1.2.3.4}' | grep -c '^kind: CronJob$' | awk '{ print ($1 > 0) }')" 1
 out=$(kb --set strimzi.backup.endpoint=http://192.168.11.5:9000 --set 'strimzi.backup.storeIps={192.168.11.4,192.168.11.5,192.168.11.6}' \
   --set strimzi.kafkaVersion=4.3.1)
 cj() { printf '%s\n' "$out" | awk '/^kind: CronJob/ { c = 1 } /^---/ { c = 0 } c'; }
