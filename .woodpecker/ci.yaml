@@ -25,12 +25,10 @@ clone:
 
 steps:
   - name: helm-lint
-    image: alpine/helm:latest
+    # helm, python3 + PyYAML (the render checks read a policy as YAML), bash and iconv (the backups' scripts:
+    # kafka-backup-test.sh runs the dump and restore as the CronJob's image does) - all in it, nothing installed at run time
+    image: git.pmon.dev/schnappy/ci-tools:latest
     commands:
-      # the render checks read a policy as YAML (alpine/helm ships neither)
-      # bash and iconv (musl-utils) for the backups' scripts (kafka-backup-test.sh runs the dump and restore as the
-      # CronJob's image does)
-      - apk add --no-cache python3 py3-yaml bash musl-utils
       - helm lint helm/schnappy/ --set site.dnsResolver=10.43.0.10
       - helm lint helm/schnappy-data/ --set postgres.password=test
       - helm lint helm/schnappy-auth/
@@ -61,9 +59,7 @@ steps:
       - sh .woodpecker/runbooks-exist.sh
     backend_options:
       kubernetes:
-        # root until the ci-tools image carries what it installs above (python3, PyYAML, bash) - root inside its own user
-        # namespace only, never ten's
-        securityContext: { runAsNonRoot: false, runAsUser: 0, runAsGroup: 0 }
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }  # ci, the image's own
 
   # CNPG's backups as production renders them: a daily schedule in CNPG's six-field cron, a bounded store
   - name: cnpg-backup-render
