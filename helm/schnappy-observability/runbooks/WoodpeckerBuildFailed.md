@@ -4,7 +4,7 @@
 
 ## What fired
 
-A step of a pipeline that builds **main** failed on `$labels.repo` within the last 10 min: the `cd` workflow of an app repo (it runs only on a push to main), or the `ci` workflow of platform, infra or ops (they push to main directly). The metric is `woodpecker_step_failures_total{workflow, type!="service"}`. A failed pull-request pipeline does not fire it: that is feedback for its author, on the PR. (`woodpecker_pipeline_count` cannot be used for this — a pull request's pipeline is labelled with its target branch, so every PR counts as `main`.)
+A step of a pipeline that builds **main** failed on `$labels.repo` within the last 10 min: the `cd` workflow of an app repo (it runs only on a push to main), the nightly cron workflows `depcheck` (monitor: OWASP dependency-check of every app) and `pitest` (each app's mutation tests), or the `ci` workflow of platform, infra or ops (they push to main directly). `$labels.workflow` names which. The metric is `woodpecker_step_failures_total{workflow, type!="service"}`. A failed pull-request pipeline does not fire it: that is feedback for its author, on the PR. (`woodpecker_pipeline_count` cannot be used for this — a pull request's pipeline is labelled with its target branch, so every PR counts as `main`.)
 
 ## Impact
 
@@ -34,7 +34,8 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 | Gradle test failure | broken unit test or new dependency conflict |
 | Kaniko build failure | base image pull issue, Dockerfile syntax, or registry credentials |
 | SonarQube quality gate | code coverage / smell threshold breached |
-| Dep-check failure | high CVE in a dependency that just published — review NVD |
+| Dep-check failure (`depcheck`, nightly) | high CVE in a dependency that just published — review NVD |
+| `pitest` failure (nightly) | mutation score under the app's threshold, or a test that only fails under PIT — its report is in the step log |
 | Network timeout | Forgejo / Nexus / git.pmon.dev briefly unreachable from build pod |
 
 ## Verify resolved

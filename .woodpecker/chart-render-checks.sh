@@ -173,7 +173,7 @@ done
 # shellcheck disable=SC2086
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
   | awk '/alert: WoodpeckerBuildFailed$/ {s=1; print; next} s && /- alert:/ {exit} s' | grep -v '^ *#' > .ci-out/build-failed.rule || true
-grep -q 'woodpecker_step_failures_total{workflow="cd", type!="service"}' .ci-out/build-failed.rule || fail "WoodpeckerBuildFailed no longer watches the cd workflow"
+grep -q 'woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"}' .ci-out/build-failed.rule || fail "WoodpeckerBuildFailed no longer watches the cd workflow and the nightly depcheck and pitest"
 grep -q 'woodpecker_pipeline_count' .ci-out/build-failed.rule && fail "WoodpeckerBuildFailed is back on woodpecker_pipeline_count, which counts every pull request as main"
 grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the repos that push to main directly are no longer watched"
 

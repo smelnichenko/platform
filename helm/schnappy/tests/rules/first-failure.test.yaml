@@ -20,6 +20,9 @@ tests:
       # a red pull request (workflow ci in an app repo): never pages
       - series: 'woodpecker_step_failures_total{repo="schnappy/masi", workflow="ci", type="commands", step="test"}'
         values: '_x20 1x40'
+      # a red nightly cron run (pitest - main only): pages, its workflow named
+      - series: 'woodpecker_step_failures_total{repo="schnappy/chess", workflow="pitest", type="commands", step="backend-pitest"}'
+        values: '_x20 1x40'
     alert_rule_test:
       - eval_time: 15m
         alertname: WoodpeckerBuildFailed
@@ -33,8 +36,16 @@ tests:
               workflow: cd
             exp_annotations:
               runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
-              summary: "Woodpecker build of main failed (repo schnappy/masi)"
-              description: "A pipeline on main of schnappy/masi ended in failure: nothing deploys from it until it is green. Check ci.pmon.dev."
+              summary: "Woodpecker build of main failed (repo schnappy/masi, workflow cd)"
+              description: "The cd workflow on main of schnappy/masi ended in failure - cd or ci: nothing deploys from it until it is green; depcheck or pitest: the nightly check is red. Check ci.pmon.dev."
+          - exp_labels:
+              severity: warning
+              repo: schnappy/chess
+              workflow: pitest
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
+              summary: "Woodpecker build of main failed (repo schnappy/chess, workflow pitest)"
+              description: "The pitest workflow on main of schnappy/chess ended in failure - cd or ci: nothing deploys from it until it is green; depcheck or pitest: the nightly check is red. Check ci.pmon.dev."
       # the window passed: the new series is old now, and nothing moved
       - eval_time: 45m
         alertname: WoodpeckerBuildFailed
