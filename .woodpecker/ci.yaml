@@ -151,6 +151,7 @@ steps:
   - name: init-users-script
     image: postgres:17-alpine
     environment:
+      HOME: /tmp  # no user 1000 in the image: a home it can write
       PGHOST: postgres
       PGUSER: postgres
       PGPASSWORD: test
@@ -159,7 +160,8 @@ steps:
     depends_on: [helm-lint]
     backend_options:
       kubernetes:
-        securityContext: { runAsNonRoot: true, runAsUser: 70, runAsGroup: 70 }  # postgres's own user
+        # uid 1000: it writes its logs in the workspace, which the clone made as 1000 (postgres's own 70 is the service's)
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
 
   - name: sonar
     image: git.pmon.dev/schnappy/sonar-scanner:latest
