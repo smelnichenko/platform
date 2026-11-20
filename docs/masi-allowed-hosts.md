@@ -9,7 +9,7 @@ starts or stops using one: change the list and this table in the same commit.**
 
 | layer | where | what it does | environments |
 |---|---|---|---|
-| the chart's list `masiService.http.allowedHosts` | platform `helm/schnappy/values.yaml` (rendered as `MASI_HTTP_ALLOWED_HOSTS`) | masi refuses, before DNS, every host not named here - exact names, no suffix match; each refusal is counted per source (alert `MasiSourceHostNotAllowed`) | **test** (`schnappy-test`), and any environment that does not override it |
+| the chart's list `masiService.http.allowedHosts` | platform `helm/schnappy/values.yaml` (rendered as `MASI_HTTP_ALLOWED_HOSTS`) | masi refuses, before DNS, every host not named here - exact names, no suffix match; each refusal is counted per source (the Sources page shows it: "hosts refused") | **test** (`schnappy-test`), and any environment that does not override it |
 | production's override | infra `clusters/production/schnappy-production-apps/values.yaml`, `masiService.http.allowedHosts: ["*"]` | any public host: a new source needs no entry (the operator, 2026-10-19; plan 104 PR 1, masi #124 / e0dc51a - an older masi image reads `*` as a literal host) | **production** |
 | masi's URL validator | masi `UrlValidator` | refuses internal addresses (private, loopback, link-local, CGNAT) whatever the list says | all |
 | the pod's egress policy | platform `helm/schnappy/templates/network-policies.yaml` (masi → public internet) | 80/443 to `0.0.0.0/0` except 10/8, 172.16/12, 192.168/16, 169.254/16, 100.64/10 | all |
