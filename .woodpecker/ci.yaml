@@ -61,7 +61,6 @@ steps:
       kubernetes:
         securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }  # ci, the image's own
 
-  # CNPG's backups as production renders them: a daily schedule in CNPG's six-field cron, a bounded store
   # Kafka's backup dump and restore where the CronJob runs them: apache/kafka at strimzi.kafkaVersion (Alpine - busybox's
   # awk and iconv, not ci-tools' GNU ones: a GNU-only flag would pass there and break the nightly dump). The tag is the
   # cluster's Kafka version; kafka-backup-render-test.sh fails the day it and kafkaVersion part.
@@ -73,6 +72,7 @@ steps:
       kubernetes:
         securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }  # appuser, the image's own
 
+  # CNPG's backups as production renders them: a daily schedule in CNPG's six-field cron, a bounded store
   - name: cnpg-backup-render
     image: alpine/helm:latest
     commands:
