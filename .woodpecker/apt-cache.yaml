@@ -42,7 +42,6 @@ steps:
         securityContext: { runAsNonRoot: false, runAsUser: 0, runAsGroup: 0 }  # Kaniko builds as root - root only inside its user namespace
         resources:
           requests: { memory: 512Mi }
-          limits: { cpu: 4 }
         secrets:
           - name: woodpecker-ci-secrets
             key: registry_user
