@@ -174,7 +174,12 @@ done
 helm template t helm/schnappy-observability/ $probe --show-only templates/prometheus-rules.yaml \
   | awk '/alert: WoodpeckerBuildFailed$/ {s=1; print; next} s && /- alert:/ {exit} s' | grep -v '^ *#' > .ci-out/build-failed.rule || true
 grep -q 'woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"}' .ci-out/build-failed.rule || fail "WoodpeckerBuildFailed no longer watches the cd workflow and the nightly depcheck and pitest"
-grep -q 'woodpecker_pipeline_count' .ci-out/build-failed.rule && fail "WoodpeckerBuildFailed is back on woodpecker_pipeline_count, which counts every pull request as main"
+# woodpecker_pipeline_count counts every pull request as main: never the signal - only the gate after "and on (repo)", a
+# step failure paging only beside a rise in its repo's FAILED pipelines (a pipeline cancel-previous killed is no failure)
+awk '/and on \(repo\)/ {exit} {print}' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count' \
+  && fail "WoodpeckerBuildFailed's signal is woodpecker_pipeline_count, which counts every pull request as main (it may only gate the step failures)"
+awk '/and on \(repo\)/ {s=1} s' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count{status="failure"}' \
+  || fail "WoodpeckerBuildFailed no longer gates a step failure on its repo's failed pipelines: a killed pipeline (cancel-previous) pages"
 grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the repos that push to main directly are no longer watched"
 
 # --- schnappy-observability: no alert reaches the LLM agents unless somebody switches that on ------------------------
