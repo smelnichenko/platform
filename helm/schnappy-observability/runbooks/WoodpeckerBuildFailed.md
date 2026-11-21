@@ -4,7 +4,7 @@
 
 ## What fired
 
-A step of a pipeline that builds **main** failed on `$labels.repo` within the last 10 min: the `cd` workflow of an app repo (it runs only on a push to main), the nightly cron workflows `depcheck` (monitor: OWASP dependency-check of every app) and `pitest` (each app's mutation tests), or the `ci` workflow of platform, infra or ops (they push to main directly). `$labels.workflow` names which. The metric is `woodpecker_step_failures_total{workflow, type!="service"}`. A failed pull-request pipeline does not fire it: that is feedback for its author, on the PR. (`woodpecker_pipeline_count` cannot be used for this — a pull request's pipeline is labelled with its target branch, so every PR counts as `main`.)
+A pipeline that builds **main** failed on `$labels.repo`: a step of it failed within the last 10 min (30 min for the `ci` of platform, infra and ops, where a short step fails beside a 15-minute one and its pipeline ends long after) while the repo's count of FAILED pipelines rose. The workflow is the `cd` of an app repo (it runs only on a push to main), the nightly cron workflows `depcheck` (monitor: OWASP dependency-check of every app) and `pitest` (each app's mutation tests), or the `ci` workflow of platform, infra or ops (they push to main directly; their pull requests run `ci` too and fire it). `$labels.workflow` names which. The metrics are `woodpecker_step_failures_total{workflow, type!="service"}` (which workflow) and `woodpecker_pipeline_count{status="failure"}` (that the pipeline ended as failure). A failed pull-request pipeline of an app repo does not fire it: that is feedback for its author, on the PR (`woodpecker_pipeline_count` alone cannot tell - a pull request's pipeline is labelled with its target branch, so every PR counts as `main`). A KILLED pipeline does not fire it either: cancel-previous kills a pipeline when the next push lands, and Woodpecker never counts a killed pipeline as failed - a kill nothing replaced is WoodpeckerBuildKilled's.
 
 ## Impact
 
@@ -48,4 +48,4 @@ kubectl -n schnappy-infra exec prometheus-schnappy-prometheus-0 -c prometheus --
 ```
 shows `status=success` count incrementing without a new `status=failure` increment.
 
-The alert auto-clears once the 5-min `increase()` window no longer contains a failure (i.e., 5+ min after the fix lands).
+The alert clears once its windows no longer hold the failure: 10 min after the failed pipeline ended (the step side holds 10 min, 30 min for the GitOps repos' `ci`).

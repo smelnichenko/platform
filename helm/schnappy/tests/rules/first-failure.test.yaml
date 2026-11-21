@@ -2,7 +2,8 @@
 # .woodpecker/render-rules.sh). Both read failure counters that a restart empties: a failure after it creates its
 # series at 1, and increase() reads a series' first sample as no increase - the first red build or failed sync after a
 # Woodpecker or Argo CD restart went unalerted (Woodpecker's v3.19.0 restart, 2026-10-12). A series new within the
-# window counts as a failure; an old one that does not move stays quiet.
+# window counts as a failure; an old one that does not move stays quiet. A killed pipeline (cancel-previous) is no
+# failure: only a step failure beside a rise in its repo's failed pipelines pages.
 rule_files:
   - rendered-infra-rules.yaml
 
@@ -23,6 +24,25 @@ tests:
       # a red nightly cron run (pitest - main only): pages, its workflow named
       - series: 'woodpecker_step_failures_total{repo="schnappy/chess", workflow="pitest", type="commands", step="backend-pitest"}'
         values: '_x20 1x40'
+      # a KILLED pipeline (cancel-previous: the next push landed) - its clone step counted as a failure, its repo's count
+      # of failed pipelines unmoved: never pages (infra, 2026-11-21 13:00)
+      - series: 'woodpecker_step_failures_total{repo="schnappy/infra", workflow="ci", type="clone", step="git"}'
+        values: '_x20 1x40'
+      # a red ci on main of a GitOps repo: its step and its repo's failed pipelines both rise - pages
+      - series: 'woodpecker_step_failures_total{repo="schnappy/ops", workflow="ci", type="commands", step="ansible-unit"}'
+        values: '_x20 1x40'
+      # each repo's count of failed pipelines: rising with a real failure, unmoved by a kill
+      # its failed-pipeline counter is in memory too (server/rpc/server.go): born with the step counter after the restart
+      - series: 'woodpecker_pipeline_count{repo="schnappy/masi", status="failure", branch="main", pipeline="total"}'
+        values: '_x20 1x40'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/chat", status="failure", branch="main", pipeline="total"}'
+        values: '3x60'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/chess", status="failure", branch="main", pipeline="total"}'
+        values: '2x20 3x40'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/infra", status="failure", branch="main", pipeline="total"}'
+        values: '7x60'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/ops", status="failure", branch="main", pipeline="total"}'
+        values: '52x20 53x40'
     alert_rule_test:
       - eval_time: 15m
         alertname: WoodpeckerBuildFailed
@@ -46,9 +66,103 @@ tests:
               runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
               summary: "Woodpecker build of main failed (repo schnappy/chess, workflow pitest)"
               description: "The pitest workflow on main of schnappy/chess ended in failure - cd or ci: nothing deploys from it until it is green; depcheck or pitest: the nightly check is red. Check ci.pmon.dev."
+          - exp_labels:
+              severity: warning
+              repo: schnappy/ops
+              workflow: ci
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
+              summary: "Woodpecker build of main failed (repo schnappy/ops, workflow ci)"
+              description: "The ci workflow on main of schnappy/ops ended in failure - cd or ci: nothing deploys from it until it is green; depcheck or pitest: the nightly check is red. Check ci.pmon.dev."
       # the window passed: the new series is old now, and nothing moved
-      - eval_time: 45m
+      - eval_time: 55m
         alertname: WoodpeckerBuildFailed
+        exp_alerts: []
+
+  # A short step fails beside a long one in the same stage (ops: ansible-lint, 1.4 min, beside ansible-unit, 15 min):
+  # the step counter rises at minute 20, the failed-pipeline count only when the workflow ends, minute 34. A real red
+  # main: pages once the pipeline ends (ops 2026-11-19 04:30 - a 10-minute memory never met its pipeline's end)
+  - interval: 1m
+    input_series:
+      - series: 'woodpecker_step_failures_total{repo="schnappy/ops", workflow="ci", type="commands", step="ansible-lint"}'
+        values: '2x20 3x60'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/ops", status="failure", branch="main", pipeline="total"}'
+        values: '52x34 53x46'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WoodpeckerBuildFailed
+        exp_alerts: []
+      - eval_time: 36m
+        alertname: WoodpeckerBuildFailed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              repo: schnappy/ops
+              workflow: ci
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
+              summary: "Woodpecker build of main failed (repo schnappy/ops, workflow ci)"
+              description: "The ci workflow on main of schnappy/ops ended in failure - cd or ci: nothing deploys from it until it is green; depcheck or pitest: the nightly check is red. Check ci.pmon.dev."
+
+  # A Woodpecker restart at minute 10 (a new pod: both counters start over under a new instance); masi's first red cd 2
+  # min after it pages at once - its old failed-pipeline series (80) no longer holds the gate shut
+  - interval: 1m
+    input_series:
+      - series: 'woodpecker_step_failures_total{repo="schnappy/masi", workflow="cd", type="commands", step="test", instance="a"}'
+        values: '4x9 stale'
+      - series: 'woodpecker_step_failures_total{repo="schnappy/masi", workflow="cd", type="commands", step="test", instance="b"}'
+        values: '_x12 1x40'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/masi", status="failure", branch="main", pipeline="total", instance="a"}'
+        values: '80x9 stale'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/masi", status="failure", branch="main", pipeline="total", instance="b"}'
+        values: '_x12 1x40'
+    alert_rule_test:
+      - eval_time: 13m
+        alertname: WoodpeckerBuildFailed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              repo: schnappy/masi
+              workflow: cd
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
+              summary: "Woodpecker build of main failed (repo schnappy/masi, workflow cd)"
+              description: "The cd workflow on main of schnappy/masi ended in failure - cd or ci: nothing deploys from it until it is green; depcheck or pitest: the nightly check is red. Check ci.pmon.dev."
+
+  # WoodpeckerBuildKilled: a run killed and nothing replaced it. infra killed by cancel-previous at minute 20, its
+  # replacement ending (success) at 25: quiet. masi's cd killed by its timeout at 20, nothing after: pages 30-40 min on.
+  # chat's cd red (its pipeline ends as failure): WoodpeckerBuildFailed's, never this.
+  - interval: 1m
+    input_series:
+      - series: 'woodpecker_step_failures_total{repo="schnappy/infra", workflow="ci", type="clone", step="git"}'
+        values: '11x20 12x80'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/infra", status="success", branch="main", pipeline="total"}'
+        values: '360x25 361x55'
+      - series: 'woodpecker_step_failures_total{repo="schnappy/masi", workflow="cd", type="commands", step="push-image"}'
+        values: '1x20 2x80'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/masi", status="success", branch="main", pipeline="total"}'
+        values: '80x80'
+      - series: 'woodpecker_step_failures_total{repo="schnappy/chat", workflow="cd", type="commands", step="test"}'
+        values: '3x20 4x80'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/chat", status="failure", branch="main", pipeline="total"}'
+        values: '5x21 6x80'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: WoodpeckerBuildKilled
+        exp_alerts: []
+      - eval_time: 55m
+        alertname: WoodpeckerBuildKilled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              repo: schnappy/masi
+              workflow: cd
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildKilled"
+              summary: "Woodpecker run of main killed and not replaced (repo schnappy/masi, workflow cd)"
+              description: "A cd run on main of schnappy/masi was killed 30-40 min ago (a timeout, an agent restart, a cancel by hand) and no pipeline of the repo has ended since: its commit is not built or deployed. Check ci.pmon.dev and restart the pipeline."
+      - eval_time: 75m
+        alertname: WoodpeckerBuildKilled
         exp_alerts: []
 
   - interval: 1m

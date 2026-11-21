@@ -683,27 +683,67 @@ spec:
           # carries its TARGET branch, so every PR run is branch="main" (tried, 2026-09-21: it
           # still mailed for a PR). The per-step counter names the WORKFLOW: in the app repos
           # "cd" runs only on a push to main, and the nightly cron workflows "depcheck" and "pitest" only on main;
-          # platform, infra and ops push to main directly, so there "ci" is main too. A service container that exits is not a failed step. A Woodpecker restart empties the
-          # counter: the first failure after one creates its series at 1, which increase() reads as none - a series new
-          # within the window counts too (helm/schnappy/tests/rules/first-failure.test.yaml).
+          # platform, infra and ops push to main directly, so there "ci" is main too (their pull requests run "ci" as
+          # well and page - rare there). A service container that exits is not a failed step. A Woodpecker restart empties
+          # BOTH counters (each is in memory): the first failure after one creates its series at 1, which increase() reads as
+          # none - a series new within the window counts too (helm/schnappy/tests/rules/first-failure.test.yaml).
+          # A KILLED pipeline is no failure: cancel-previous (on in every repo since 2026-11-21) kills a push's pipeline when
+          # the next push lands, and the step it was in counts in woodpecker_step_failures_total all the same (infra's
+          # deploy(test) commit, killed by its promote(prod) six seconds later, paged at 13:00 that day). So a step failure
+          # pages only beside a rise in its repo's count of FAILED pipelines - which Woodpecker counts when the pipeline's last
+          # workflow ends, success or failure only (a killed one never). In platform, infra and ops a short step fails beside
+          # a long one in the same stage (ops' ansible-unit, 15 min): the step failure is remembered 30 min there, so the
+          # pipeline's end still meets it (ops' ansible-lint, 2026-11-19 04:30, failed 13 min before its pipeline did). An app
+          # repo's red pull request in the same ten minutes as a killed cd could still page. A run killed and never replaced
+          # (a timeout, an agent restart) is WoodpeckerBuildKilled's.
           expr: |
-            sum by (repo, workflow) (
-              (increase(woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"}[10m]) > 0)
+            (
+              sum by (repo, workflow) (
+                (increase(woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"}[10m]) > 0)
+                or
+                (woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"} unless woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"} offset 10m)
+              ) > 0
               or
-              (woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"} unless woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="service"} offset 10m)
-            ) > 0
-            or
-            sum by (repo, workflow) (
-              (increase(woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"}[10m]) > 0)
-              or
-              (woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"} unless woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"} offset 10m)
-            ) > 0
+              sum by (repo, workflow) (
+                (increase(woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"}[30m]) > 0)
+                or
+                (woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"} unless woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"} offset 30m)
+              ) > 0
+            )
+            and on (repo)
+            (
+              sum by (repo) (
+                (increase(woodpecker_pipeline_count{status="failure"}[10m]) > 0)
+                or
+                (woodpecker_pipeline_count{status="failure"} unless woodpecker_pipeline_count{status="failure"} offset 10m)
+              )
+            )
           labels:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildFailed"
             summary: "Woodpecker build of main failed (repo {{ "{{" }} $labels.repo {{ "}}" }}, workflow {{ "{{" }} $labels.workflow {{ "}}" }})"
             description: "The {{ "{{" }} $labels.workflow {{ "}}" }} workflow on main of {{ "{{" }} $labels.repo {{ "}}" }} ended in failure - cd or ci: nothing deploys from it until it is green; depcheck or pitest: the nightly check is red. Check ci.pmon.dev."
+        - alert: WoodpeckerBuildKilled
+          # A run of main killed and NOT replaced: a timeout, an agent's restart, a cancel by hand - Woodpecker marks it
+          # killed, which WoodpeckerBuildFailed no longer reads as a failure. A kill by cancel-previous is replaced by the
+          # next push's pipeline, which ends (success or failure) within the half hour; one nothing replaced leaves its commit
+          # never deployed (masi cd 525 hung until the repo's timeout). A step failure 30-40 min ago with no pipeline of its
+          # repo ended since: the kill nothing followed. (A real failure ends its pipeline as failure: never this alert.)
+          expr: |
+            (
+              (sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="cd", type!="service"}[10m] offset 30m)) > 0)
+              or
+              (sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"}[10m] offset 30m)) > 0)
+            )
+            unless on (repo)
+            (sum by (repo) (increase(woodpecker_pipeline_count[40m])) > 0)
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildKilled"
+            summary: "Woodpecker run of main killed and not replaced (repo {{ "{{" }} $labels.repo {{ "}}" }}, workflow {{ "{{" }} $labels.workflow {{ "}}" }})"
+            description: "A {{ "{{" }} $labels.workflow {{ "}}" }} run on main of {{ "{{" }} $labels.repo {{ "}}" }} was killed 30-40 min ago (a timeout, an agent restart, a cancel by hand) and no pipeline of the repo has ended since: its commit is not built or deployed. Check ci.pmon.dev and restart the pipeline."
         - alert: WoodpeckerScrapeDown
           expr: up{job="woodpecker-server-metrics"} == 0
           for: 10m
