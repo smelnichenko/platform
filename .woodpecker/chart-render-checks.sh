@@ -301,7 +301,7 @@ echo "$bes" | grep -q 'key: secret/data/schnappy/masi-browser$' && echo "$bes" |
 
 br=$(doc Deployment t-schnappy-masi-browser)
 [ -n "$br" ] || fail "masi-browser Deployment not rendered"
-echo "$br" | grep -q 'image: "ghcr.io/browserless/chromium@sha256:[0-9a-f]\{64\}"$' || fail "masi-browser image is not pinned by digest"
+echo "$br" | grep -q 'image: "ghcr.io/browserless/chromium:v[0-9][0-9.]*@sha256:[0-9a-f]\{64\}"$' || fail "masi-browser image is not pinned by its release tag and digest"
 echo "$br" | grep -q 'automountServiceAccountToken: false$' || fail "masi-browser mounts a service-account token"
 [ "$(envref "$br" TOKEN)" = "t-masi-browser TOKEN" ] || fail "masi-browser has no TOKEN (any rendered page could open a CDP session over loopback)"
 [ "$(echo "$br" | grep -c 'secretKeyRef:')" = 1 ] || fail "masi-browser must reference exactly one secret key (its own token)"
@@ -429,9 +429,8 @@ helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set masiServi
 echo "$masi" | grep -A1 'name: MASI_API_DOCS_ENABLED' | grep -q 'value: "false"' || fail "masi API docs must be off by default"
 helm template t helm/schnappy/ --set site.dnsResolver=10.43.0.10 --set masiService.enabled=true --set masiService.apiDocs.enabled=true \
   | grep -A1 'name: MASI_API_DOCS_ENABLED' | grep -q 'value: "true"' || fail "masi API docs switch does not reach the pod"
-# the browser image digest is pinned beside the masi CI sidecar; a bump must move both
-helm show values helm/schnappy/ | grep -q 'digest: .sha256:b1ba7b054af2891a8199f884d4bd249cf8c3bd2fa8a97b339077e40f92803ba8' \
-  || fail "browserless digest in values changed — update the masi CI sidecar pin in the same change"
+# the browser image: Renovate moves it here (the upgrade cycle) and masi CI's sidecar (the app preset) - each a
+# tag@digest, so the two run the same release once both are merged (the hard pin to one digest went, 2026-11-21)
 
 # --- schnappy-mesh + schnappy-data: masi ----------------------------------------------------
 mesh=$(mesh)

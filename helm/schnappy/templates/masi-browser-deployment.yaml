@@ -47,7 +47,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: chromium
-          image: "{{ .Values.masiService.browser.image.repository }}@{{ .Values.masiService.browser.image.digest }}"
+          image: "{{ .Values.masiService.browser.image.repository }}:{{ .Values.masiService.browser.image.tag }}"
           imagePullPolicy: {{ .Values.masiService.browser.image.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false

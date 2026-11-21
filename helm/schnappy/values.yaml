@@ -394,14 +394,15 @@ masiService:
       # Estonia's official addresses (source addresses:ee, monthly): the Land and Spatial Development Board's address file
       - geoportaal.maaruum.ee
   # Chromium for BROWSER collectors: its own pod, connected over CDP. The masi image never
-  # contains a browser. Pinned by DIGEST (v2.56.7); the CD sed anchor (`# masi$`) never
+  # contains a browser. Pinned by its release tag AND digest in one field (tag@digest - the form Renovate's helm-values
+  # manager moves both of; a digest key alone it cannot update, 2026-11-21); the CD sed anchor (`# masi$`) never
   # touches this block. Access: the token (existingSecret below), the NetworkPolicy (ingress
   # from masi only) and the dedicated mesh ALLOW policy for masi's principal.
   browser:
     enabled: false
     image:
       repository: ghcr.io/browserless/chromium
-      digest: "sha256:b1ba7b054af2891a8199f884d4bd249cf8c3bd2fa8a97b339077e40f92803ba8"
+      tag: "v2.56.7@sha256:b1ba7b054af2891a8199f884d4bd249cf8c3bd2fa8a97b339077e40f92803ba8"
       pullPolicy: IfNotPresent
     # REQUIRED when enabled: the Secret (created by an ExternalSecret from Vault
     # <prefix>/masi-browser, property token) holding browserless's TOKEN. Without a token
