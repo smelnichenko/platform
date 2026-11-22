@@ -9,6 +9,10 @@ metadata:
 spec:
   instances: {{ if $ephemeral }}1{{ else }}{{ .Values.cnpg.instances | default 1 }}{{ end }}
   imageName: {{ if $ephemeral }}{{ .Values.cnpg.ephemeralImage | quote }}{{ else }}{{ .Values.cnpg.imageName }}{{ end }}
+  # a primary's update (a new image, most settings) by switchover: the replica updated first, then promoted - writes
+  # pause for seconds, connections reset once - and the old primary updated as the new replica. One instance: nothing to
+  # switch to, CloudNativePG restarts it. Set for good (operator 2026-11-21); infra's schnappy-data-envs no longer ignores it
+  primaryUpdateMethod: switchover
   {{- if not $ephemeral }}
   priorityClassName: data-critical
   {{- end }}
