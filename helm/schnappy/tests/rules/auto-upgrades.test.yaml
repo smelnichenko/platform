@@ -1,0 +1,186 @@
+# promtool unit tests for ten's automatic Debian upgrades (schnappy-observability's infra-auto-upgrades group; rendered
+# by .woodpecker/render-rules.sh). The stamps are the times of the last successful lists update and upgrade (before
+# the first, the set-up's): NodeAutoUpgradesFailing stays quiet while both move daily, goes pending the minute either
+# turns 26 h old and fires 10 min later, fires 10 min after neither is served at all, and reads only node_exporter's
+# job. NodeRebootPending fires 26 h after a reboot is first owed, a missed scrape bridged by its 10 min window, a longer
+# gap or a reboot starting the 26 h again, another job's series never.
+rule_files:
+  - rendered-infra-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # both succeed every morning (the lists at 0 h, 24 h, 48 h; the upgrade half an hour after each): quiet throughout
+  - interval: 1h
+    input_series:
+      - series: 'apt_update_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '0x23 86400x23 172800x10'
+      - series: 'apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '1800x23 88200x23 174600x10'
+      - series: 'node_reboot_required{job="node-exporter",instance="ten"}'
+        values: '0x58'
+    alert_rule_test:
+      - eval_time: 30h
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts: []
+      - eval_time: 50h
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts: []
+      - eval_time: 50h
+        alertname: NodeRebootPending
+        exp_alerts: []
+
+  # the upgrade's last success at 0 h, never again (the lists fresh every minute): pending from 26h00m, firing at 26h10m
+  - interval: 1m
+    input_series:
+      - series: 'apt_update_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '0+60x1700'
+      - series: 'apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '0x1700'
+    alert_rule_test:
+      - eval_time: 26h9m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts: []
+      - eval_time: 26h10m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeAutoUpgradesFailing
+              summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+
+  # the lists' last success at 0 h, never again (the upgrade "succeeds" every minute on stale lists): the same edge
+  - interval: 1m
+    input_series:
+      - series: 'apt_update_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '0x1700'
+      - series: 'apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '0+60x1700'
+    alert_rule_test:
+      - eval_time: 26h9m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts: []
+      - eval_time: 26h10m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeAutoUpgradesFailing
+              summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+
+  # nothing served (not deployed, the file gone - node_exporter itself up), or only another job's stamps: pending from
+  # the start, firing at 10 min
+  - interval: 1m
+    input_series:
+      - series: 'node_reboot_required{job="node-exporter",instance="ten"}'
+        values: '0x20'
+      - series: 'up{job="node-exporter",instance="ten"}'
+        values: '1x20'
+      - series: 'apt_update_last_success_timestamp_seconds{job="other",instance="elsewhere"}'
+        values: '0+60x20'
+      - series: 'apt_unattended_upgrade_last_success_timestamp_seconds{job="other",instance="elsewhere"}'
+        values: '0+60x20'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeAutoUpgradesFailing
+              summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+
+  # ten's upgrade fresh, its lists stamp only from another job: firing at 10 min (each half reads node_exporter's job)
+  - interval: 1m
+    input_series:
+      - series: 'apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '0+60x20'
+      - series: 'apt_update_last_success_timestamp_seconds{job="other",instance="elsewhere"}'
+        values: '0+60x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeAutoUpgradesFailing
+              summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+
+  # ten's lists fresh, its upgrade stamp only from another job: the same
+  - interval: 1m
+    input_series:
+      - series: 'apt_update_last_success_timestamp_seconds{job="node-exporter",instance="ten"}'
+        values: '0+60x20'
+      - series: 'apt_unattended_upgrade_last_success_timestamp_seconds{job="other",instance="elsewhere"}'
+        values: '0+60x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NodeAutoUpgradesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeAutoUpgradesFailing
+              summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+
+  # a reboot owed from 0 h on, never taken (the metrics every 5 min): quiet at 25h59m, firing at 26h
+  - interval: 5m
+    input_series:
+      - series: 'node_reboot_required{job="node-exporter",instance="ten"}'
+        values: '1x340'
+    alert_rule_test:
+      - eval_time: 25h59m
+        alertname: NodeRebootPending
+        exp_alerts: []
+      - eval_time: 26h
+        alertname: NodeRebootPending
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node-exporter, instance: ten }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeRebootPending
+              summary: "ten has owed a reboot for 26 h - the update that asked for it is not live"
+
+  # owed throughout, one scrape missed at 8h25m (a 10 min gap between samples): the 10 min window bridges it - firing at 27 h
+  - interval: 5m
+    input_series:
+      - series: 'node_reboot_required{job="node-exporter",instance="ten"}'
+        values: '1x100 _ 1x250'
+    alert_rule_test:
+      - eval_time: 27h
+        alertname: NodeRebootPending
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node-exporter, instance: ten }
+            exp_annotations:
+              runbook_url: https://runbooks.pmon.dev/NodeRebootPending
+              summary: "ten has owed a reboot for 26 h - the update that asked for it is not live"
+
+  # owed throughout but 20 min unscraped at 8h25m: the 26 h starts again after the gap - quiet at 27 h
+  - interval: 5m
+    input_series:
+      - series: 'node_reboot_required{job="node-exporter",instance="ten"}'
+        values: '1x100 _x3 1x250'
+    alert_rule_test:
+      - eval_time: 27h
+        alertname: NodeRebootPending
+        exp_alerts: []
+
+  # owed from 0 h, a reboot at 20 h (an hour without the file), owed again from 21 h: the 26 h starts again - quiet at 27 h
+  - interval: 5m
+    input_series:
+      - series: 'node_reboot_required{job="node-exporter",instance="ten"}'
+        values: '1x239 0x11 1x80'
+    alert_rule_test:
+      - eval_time: 27h
+        alertname: NodeRebootPending
+        exp_alerts: []
+
+  # another job's reboot flag, owed for 28 h: never NodeRebootPending (ten's node_exporter only)
+  - interval: 5m
+    input_series:
+      - series: 'node_reboot_required{job="other",instance="elsewhere"}'
+        values: '1x340'
+    alert_rule_test:
+      - eval_time: 27h
+        alertname: NodeRebootPending
+        exp_alerts: []

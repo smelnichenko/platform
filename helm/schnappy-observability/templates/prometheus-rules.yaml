@@ -926,5 +926,37 @@ spec:
           annotations:
             runbook_url: "https://runbooks.pmon.dev/OffsiteGitMirrorShrank"
             summary: "The offsite git mirror mirrored fewer repositories than it did this week - one dropped out of its listing"
+    # ten's Debian packages (ops setup-host-hardening.yml, tasks/auto-upgrades.yml): Debian's unattended-upgrades on its
+    # own timers - the lists twice a day, the upgrade between 06:00 and 07:00 (ten's local time) - and a reboot at 07:30
+    # when an update asks for one. Its results on ten's node_exporter (textfile collector, written every 5 min; before a
+    # first success the set-up's time stands in) - so under node_exporter's gate
+    - name: infra-auto-upgrades
+      rules:
+        # no successful lists update, or no successful upgrade, for 26 h: a run failed (a broken package, the mirror or
+        # DNS down - a failed lists update counts, APT::Update::Error-Mode - apt's lock held), never ran (its timers off
+        # or gone), none came in the 26 h after set-up, or no series at all (not deployed, the file gone). Read over Prometheus' history, so a restart in between changes nothing; the next
+        # successful run clears it. Until 2026-11-22 nothing upgraded ten at all, and nothing said so
+        - alert: NodeAutoUpgradesFailing
+          expr: |-
+            absent(max_over_time(apt_update_last_success_timestamp_seconds{job="node-exporter"}[26h]) > time() - 26 * 3600)
+            or absent(max_over_time(apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter"}[26h])
+              > time() - 26 * 3600)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/NodeAutoUpgradesFailing"
+            summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+        # a reboot owed for 26 h: the update that asked for it came a morning before at the latest, so a 07:30 reboot
+        # did not happen (cancelled, never scheduled - the upgrade failed first - or the timers off). ten runs its old
+        # kernel; the fixes are not live until it reboots. Over 10 min, so a missed scrape does not restart the 26 h
+        - alert: NodeRebootPending
+          expr: max_over_time(node_reboot_required{job="node-exporter"}[10m]) == 1
+          for: 26h
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://runbooks.pmon.dev/NodeRebootPending"
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }} has owed a reboot for 26 h - the update that asked for it is not live"
     {{- end }}
 {{- end }}
