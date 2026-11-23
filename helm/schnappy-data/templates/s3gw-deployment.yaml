@@ -10,6 +10,9 @@ metadata:
     {{- include "schnappy.s3gw.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  # replaced, never rolled: one pod at a time on its volume - versitygw's multipart publish lock is per process
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "schnappy.s3gw.selectorLabels" . | nindent 6 }}
