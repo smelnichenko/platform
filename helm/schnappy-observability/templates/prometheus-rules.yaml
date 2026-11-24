@@ -677,14 +677,16 @@ spec:
     - name: ci-woodpecker
       rules:
         - alert: WoodpeckerBuildFailed
-          # A red MAIN only: a red pull request is feedback for its author, shown on the PR
+          # A red MAIN only: a red pull request or branch is feedback for its author, shown on its commit
           # (12 of them on masi in one day of review work, 2026-09-21, each an e-mail).
-          # woodpecker_pipeline_count cannot tell the two apart — a pull request's pipeline
-          # carries its TARGET branch, so every PR run is branch="main" (tried, 2026-09-21: it
-          # still mailed for a PR). The per-step counter names the WORKFLOW: in the app repos
-          # "cd" runs only on a push to main, and the nightly cron workflows "depcheck" and "pitest" only on main;
-          # platform, infra and ops push to main directly, so there "ci" is main too (their pull requests run "ci" as
-          # well and page - rare there). A service container that exits is not a failed step. A Woodpecker restart empties
+          # A pull request's pipeline carries its TARGET branch, so every PR run is branch="main" (tried,
+          # 2026-09-21: it still mailed for a PR), and the per-step counter has no branch at all - it names the
+          # WORKFLOW. In the app repos "cd" runs only on a push to main, and the nightly cron workflows "depcheck"
+          # and "pitest" only on main. platform, infra and ops run "ci" on every PUSH, a branch's and main's, and on
+          # no pull request (2026-11-24: their red Renovate pull requests, and 22 red pushes to main in a week,
+          # paged): a branch push's pipeline carries its OWN branch, so the failed-pipeline gate below counts
+          # branch="main" alone - a red branch shows on its commit, the merge commit on main is what pages.
+          # A service container that exits is not a failed step. A Woodpecker restart empties
           # BOTH counters (each is in memory): the first failure after one creates its series at 1, which increase() reads as
           # none - a series new within the window counts too (helm/schnappy/tests/rules/first-failure.test.yaml).
           # A KILLED pipeline is no failure: cancel-previous (on in every repo since 2026-11-21) kills a push's pipeline when
@@ -713,9 +715,9 @@ spec:
             and on (repo)
             (
               sum by (repo) (
-                (increase(woodpecker_pipeline_count{status="failure"}[10m]) > 0)
+                (increase(woodpecker_pipeline_count{status="failure", branch="main"}[10m]) > 0)
                 or
-                (woodpecker_pipeline_count{status="failure"} unless woodpecker_pipeline_count{status="failure"} offset 10m)
+                (woodpecker_pipeline_count{status="failure", branch="main"} unless woodpecker_pipeline_count{status="failure", branch="main"} offset 10m)
               )
             )
           labels:
