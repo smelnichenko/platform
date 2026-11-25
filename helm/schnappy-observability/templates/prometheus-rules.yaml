@@ -732,6 +732,11 @@ spec:
           # next push's pipeline, which ends (success or failure) within the half hour; one nothing replaced leaves its commit
           # never deployed (masi cd 525 hung until the repo's timeout). A step failure 30-40 min ago with no pipeline of its
           # repo ended since: the kill nothing followed. (A real failure ends its pipeline as failure: never this alert.)
+          # A pipeline that ended may be the first of its series - a branch's (platform, infra and ops run ci on every
+          # branch push, and the step counter names no branch), or any after a Woodpecker restart: increase() reads a
+          # series' first sample as no rise, so a series new within the 40 min counts as a pipeline ended (ops'
+          # wave-patches branch, red at 07:29 2026-11-25, paged as killed at 08:00). A branch run killed and never
+          # replaced still reads as main's: the counter cannot tell them apart.
           expr: |
             (
               (sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="cd", type!="service"}[10m] offset 30m)) > 0)
@@ -739,7 +744,13 @@ spec:
               (sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"}[10m] offset 30m)) > 0)
             )
             unless on (repo)
-            (sum by (repo) (increase(woodpecker_pipeline_count[40m])) > 0)
+            (
+              sum by (repo) (
+                (increase(woodpecker_pipeline_count[40m]) > 0)
+                or
+                (woodpecker_pipeline_count unless woodpecker_pipeline_count offset 40m)
+              ) > 0
+            )
           labels:
             severity: warning
           annotations:

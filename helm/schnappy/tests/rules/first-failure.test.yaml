@@ -171,6 +171,35 @@ tests:
         alertname: WoodpeckerBuildKilled
         exp_alerts: []
 
+  # WoodpeckerBuildKilled and a red BRANCH (ops' wave-patches, 2026-11-25 07:29): its step fails at minute 20 and its
+  # pipeline ends as failure at 21 - on a branch, so its count's series is born then, and increase() reads a new series
+  # as no rise: the kill was "not replaced" and paged at 08:00. A series new within the window is a pipeline that ended:
+  # quiet. platform's ci run of main killed at 20 and nothing after: still pages.
+  - interval: 1m
+    input_series:
+      - series: 'woodpecker_step_failures_total{repo="schnappy/ops", workflow="ci", type="commands", step="ansible-unit"}'
+        values: '7x20 8x80'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/ops", status="success", branch="main", pipeline="total"}'
+        values: '50x100'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/ops", status="failure", branch="renovate/wave-patches", pipeline="total"}'
+        values: '_x21 1x80'
+      - series: 'woodpecker_step_failures_total{repo="schnappy/platform", workflow="ci", type="commands", step="rules-unit-test"}'
+        values: '2x20 3x80'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/platform", status="success", branch="main", pipeline="total"}'
+        values: '40x100'
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: WoodpeckerBuildKilled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              repo: schnappy/platform
+              workflow: ci
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildKilled"
+              summary: "Woodpecker run of main killed and not replaced (repo schnappy/platform, workflow ci)"
+              description: "A ci run on main of schnappy/platform was killed 30-40 min ago (a timeout, an agent restart, a cancel by hand) and no pipeline of the repo has ended since: its commit is not built or deployed. Check ci.pmon.dev and restart the pipeline."
+
   - interval: 1m
     input_series:
       # the first failed sync since Argo CD's controller started: the series is born at 1 (minute 80)
