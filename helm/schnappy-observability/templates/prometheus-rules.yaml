@@ -934,13 +934,17 @@ spec:
     # first success the set-up's time stands in) - so under node_exporter's gate
     - name: infra-auto-upgrades
       rules:
-        # no successful lists update, or no successful upgrade, for 26 h: a run failed (a broken package, the mirror or
-        # DNS down - a failed lists update counts, APT::Update::Error-Mode - apt's lock held), never ran (its timers off
-        # or gone), none came in the 26 h after set-up, or no series at all (not deployed, the file gone). Read over Prometheus' history, so a restart in between changes nothing; the next
-        # successful run clears it. Until 2026-11-22 nothing upgraded ten at all, and nothing said so
+        # no successful lists update for 50 h, or no successful upgrade for 26 h: a run failed (a broken package, the
+        # mirror or DNS down - a failed lists update counts, APT::Update::Error-Mode - apt's lock held), never ran (its
+        # timers off or gone), none came after set-up, or no series at all (not deployed, the file gone). Each by its own
+        # timer: the upgrade's is daily between 06:00 and 07:00, so 26 h; the lists' fires at 06:00 and 18:00 each with
+        # up to 12 h of random delay and updates only once its stamp is a day old (APT::Periodic::Update-Package-Lists
+        # "1"), so its stamp reaches ~48 h in the ordinary course - at 26 h it paged at 27.2 h on 2026-11-25 with nothing
+        # wrong. Read over Prometheus' history, so a restart in between changes nothing; the next successful run clears
+        # it. Until 2026-11-22 nothing upgraded ten at all, and nothing said so
         - alert: NodeAutoUpgradesFailing
           expr: |-
-            absent(max_over_time(apt_update_last_success_timestamp_seconds{job="node-exporter"}[26h]) > time() - 26 * 3600)
+            absent(max_over_time(apt_update_last_success_timestamp_seconds{job="node-exporter"}[50h]) > time() - 50 * 3600)
             or absent(max_over_time(apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter"}[26h])
               > time() - 26 * 3600)
           for: 10m
@@ -948,7 +952,7 @@ spec:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/NodeAutoUpgradesFailing"
-            summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+            summary: "ten's automatic Debian upgrades have stalled - no lists update for 50 h or no upgrade for 26 h; its security updates are not being installed"
         # a reboot owed for 26 h: the update that asked for it came a morning before at the latest, so a 07:30 reboot
         # did not happen (cancelled, never scheduled - the upgrade failed first - or the timers off). ten runs its old
         # kernel; the fixes are not live until it reboots. Over 10 min, so a missed scrape does not restart the 26 h
