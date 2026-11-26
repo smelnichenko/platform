@@ -677,14 +677,16 @@ spec:
     - name: ci-woodpecker
       rules:
         - alert: WoodpeckerBuildFailed
-          # A red MAIN only: a red pull request is feedback for its author, shown on the PR
+          # A red MAIN only: a red pull request or branch is feedback for its author, shown on its commit
           # (12 of them on masi in one day of review work, 2026-09-21, each an e-mail).
-          # woodpecker_pipeline_count cannot tell the two apart — a pull request's pipeline
-          # carries its TARGET branch, so every PR run is branch="main" (tried, 2026-09-21: it
-          # still mailed for a PR). The per-step counter names the WORKFLOW: in the app repos
-          # "cd" runs only on a push to main, and the nightly cron workflows "depcheck" and "pitest" only on main;
-          # platform, infra and ops push to main directly, so there "ci" is main too (their pull requests run "ci" as
-          # well and page - rare there). A service container that exits is not a failed step. A Woodpecker restart empties
+          # A pull request's pipeline carries its TARGET branch, so every PR run is branch="main" (tried,
+          # 2026-09-21: it still mailed for a PR), and the per-step counter has no branch at all - it names the
+          # WORKFLOW. In the app repos "cd" runs only on a push to main, and the nightly cron workflows "depcheck"
+          # and "pitest" only on main. platform, infra and ops run "ci" on every PUSH, a branch's and main's, and on
+          # no pull request (2026-11-24: their red Renovate pull requests, and 22 red pushes to main in a week,
+          # paged): a branch push's pipeline carries its OWN branch, so the failed-pipeline gate below counts
+          # branch="main" alone - a red branch shows on its commit, the merge commit on main is what pages.
+          # A service container that exits is not a failed step. A Woodpecker restart empties
           # BOTH counters (each is in memory): the first failure after one creates its series at 1, which increase() reads as
           # none - a series new within the window counts too (helm/schnappy/tests/rules/first-failure.test.yaml).
           # A KILLED pipeline is no failure: cancel-previous (on in every repo since 2026-11-21) kills a push's pipeline when
@@ -713,9 +715,9 @@ spec:
             and on (repo)
             (
               sum by (repo) (
-                (increase(woodpecker_pipeline_count{status="failure"}[10m]) > 0)
+                (increase(woodpecker_pipeline_count{status="failure", branch="main"}[10m]) > 0)
                 or
-                (woodpecker_pipeline_count{status="failure"} unless woodpecker_pipeline_count{status="failure"} offset 10m)
+                (woodpecker_pipeline_count{status="failure", branch="main"} unless woodpecker_pipeline_count{status="failure", branch="main"} offset 10m)
               )
             )
           labels:
@@ -730,6 +732,11 @@ spec:
           # next push's pipeline, which ends (success or failure) within the half hour; one nothing replaced leaves its commit
           # never deployed (masi cd 525 hung until the repo's timeout). A step failure 30-40 min ago with no pipeline of its
           # repo ended since: the kill nothing followed. (A real failure ends its pipeline as failure: never this alert.)
+          # A pipeline that ended may be the first of its series - a branch's (platform, infra and ops run ci on every
+          # branch push, and the step counter names no branch), or any after a Woodpecker restart: increase() reads a
+          # series' first sample as no rise, so a series new within the 40 min counts as a pipeline ended (ops'
+          # wave-patches branch, red at 07:29 2026-11-25, paged as killed at 08:00). A branch run killed and never
+          # replaced still reads as main's: the counter cannot tell them apart.
           expr: |
             (
               (sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="cd", type!="service"}[10m] offset 30m)) > 0)
@@ -737,7 +744,13 @@ spec:
               (sum by (repo, workflow) (increase(woodpecker_step_failures_total{workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"}[10m] offset 30m)) > 0)
             )
             unless on (repo)
-            (sum by (repo) (increase(woodpecker_pipeline_count[40m])) > 0)
+            (
+              sum by (repo) (
+                (increase(woodpecker_pipeline_count[40m]) > 0)
+                or
+                (woodpecker_pipeline_count unless woodpecker_pipeline_count offset 40m)
+              ) > 0
+            )
           labels:
             severity: warning
           annotations:
@@ -932,13 +945,17 @@ spec:
     # first success the set-up's time stands in) - so under node_exporter's gate
     - name: infra-auto-upgrades
       rules:
-        # no successful lists update, or no successful upgrade, for 26 h: a run failed (a broken package, the mirror or
-        # DNS down - a failed lists update counts, APT::Update::Error-Mode - apt's lock held), never ran (its timers off
-        # or gone), none came in the 26 h after set-up, or no series at all (not deployed, the file gone). Read over Prometheus' history, so a restart in between changes nothing; the next
-        # successful run clears it. Until 2026-11-22 nothing upgraded ten at all, and nothing said so
+        # no successful lists update for 50 h, or no successful upgrade for 26 h: a run failed (a broken package, the
+        # mirror or DNS down - a failed lists update counts, APT::Update::Error-Mode - apt's lock held), never ran (its
+        # timers off or gone), none came after set-up, or no series at all (not deployed, the file gone). Each by its own
+        # timer: the upgrade's is daily between 06:00 and 07:00, so 26 h; the lists' fires at 06:00 and 18:00 each with
+        # up to 12 h of random delay and updates only once its stamp is a day old (APT::Periodic::Update-Package-Lists
+        # "1"), so its stamp reaches ~48 h in the ordinary course - at 26 h it paged at 27.2 h on 2026-11-25 with nothing
+        # wrong. Read over Prometheus' history, so a restart in between changes nothing; the next successful run clears
+        # it. Until 2026-11-22 nothing upgraded ten at all, and nothing said so
         - alert: NodeAutoUpgradesFailing
           expr: |-
-            absent(max_over_time(apt_update_last_success_timestamp_seconds{job="node-exporter"}[26h]) > time() - 26 * 3600)
+            absent(max_over_time(apt_update_last_success_timestamp_seconds{job="node-exporter"}[50h]) > time() - 50 * 3600)
             or absent(max_over_time(apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter"}[26h])
               > time() - 26 * 3600)
           for: 10m
@@ -946,7 +963,7 @@ spec:
             severity: warning
           annotations:
             runbook_url: "https://runbooks.pmon.dev/NodeAutoUpgradesFailing"
-            summary: "ten's automatic Debian upgrades have not succeeded for 26 h - its security updates are not being installed"
+            summary: "ten's automatic Debian upgrades have stalled - no lists update for 50 h or no upgrade for 26 h; its security updates are not being installed"
         # a reboot owed for 26 h: the update that asked for it came a morning before at the latest, so a 07:30 reboot
         # did not happen (cancelled, never scheduled - the upgrade failed first - or the timers off). ten runs its old
         # kernel; the fixes are not live until it reboots. Over 10 min, so a missed scrape does not restart the 26 h

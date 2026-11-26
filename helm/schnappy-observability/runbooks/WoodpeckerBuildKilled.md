@@ -11,7 +11,13 @@ next push's pipeline replacing it - is not this: the replacement ends within the
 
 The metrics: `woodpecker_step_failures_total` counts the killed step (30-40 min ago, `type!="service"`), and
 `woodpecker_pipeline_count` - which counts only pipelines that ENDED, success or failure - did not rise for the repo in
-the 40 min since. WoodpeckerBuildFailed does not fire for a kill (a killed pipeline is no failure).
+the 40 min since. A count series born in those 40 min counts as a pipeline ended too: a branch's first pipeline, or the
+first after a Woodpecker restart (`increase()` reads a series' first sample as no rise). WoodpeckerBuildFailed does not
+fire for a kill (a killed pipeline is no failure).
+
+The step counter names no branch. In platform, infra and ops, which run `ci` on every branch push, a branch's run killed
+and never replaced reads as main's: look at the killed pipeline's branch before restarting it. A red branch, whose
+pipeline ends as a failure, does not fire this.
 
 ## Impact
 
@@ -38,6 +44,7 @@ curl -s -H "Authorization: Bearer $TOKEN" "https://ci.pmon.dev/api/repos/<id>/pi
 | a step ran until the repo's timeout | a hung test or a step waiting on a service that never came up (masi cd 525) |
 | killed while every step looked healthy | the Woodpecker agent restarted (a node reboot, an upgrade) |
 | killed with no other pipeline after it | cancelled by hand, or the push after it had no workflows ([CI SKIP], docs only) and so replaced nothing |
+| the killed pipeline is a branch's (platform, infra, ops) | a branch run cancelled or timed out; the counter cannot tell it from main's - restart it, or delete the branch if it is done |
 
 ## Resolve
 

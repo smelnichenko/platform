@@ -3,7 +3,7 @@
 # series at 1, and increase() reads a series' first sample as no increase - the first red build or failed sync after a
 # Woodpecker or Argo CD restart went unalerted (Woodpecker's v3.19.0 restart, 2026-10-12). A series new within the
 # window counts as a failure; an old one that does not move stays quiet. A killed pipeline (cancel-previous) is no
-# failure: only a step failure beside a rise in its repo's failed pipelines pages.
+# failure: only a step failure beside a rise in its repo's failed pipelines ON MAIN pages - a red branch never does.
 rule_files:
   - rendered-infra-rules.yaml
 
@@ -30,6 +30,12 @@ tests:
         values: '_x20 1x40'
       # a red ci on main of a GitOps repo: its step and its repo's failed pipelines both rise - pages
       - series: 'woodpecker_step_failures_total{repo="schnappy/ops", workflow="ci", type="commands", step="ansible-unit"}'
+        values: '_x20 1x40'
+      # a red ci on a BRANCH of a GitOps repo (a change on its way, or a Renovate unit): its step rises and so does its
+      # repo's count of failed pipelines - on that branch, not on main: never pages (ops#51's istio unit, 2026-11-24)
+      - series: 'woodpecker_step_failures_total{repo="schnappy/platform", workflow="ci", type="commands", step="helm-lint"}'
+        values: '_x20 1x40'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/platform", status="failure", branch="renovate/istio-1.32", pipeline="total"}'
         values: '_x20 1x40'
       # each repo's count of failed pipelines: rising with a real failure, unmoved by a kill
       # its failed-pipeline counter is in memory too (server/rpc/server.go): born with the step counter after the restart
@@ -164,6 +170,35 @@ tests:
       - eval_time: 75m
         alertname: WoodpeckerBuildKilled
         exp_alerts: []
+
+  # WoodpeckerBuildKilled and a red BRANCH (ops' wave-patches, 2026-11-25 07:29): its step fails at minute 20 and its
+  # pipeline ends as failure at 21 - on a branch, so its count's series is born then, and increase() reads a new series
+  # as no rise: the kill was "not replaced" and paged at 08:00. A series new within the window is a pipeline that ended:
+  # quiet. platform's ci run of main killed at 20 and nothing after: still pages.
+  - interval: 1m
+    input_series:
+      - series: 'woodpecker_step_failures_total{repo="schnappy/ops", workflow="ci", type="commands", step="ansible-unit"}'
+        values: '7x20 8x80'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/ops", status="success", branch="main", pipeline="total"}'
+        values: '50x100'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/ops", status="failure", branch="renovate/wave-patches", pipeline="total"}'
+        values: '_x21 1x80'
+      - series: 'woodpecker_step_failures_total{repo="schnappy/platform", workflow="ci", type="commands", step="rules-unit-test"}'
+        values: '2x20 3x80'
+      - series: 'woodpecker_pipeline_count{repo="schnappy/platform", status="success", branch="main", pipeline="total"}'
+        values: '40x100'
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: WoodpeckerBuildKilled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              repo: schnappy/platform
+              workflow: ci
+            exp_annotations:
+              runbook_url: "https://runbooks.pmon.dev/WoodpeckerBuildKilled"
+              summary: "Woodpecker run of main killed and not replaced (repo schnappy/platform, workflow ci)"
+              description: "A ci run on main of schnappy/platform was killed 30-40 min ago (a timeout, an agent restart, a cancel by hand) and no pipeline of the repo has ended since: its commit is not built or deployed. Check ci.pmon.dev and restart the pipeline."
 
   - interval: 1m
     input_series:

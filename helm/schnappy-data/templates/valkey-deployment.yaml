@@ -7,6 +7,9 @@ metadata:
     {{- include "schnappy.valkey.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  # replaced, never rolled: two Valkeys behind one Service for a moment and Centrifugo misses publications
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "schnappy.valkey.selectorLabels" . | nindent 6 }}

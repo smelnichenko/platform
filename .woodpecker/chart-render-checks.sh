@@ -141,6 +141,38 @@ pvc_all=$(pvcs schnappy-observability --set prometheus.enabled=true --set grafan
 [ "$(echo "$pvc_all" | grep -c .)" -ge 6 ] || fail "fewer PVCs rendered than the six these charts own: $pvc_all"
 echo "$pvc_all" | grep -v ' "\?Prune=false,Delete=false"\?$' | grep . && fail "a PVC Argo may prune or delete (above)"
 
+# --- the stateful charts: a Deployment on a PersistentVolumeClaim replaced, never rolled ----------------------------
+# One replica on a local-path volume: RollingUpdate starts the new pod beside the old one on the same directory - two
+# versions on one store (versitygw's multipart lock is per process; Mimir's, Grafana's, SonarQube's data the same).
+# Valkey too: no volume, but two behind one Service miss Centrifugo's publications for a moment. schnappy-data,
+# -observability and -sonarqube hold every such Deployment; each renders with its stateful parts on, into its own file,
+# so a chart that fails to render fails here. The set is exact: one that drops out, or a new one on a PVC, is named.
+helm template t helm/schnappy-data --set s3gw.enabled=true --set s3gw.storage.size=1Gi --set s3gw.existingSecret=s3 \
+  --set valkey.enabled=true > .ci-out/recreate-data.yaml || fail "schnappy-data did not render"
+helm template t helm/schnappy-observability --set grafana.enabled=true --set grafana.adminPassword=x \
+  --set mimir.enabled=true --set tempo.enabled=true --set alertmanager.enabled=true --set pushgateway.enabled=true \
+  --set prometheus.enabled=true > .ci-out/recreate-obs.yaml || fail "schnappy-observability did not render"
+helm template t helm/schnappy-sonarqube --set sonarqube.enabled=true --set sonarqube.postgres.password=x \
+  > .ci-out/recreate-sonar.yaml || fail "schnappy-sonarqube did not render"
+python3 - .ci-out/recreate-data.yaml .ci-out/recreate-obs.yaml .ci-out/recreate-sonar.yaml > .ci-out/recreate.txt \
+  <<'PY_RECREATE' || fail "the rendered Deployments could not be read"
+import sys, yaml
+for f in sys.argv[1:]:
+    for d in yaml.safe_load_all(open(f)):
+        if not d or d.get("kind") != "Deployment":
+            continue
+        pod = d["spec"]["template"]["spec"]
+        pvc = any("persistentVolumeClaim" in (v or {}) for v in pod.get("volumes") or [])
+        name = d["metadata"]["name"]
+        if pvc or name == "t-schnappy-valkey":
+            print(name, (d["spec"].get("strategy") or {}).get("type") or "RollingUpdate")
+PY_RECREATE
+want="t-schnappy-alertmanager t-schnappy-apt-cache t-schnappy-grafana t-schnappy-mimir t-schnappy-pushgateway \
+t-schnappy-s3gw t-schnappy-sonarqube t-schnappy-tempo t-schnappy-valkey"
+got=$(awk '{print $1}' .ci-out/recreate.txt | sort | tr '\n' ' ' | sed 's/ $//')
+[ "$got" = "$want" ] || fail "the Deployments on a PVC (and Valkey) are not the expected set - want: $want; rendered: $got"
+awk '$2 != "Recreate"' .ci-out/recreate.txt | grep . && fail "a Deployment on a PVC (or Valkey) that rolls instead of being replaced (above)"
+
 # --- schnappy-observability: Grafana's ClickHouse plugin at a pinned version ----------------------------------------
 # unversioned, each Grafana got the newest at its first start and kept it on its volume: production 4.22.0, a copy
 # built later 4.22.1 - the full run proved a plugin production does not run
@@ -178,9 +210,10 @@ grep -q 'woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="s
 # step failure paging only beside a rise in its repo's FAILED pipelines (a pipeline cancel-previous killed is no failure)
 awk '/and on \(repo\)/ {exit} {print}' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count' \
   && fail "WoodpeckerBuildFailed's signal is woodpecker_pipeline_count, which counts every pull request as main (it may only gate the step failures)"
-awk '/and on \(repo\)/ {s=1} s' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count{status="failure"}' \
-  || fail "WoodpeckerBuildFailed no longer gates a step failure on its repo's failed pipelines: a killed pipeline (cancel-previous) pages"
-grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the repos that push to main directly are no longer watched"
+# ...and only main's: platform, infra and ops run ci on every branch push, and a red branch pipeline carries its own branch
+awk '/and on \(repo\)/ {s=1} s' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count{status="failure", branch="main"}' \
+  || fail "WoodpeckerBuildFailed no longer gates a step failure on its repo's failed pipelines ON MAIN: a killed pipeline (cancel-previous) or a red branch pages"
+grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the ci workflow of platform, infra and ops (main's merge commits) is no longer watched"
 
 # --- schnappy-observability: no alert reaches the LLM agents unless somebody switches that on ------------------------
 am='--set prometheus.enabled=true --set alertmanager.enabled=true --set alertmanager.alertEmailTo=ops@example.org'
