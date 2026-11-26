@@ -1,16 +1,14 @@
 # CI: Lint Helm chart on push
 
-# ONE run per change: the pull request's. Listing `push` as well fired a second pipeline - first for
-# every push to a branch with an open PR (two identical runs on the same sha), then, once that was
-# narrowed to main, for the merge commit as well. Nothing lands here without a PR, so the PR run is
-# the gate; the merge commit carries the same tree that just passed it.
+# Every PUSH runs it, a branch's and main's; no pull request does (2026-11-24). A change is built on its
+# branch (a change of ours on its way, a Renovate unit) and its pull request opened to merge a head already
+# green - one run per push, never two on the same sha (pull_request beside push ran both). A red branch
+# shows on its commit and pages nobody: WoodpeckerBuildFailed counts failed pipelines on main alone, and a
+# branch push's pipeline carries its own branch (a pull request's carried main, so every red PR paged).
+# The merge commit on main runs it again: two branches each green apart can still break main together,
+# and Argo applies main to the live cluster, so the tree that actually lands is checked here.
 when:
-  - event: pull_request
-  # AND the merge commit on main. Not a duplicate: the pull_request run tests the PR's own head, and two
-  # PRs that were each green apart can still break main together. This repo has no other gate - Argo
-  # applies main to the live cluster - so the tree that actually lands is checked here.
   - event: push
-    branch: main
 
 clone:
   - name: git
@@ -172,13 +170,13 @@ steps:
   - name: sonar
     image: git.pmon.dev/schnappy/sonar-scanner:latest
     commands:
-      # A pull request analyses into its OWN project (schnappy-platform-pr): SonarQube CE has no branch analysis, and one
-      # project for both judged a pull request by main's new code (one issue on main failed every PR - Renovate's units
+      # A branch analyses into its OWN project (schnappy-platform-pr): SonarQube CE has no branch analysis, and one
+      # project for both judged a change by main's new code (one issue on main failed every PR - Renovate's units
       # too) and showed whoever pushed last (2026-11-16, as masi since 2026-09-20). Main keeps waiting for its gate.
       # A missing token fails the gate: one that skips itself green is a gate nobody enforces.
       - '[ -n "$SONAR_TOKEN" ] && [ -n "$SONAR_HOST_URL" ] || { echo "SONAR_TOKEN or SONAR_HOST_URL is missing: the quality gate cannot be checked"; exit 1; }'
       - |
-        if [ "$CI_PIPELINE_EVENT" = pull_request ]; then
+        if [ "${CI_COMMIT_BRANCH:-}" != main ]; then
           sonar-scanner -Dsonar.projectKey=schnappy-platform-pr -Dsonar.projectName='Schnappy Platform (pull requests)' -Dsonar.qualitygate.wait=true
         else
           sonar-scanner -Dsonar.qualitygate.wait=true

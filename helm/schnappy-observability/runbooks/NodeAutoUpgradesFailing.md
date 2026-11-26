@@ -4,13 +4,18 @@
 
 ## What fired
 
-ten's automatic Debian upgrades have had no successful package-list update, or no successful unattended-upgrades
-run, for 26 h (before the first success, 26 h after they were set up) - or report nothing at all:
+ten's automatic Debian upgrades have had no successful package-list update for 50 h, or no successful
+unattended-upgrades run for 26 h (before the first success, that long after they were set up) - or report nothing at all:
 
 ```
-absent(max_over_time(apt_update_last_success_timestamp_seconds{job="node-exporter"}[26h]) > time() - 26 * 3600)
+absent(max_over_time(apt_update_last_success_timestamp_seconds{job="node-exporter"}[50h]) > time() - 50 * 3600)
 or absent(max_over_time(apt_unattended_upgrade_last_success_timestamp_seconds{job="node-exporter"}[26h]) > time() - 26 * 3600)
 ```
+
+Why two windows: the upgrade's timer runs daily between 06:00 and 07:00, so 26 h; the lists' timer fires at 06:00 and
+18:00 each with up to 12 h of random delay, and the update happens only once its stamp is a day old
+(`APT::Periodic::Update-Package-Lists "1"`), so that stamp reaches ~48 h with nothing wrong - at 26 h it paged at 27.2 h
+on 2026-11-25.
 
 ops `setup-host-hardening.yml` (`tasks/auto-upgrades.yml`, `task deploy:host-hardening`) runs Debian's own
 unattended-upgrades on its own timers, ten's local time: `apt-daily.timer` updates the package lists twice a day,

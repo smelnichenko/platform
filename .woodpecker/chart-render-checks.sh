@@ -210,9 +210,10 @@ grep -q 'woodpecker_step_failures_total{workflow=~"cd|depcheck|pitest", type!="s
 # step failure paging only beside a rise in its repo's FAILED pipelines (a pipeline cancel-previous killed is no failure)
 awk '/and on \(repo\)/ {exit} {print}' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count' \
   && fail "WoodpeckerBuildFailed's signal is woodpecker_pipeline_count, which counts every pull request as main (it may only gate the step failures)"
-awk '/and on \(repo\)/ {s=1} s' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count{status="failure"}' \
-  || fail "WoodpeckerBuildFailed no longer gates a step failure on its repo's failed pipelines: a killed pipeline (cancel-previous) pages"
-grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the repos that push to main directly are no longer watched"
+# ...and only main's: platform, infra and ops run ci on every branch push, and a red branch pipeline carries its own branch
+awk '/and on \(repo\)/ {s=1} s' .ci-out/build-failed.rule | grep -q 'woodpecker_pipeline_count{status="failure", branch="main"}' \
+  || fail "WoodpeckerBuildFailed no longer gates a step failure on its repo's failed pipelines ON MAIN: a killed pipeline (cancel-previous) or a red branch pages"
+grep -q 'workflow="ci", type!="service", repo=~"schnappy/(platform|infra|ops)"' .ci-out/build-failed.rule || fail "the ci workflow of platform, infra and ops (main's merge commits) is no longer watched"
 
 # --- schnappy-observability: no alert reaches the LLM agents unless somebody switches that on ------------------------
 am='--set prometheus.enabled=true --set alertmanager.enabled=true --set alertmanager.alertEmailTo=ops@example.org'
