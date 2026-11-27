@@ -13,6 +13,9 @@ spec:
   # pause for seconds, connections reset once - and the old primary updated as the new replica. One instance: nothing to
   # switch to, CloudNativePG restarts it. Set for good (operator 2026-11-21); infra's schnappy-data-envs no longer ignores it
   primaryUpdateMethod: switchover
+  # the update proceeds by itself (CloudNativePG's default, every cluster's live value): named here so a change shows in
+  # Argo - infra's schnappy-data-envs ignored it while it was left to the webhook
+  primaryUpdateStrategy: unsupervised
   {{- if not $ephemeral }}
   priorityClassName: data-critical
   {{- end }}

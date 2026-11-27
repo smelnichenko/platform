@@ -710,6 +710,44 @@ for b in bad:
     print(b, file=sys.stderr)
 sys.exit(1 if bad else 0)
 PY_JOB_DIGESTS
+# the same as they render: a templated image (rclone's {{ $b.rcloneImage }}) skips the scan above - every container and
+# init container of every Job and CronJob pod rendered here, by digest. Three are a server's own image by tag, each held
+# to that server by a check of its own: ScyllaDB's (the schema Job's cqlsh at the ScyllaCluster's version - the operator
+# runs it by tag; scylla-version-check.sh), Kafka's tools (apache/kafka at strimzi.kafkaVersion - kafka-backup.yaml
+# refuses another tag) and ClickHouse's (clickhouse.image, the StatefulSet's - clickhouse-config-start.sh holds CI's
+# step image to it by string). And hyperfoil's, our own build its CD pushes as latest (hyperfoil's .woodpecker/cd.yaml)
+python3 - $sel-app.yaml $sel-data.yaml $sel-obs.yaml $sel-sq.yaml .ci-out/jobs-hf.yaml .ci-out/jobs-chb.yaml .ci-out/jobs-kb.yaml <<'PY_JOB_RENDERED' \
+  || fail "a Job's or CronJob's image, as it renders, by tag alone (said above)"
+import re, sys, yaml
+bad, seen = [], 0
+for p in sys.argv[1:]:
+    for d in yaml.safe_load_all(open(p)):
+        if not isinstance(d, dict):
+            continue
+        pods = []
+        if d.get("kind") == "Job":
+            pods.append(d["spec"]["template"])
+        elif d.get("kind") == "CronJob":
+            pods.append(d["spec"]["jobTemplate"]["spec"]["template"])
+        elif d.get("kind") == "ConfigMap":
+            for v in (d.get("data") or {}).values():
+                if isinstance(v, str) and re.search(r"(?m)^kind: Job$", v):
+                    pods.append(yaml.safe_load(v)["spec"]["template"])
+        for t in pods:
+            for c in (t["spec"].get("initContainers") or []) + (t["spec"].get("containers") or []):
+                seen += 1
+                img = str(c.get("image", ""))
+                if re.match(r"(scylladb/scylla|apache/kafka|clickhouse/clickhouse-server):[0-9][0-9.]*(-alpine)?$", img) \
+                        or img == "git.pmon.dev/schnappy/hyperfoil:latest":
+                    continue
+                if not re.search(r"@sha256:[0-9a-f]{64}$", img):
+                    bad.append("%s %s, container %s: %s" % (d["kind"], d["metadata"]["name"], c.get("name"), c.get("image")))
+if seen < 4:
+    bad.append("only %d Job containers read - the renders above changed" % seen)
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_JOB_RENDERED
 # every chart's hooks hashed as they run - their templates and the ConfigMaps they mount; a comment moves none, an object
 # moves its own keys alone (hook-hash-check.py: each chart's copy changed, template by template)
 python3 .woodpecker/hook-hash-check.py .ci-out || fail "the hook-templates hashes (said above)"

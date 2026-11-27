@@ -59,7 +59,8 @@ clickhouse:
     storeIps: []
     bucket: clickhouse-backups
     keep: 7
-    rcloneImage: rclone/rclone:1.71.2
+    # by digest as well as tag (a Docker Hub tag can move; infra pins rclone so): Renovate moves both
+    rcloneImage: rclone/rclone:1.71.2@sha256:3103526c506266a9ecdf064efe99bf3677d92ef6407af124d8c56b4f49cbaa51
   # Realtime envelope archive: events database fed by Kafka, gives
   # analytics + replay over the same publication stream Centrifugo
   # fans out. Enable in tandem with the schnappy-realtime chart.
