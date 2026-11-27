@@ -1,4 +1,7 @@
-CREATE KEYSPACE IF NOT EXISTS chat WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+-- tablets off, as production's keyspace was made: ScyllaDB 2026.2 makes a new keyspace tablets by default, and
+-- SimpleStrategy refuses tablets - it failed this statement even under IF NOT EXISTS (2026.1 takes it as well)
+CREATE KEYSPACE IF NOT EXISTS chat WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+  AND tablets = {'enabled': false};
 
 CREATE TABLE IF NOT EXISTS chat.messages_by_channel (
     channel_id bigint,
