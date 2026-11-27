@@ -710,9 +710,64 @@ for b in bad:
     print(b, file=sys.stderr)
 sys.exit(1 if bad else 0)
 PY_JOB_DIGESTS
+# the same as they render: a templated image (rclone's {{ $b.rcloneImage }}) skips the scan above - every container and
+# init container of every Job and CronJob pod rendered here, by digest. Three are a server's own image by tag, each held
+# to that server by a check of its own: ScyllaDB's (the schema Job's cqlsh at the ScyllaCluster's version - the operator
+# runs it by tag; scylla-version-check.sh), Kafka's tools (apache/kafka at strimzi.kafkaVersion - kafka-backup.yaml
+# refuses another tag) and ClickHouse's (clickhouse.image, the StatefulSet's - clickhouse-config-start.sh holds CI's
+# step image to it by string). And hyperfoil's, our own build its CD pushes as latest (hyperfoil's .woodpecker/cd.yaml)
+helm template t helm/schnappy-test/ --set smokeTest.enabled=true > .ci-out/jobs-st.yaml \
+  || fail "schnappy-test with its smoke CronJob did not render"
+python3 - $sel-app.yaml $sel-data.yaml $sel-obs.yaml $sel-sq.yaml .ci-out/jobs-hf.yaml .ci-out/jobs-chb.yaml .ci-out/jobs-kb.yaml \
+  .ci-out/jobs-st.yaml <<'PY_JOB_RENDERED' \
+  || fail "a Job's or CronJob's image, as it renders, by tag alone (said above)"
+import re, sys, yaml
+bad, seen = [], set()
+for p in sys.argv[1:]:
+    for d in yaml.safe_load_all(open(p)):
+        if not isinstance(d, dict):
+            continue
+        pods = []
+        if d.get("kind") == "Job":
+            pods.append(d["spec"]["template"])
+        elif d.get("kind") == "CronJob":
+            pods.append(d["spec"]["jobTemplate"]["spec"]["template"])
+        elif d.get("kind") == "ConfigMap":
+            for v in (d.get("data") or {}).values():
+                if isinstance(v, str) and re.search(r"(?m)^kind: Job$", v):
+                    pods.append(yaml.safe_load(v)["spec"]["template"])
+        for t in pods:
+            seen.add(d["metadata"]["name"])
+            for c in (t["spec"].get("initContainers") or []) + (t["spec"].get("containers") or []):
+                img = str(c.get("image", ""))
+                if re.match(r"(scylladb/scylla|apache/kafka|clickhouse/clickhouse-server):[0-9][0-9.]*(-alpine)?$", img) \
+                        or img == "git.pmon.dev/schnappy/hyperfoil:latest":
+                    continue
+                if not re.search(r"@sha256:[0-9a-f]{64}$", img):
+                    bad.append("%s %s, container %s: %s" % (d["kind"], d["metadata"]["name"], c.get("name"), c.get("image")))
+# every Job, CronJob and Job-in-ConfigMap these renders make, read - one lost from a render is a gap, not a pass
+want = {"t-schnappy-s3gw-buckets", "t-schnappy-kafka-backup", "t-schnappy-clickhouse-backup", "t-schnappy-clickhouse-init",
+        "t-schnappy-clickhouse-backup-prune", "t-schnappy-k6-smoke", "t-schnappy-sonarqube-setup", "t-schnappy-hyperfoil-jobspec",
+        "t-schnappy-hyperfoil-load", "t-schnappy-postgres-init-users", "t-schnappy-scylla-schema", "schnappy-k6-smoke"}
+if not want <= seen:
+    bad.append("not every Job read: %s missing" % sorted(want - seen))
+for b in bad:
+    print(b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY_JOB_RENDERED
 # every chart's hooks hashed as they run - their templates and the ConfigMaps they mount; a comment moves none, an object
 # moves its own keys alone (hook-hash-check.py: each chart's copy changed, template by template)
 python3 .woodpecker/hook-hash-check.py .ci-out || fail "the hook-templates hashes (said above)"
+# the CNPG Cluster names its updates: switchover for the primary, unsupervised (infra's schnappy-data-envs no longer ignores
+# either - a change to them shows in Argo)
+python3 - $sel-data.yaml <<'PY_CNPG_UPDATES' || fail "the CNPG Cluster's update method or strategy (said above)"
+import sys, yaml
+cl = [d for d in yaml.safe_load_all(open(sys.argv[1])) if isinstance(d, dict) and d.get("kind") == "Cluster"
+      and str(d.get("apiVersion", "")).startswith("postgresql.cnpg.io/")]
+got = [(d["metadata"]["name"], d["spec"].get("primaryUpdateMethod"), d["spec"].get("primaryUpdateStrategy")) for d in cl]
+if not cl or any(g[1:] != ("switchover", "unsupervised") for g in got):
+    sys.exit("the CNPG Clusters' primaryUpdateMethod and primaryUpdateStrategy: %s (want switchover, unsupervised)" % got)
+PY_CNPG_UPDATES
 # PostgreSQL's policy exactly: the CNPG cluster the data chart makes, ALLOW, 5432 for the app services, the instances
 # (replication) and the init-users Job's own ServiceAccount (read from its Job), 8000 (the operator's plaintext status
 # calls) from any source, in dry run until its shadow_denied has read 0 for a day. One more name or rule, a DENY or
