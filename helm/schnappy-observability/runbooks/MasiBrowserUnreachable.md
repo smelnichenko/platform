@@ -16,7 +16,7 @@ Browser sources end `SKIPPED_BROWSER` (that does not count as a failure and neve
 
 ```bash
 kubectl -n <ns> get pods -l app.kubernetes.io/component=masi-browser
-kubectl -n <ns> logs deploy/<ns>-masi-browser -c masi-browser --tail=50
+kubectl -n <ns> logs deploy/<ns>-masi-browser -c chromium --tail=50
 kubectl -n <ns> logs deploy/<ns>-masi -c masi --since=30m | grep -i browser
 ```
 
