@@ -32,7 +32,7 @@ spec:
       serviceAccountName: {{ include "schnappy.fullname" . }}-sonarqube-setup
       containers:
         - name: setup
-          image: curlimages/curl:8.12.1@sha256:94e9e444bcba979c2ea12e27ae39bee4cd10bc7041a472c4727a558e213744e6
+          image: curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
           env:
             - name: SQ_URL
               value: "http://{{ include "schnappy.sonarqube.serviceName" . }}:9000"

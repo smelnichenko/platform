@@ -40,7 +40,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: init-dirs
-          image: busybox:1.37
+          image: busybox:1.38
           command: ['sh', '-c', 'mkdir -p /data/wal /data/generator/wal /data/generator/traces']
           volumeMounts:
             - name: data

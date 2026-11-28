@@ -52,7 +52,7 @@ postgres:
 # In both modes apps resolve `<release>-valkey.<ns>.svc` and use VALKEY_PASSWORD.
 valkey:
   enabled: true
-  image: valkey/valkey:9.1.3-alpine
+  image: valkey/valkey:9.1.4-alpine
   password: ""
   existingSecret: ""
   resources:
@@ -74,7 +74,7 @@ valkey:
 # PVC deleted and made again - the indexes rebuilt by their writer from Postgres, as at any time.
 opensearch:
   enabled: false
-  image: opensearchproject/opensearch:3.9.0@sha256:3b55f6b6249cfdb92b52ee59adc8a266203ba9ef9f5d82544fad6f1af2f3609e
+  image: opensearchproject/opensearch:3.9.0@sha256:3bf4fe26aeb9f7b03c0ebcb1302bb24e855ee6b89fd926d26a71a83ef6f7e076
   heap: 2g
   resources:
     requests: { memory: "3Gi", cpu: "500m", ephemeral-storage: "256Mi" }
@@ -201,7 +201,7 @@ strimzi:
     keep: 7
     toolsImage: ""
     # by digest as well as tag (a Docker Hub tag can move; infra pins rclone so): Renovate moves both
-    rcloneImage: rclone/rclone:1.71.2@sha256:3103526c506266a9ecdf064efe99bf3677d92ef6407af124d8c56b4f49cbaa51
+    rcloneImage: rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466
 
 # CloudNativePG operator (replaces custom postgres Deployment)
 # ScyllaDB Operator (replaces manual scylla StatefulSet)
@@ -254,6 +254,6 @@ cnpg:
   # between modes.
   ephemeral: false
   ephemeralStorageSize: 100Mi
-  ephemeralImage: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:b4bbd2e623f1a8833e9a2a4210480ef215b6d13fc0988b06786a778a5c699a20
+  ephemeralImage: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:c437b7c6c00aa7e66f5d6de1dd83602391fdebd4ff776ffb1ab7aaba5e7351ad
   # the cluster's image - each environment's values move it
-  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:b4bbd2e623f1a8833e9a2a4210480ef215b6d13fc0988b06786a778a5c699a20
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:c437b7c6c00aa7e66f5d6de1dd83602391fdebd4ff776ffb1ab7aaba5e7351ad

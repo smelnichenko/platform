@@ -84,9 +84,9 @@ steps:
   # ClickHouse started on the chart's config in the chart's image: a config it refuses fails here, not at production's
   # restart; every system log it keeps has a TTL (the script says why)
   - name: clickhouse-config-start
-    image: clickhouse/clickhouse-server:26.8.41.14-alpine
+    image: clickhouse/clickhouse-server:26.8.49.6-alpine
     environment:
-      CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.41.14-alpine
+      CI_STEP_IMAGE_CHECK: clickhouse/clickhouse-server:26.8.49.6-alpine
     commands:
       - sh .woodpecker/clickhouse-config-start.sh
     backend_options:
@@ -106,10 +106,10 @@ steps:
     environment:
       HOME: /tmp  # no user of its own in the image: a home it can write
   - name: reports-nginx-test
-    image: nginx:1.27-alpine
+    image: nginx:1.31-alpine
     depends_on: [reports-nginx-render]
     environment:
-      CI_STEP_IMAGE_CHECK: nginx:1.27-alpine
+      CI_STEP_IMAGE_CHECK: nginx:1.31-alpine
     commands:
       - sh .woodpecker/reports-nginx-test.sh
     backend_options:
@@ -120,9 +120,9 @@ steps:
   # values files): its delete path runs only past KEEP backups, which the copy never holds - exercised here, not first on
   # production's night 8 (the wave-patches review, 2026-11-28; the script says what it seeds)
   - name: backup-prune-rclone
-    image: rclone/rclone:1.71.2@sha256:3103526c506266a9ecdf064efe99bf3677d92ef6407af124d8c56b4f49cbaa51
+    image: rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466
     environment:
-      CI_STEP_IMAGE_CHECK: rclone/rclone:1.71.2@sha256:3103526c506266a9ecdf064efe99bf3677d92ef6407af124d8c56b4f49cbaa51
+      CI_STEP_IMAGE_CHECK: rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466
       HOME: /tmp  # no user of its own in the image: a home it can write
     commands:
       - sh .woodpecker/backup-prune-rclone-test.sh
@@ -177,7 +177,7 @@ steps:
     environment:
       HOME: /tmp  # no user of its own in the image: a home it can write
   - name: alertmanager-check
-    image: prom/alertmanager:v0.34.2
+    image: prom/alertmanager:v0.35.1
     depends_on: [alertmanager-render]
     commands:
       - sh .woodpecker/alertmanager-check.sh
