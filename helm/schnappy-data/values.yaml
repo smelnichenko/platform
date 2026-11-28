@@ -11,7 +11,7 @@ networkPolicies:
 # PostgreSQL
 postgres:
   enabled: true
-  image: postgres:17-alpine
+  image: postgres:19-alpine
   database: monitor
   username: monitor
   password: ""

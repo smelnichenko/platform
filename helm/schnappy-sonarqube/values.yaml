@@ -23,7 +23,7 @@ sonarqube:
   token: ""
   existingSecret: ""
   postgres:
-    image: postgres:17-alpine
+    image: postgres:19-alpine
     password: ""
   postgresStorage:
     size: 5Gi
