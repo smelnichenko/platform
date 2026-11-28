@@ -28,9 +28,12 @@ data:
       server {
         listen 8080;
 
-        # Directory paths → append index.html
+        # Directory paths → their index.html: the path rewritten, the store named plainly (resolved at the start, by the
+        # system's resolver and its search domains - a variable in proxy_pass resolved each request with no resolver set,
+        # and failed; ${uri} already began with a slash - the wave-patches review, 2026-11-28)
         location ~ /$ {
-          proxy_pass http://{{ .Values.reports.minioEndpoint }}/hyperfoil-reports/${uri}index.html;
+          rewrite ^(.*)$ /hyperfoil-reports$1index.html break;
+          proxy_pass http://{{ .Values.reports.minioEndpoint }};
           proxy_set_header Host {{ .Values.reports.minioEndpoint }};
           proxy_hide_header x-amz-request-id;
           proxy_hide_header x-amz-id-2;

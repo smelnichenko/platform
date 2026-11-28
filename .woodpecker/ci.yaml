@@ -93,6 +93,43 @@ steps:
       kubernetes:
         securityContext: { runAsNonRoot: true, runAsUser: 101, runAsGroup: 101 }  # clickhouse's own user
 
+  # the reports server's nginx: its config as the chart renders it (a store's name to resolve), then taken (nginx -t) and
+  # served against a fake object store in the chart's own nginx image - a directory's URL its index.html by its exact path
+  # (the wave-patches review, 2026-11-28: ${uri} doubled the slash)
+  - name: reports-nginx-render
+    image: alpine/helm:latest
+    commands:
+      - sh .woodpecker/reports-nginx-render.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
+    environment:
+      HOME: /tmp  # no user of its own in the image: a home it can write
+  - name: reports-nginx-test
+    image: nginx:1.27-alpine
+    depends_on: [reports-nginx-render]
+    environment:
+      CI_STEP_IMAGE_CHECK: nginx:1.27-alpine
+    commands:
+      - sh .woodpecker/reports-nginx-test.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }  # no root: nginx on 8080 and 9000, /tmp
+
+  # the backups' prune (files/backup-prune.sh) with the real rclone in the charts' rcloneImage (the step's image held to both
+  # values files): its delete path runs only past KEEP backups, which the copy never holds - exercised here, not first on
+  # production's night 8 (the wave-patches review, 2026-11-28; the script says what it seeds)
+  - name: backup-prune-rclone
+    image: rclone/rclone:1.71.2@sha256:3103526c506266a9ecdf064efe99bf3677d92ef6407af124d8c56b4f49cbaa51
+    environment:
+      CI_STEP_IMAGE_CHECK: rclone/rclone:1.71.2@sha256:3103526c506266a9ecdf064efe99bf3677d92ef6407af124d8c56b4f49cbaa51
+      HOME: /tmp  # no user of its own in the image: a home it can write
+    commands:
+      - sh .woodpecker/backup-prune-rclone-test.sh
+    backend_options:
+      kubernetes:
+        securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000 }
+
   # masi's allow-list and its documentation (docs/masi-allowed-hosts.md) name the same hosts: a host added or removed on
   # one side only fails here
   - name: masi-allowed-hosts-doc
